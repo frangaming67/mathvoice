@@ -1,9 +1,11 @@
 import { all, create, type MathNode, type FunctionNode, type OperatorNode } from 'mathjs';
 import { normalizeExpression } from '../parser/expression';
 import type { AngleMode, CalculationResult } from '../types';
+import { SymbolicEngine } from './SymbolicEngine';
 
 const math = create(all);
 const exactMath = create(all, { number: 'Fraction' });
+const symbolic = new SymbolicEngine();
 const functions = new Set(
   'sin cos tan asin acos atan sinh cosh tanh log ln exp sqrt cbrt factorial mod floor ceil round abs sign gcd lcm fraction'.split(
     ' ',
@@ -48,6 +50,7 @@ export class MathEngine {
     if (input.length > 500)
       throw new Error('La expresión es demasiado larga. Usá hasta 500 caracteres.');
     const expression = normalizeExpression(input);
+    if (symbolic.supports(expression)) return symbolic.evaluate(expression, input, angleMode);
     let node: MathNode;
     try {
       node = math.parse(expression);

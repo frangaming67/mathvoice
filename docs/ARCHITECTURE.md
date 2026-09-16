@@ -1,5 +1,13 @@
 # Arquitectura y decisiones previas a la implementación
 
+## Actualización 0.2
+
+Se conserva Math.js para cálculo numérico y se integra Nerdamer 1.1.13 (MIT) detrás de `SymbolicEngine`, dentro del Worker. No se lo considera un motor de resolución general garantizada: se validan AST y argumentos, se rechazan resultados sin resolver, se limita el tiempo y se mantiene un corpus de referencia. Las integrales definidas se limitan a polinomios; los sistemas a ecuaciones lineales con solución única verificada. Desigualdades y series quedan pendientes.
+
+`useAutomaticSpeech` coordina lectura por puntero (180 ms) y foco (140 ms), elimina repeticiones causadas por elementos hijos y cancela pendientes con Escape. No se agregan elementos al orden de Tab para leer texto: el puntero anuncia encabezados y párrafos, mientras el lector externo conserva la semántica HTML. Un botón permanente permite activar o desactivar la voz. La migración de preferencias preserva las opciones anteriores y agrega la lectura por puntero.
+
+`Keypad` ofrece controles numéricos nativos y memoria persistente. `AdvancedCalculator` construye comandos CAS mediante formularios. `MathSpeechFormatter` entiende derivadas, integrales, límites, ecuaciones y soluciones separadas. La interfaz conserva siempre una representación textual del resultado.
+
 ## Alcance y bibliotecas
 
 React + TypeScript estricto + Vite. Aplicación cliente de una página, sin backend ni registro. CSS propio, controles HTML nativos y texto matemático siempre disponible. No hace falta renderizado visual especializado en la fase 1.

@@ -10,6 +10,9 @@ import { handleKeyboard } from '../../accessibility/KeyboardManager';
 import { Settings } from '../../components/Settings';
 import { History } from '../../components/History';
 import { Tools } from '../../components/Tools';
+import { Keypad } from '../../components/Keypad';
+import { AdvancedCalculator } from '../../components/AdvancedCalculator';
+import { useAutomaticSpeech } from '../../accessibility/useAutomaticSpeech';
 
 const client = new CalculatorClient();
 const welcome =
@@ -27,6 +30,16 @@ export function Calculator() {
   const [storageWarning, setStorageWarning] = useState(storage.warning);
   const [explanation, setExplanation] = useState(false);
   const [help, setHelp] = useState(false);
+  const [memory, setMemory] = useState(() =>
+    storage.read(
+      'memory',
+      '0',
+      (v): v is string => typeof v === 'string' && /^[-\d.e+/* ()]+$/.test(v),
+    ),
+  );
+  const memoryBusy = useRef(false);
+  const justCalculated = useRef(false);
+  const automatic = useAutomaticSpeech(preferences);
   const input = useRef<HTMLInputElement>(null);
   const helpButton = useRef<HTMLButtonElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -87,23 +100,102 @@ export function Calculator() {
     if (!historyService.save(next)) setStorageWarning(storage.warning);
   }
   function start(guided: boolean) {
-    changePreferences({ ...preferences, welcomed: true, guided });
-    if (guided) speech.hablar(welcome);
+    changePreferences({ ...preferences, welcomed: true, guided, readFocus: true, readHover: true });
     input.current?.focus();
+    automatic.cancel();
+    if (guided)
+      speech.hablar(`${welcome} Pasá el puntero sobre cualquier control para escucharlo.`);
   }
-  function insert(value: string) {
+  function insert(value: string, focus = true) {
+    justCalculated.current = false;
     const el = input.current;
     const start = el?.selectionStart ?? expression.length;
     const end = el?.selectionEnd ?? start;
     setExpression(expression.slice(0, start) + value + expression.slice(end));
     requestAnimationFrame(() => {
-      el?.focus();
+      if (focus) el?.focus();
       el?.setSelectionRange(start + value.length, start + value.length);
     });
+  }
+  function keypadInsert(value: string) {
+    automatic.cancel();
+    setError('');
+    if (justCalculated.current) {
+      const previous =
+        result && ['Básico', 'Científico'].includes(result.kind) ? `(${result.value})` : '';
+      const next = /^[+*/^%-]/.test(value) ? previous + value : value;
+      setExpression(next);
+      requestAnimationFrame(() => input.current?.setSelectionRange(next.length, next.length));
+    } else insert(value, false);
+    justCalculated.current = false;
+    if (preferences.guided)
+      speech.hablar(
+        (
+          {
+            '+': 'Más',
+            '-': 'Menos',
+            '*': 'Por',
+            '/': 'Dividido por',
+            '.': 'Punto decimal',
+            '%': 'Por ciento',
+            '(': 'Abre paréntesis',
+            ')': 'Cierra paréntesis',
+            '^2': 'Al cuadrado',
+          } as Record<string, string>
+        )[value] ?? mathSpeech(value),
+      );
+  }
+  function erase() {
+    const start = input.current?.selectionStart ?? expression.length;
+    const end = input.current?.selectionEnd ?? start;
+    const from = start === end ? Math.max(0, start - 1) : start;
+    setExpression(expression.slice(0, from) + expression.slice(end));
+    setError('');
+    justCalculated.current = false;
+    requestAnimationFrame(() => input.current?.setSelectionRange(from, from));
+  }
+  function clear() {
+    setExpression('');
+    setResult(null);
+    setError('');
+    justCalculated.current = false;
+  }
+  async function memoryAction(action: 'clear' | 'recall' | 'add' | 'subtract') {
+    automatic.cancel();
+    if (action === 'recall') {
+      keypadInsert(`(${memory})`);
+      return;
+    }
+    if (memoryBusy.current) return;
+    let next = '0';
+    if (action !== 'clear') {
+      if (!result || !['Básico', 'Científico'].includes(result.kind)) {
+        announce('Calculá un resultado numérico antes de usar M más o M menos.');
+        return;
+      }
+      memoryBusy.current = true;
+      try {
+        next = (
+          await client.evaluate(
+            `(${memory})${action === 'add' ? '+' : '-'}(${result.value})`,
+            preferences.angle,
+          )
+        ).value;
+      } catch {
+        announce('No pude guardar este resultado en memoria. Usá un número real finito.');
+        return;
+      } finally {
+        memoryBusy.current = false;
+      }
+    }
+    setMemory(next);
+    if (!storage.write('memory', next)) setStorageWarning(storage.warning);
+    announce(`Memoria: ${mathSpeech(next)}.`);
   }
   async function calculate(value = expression, angle: AngleMode = preferences.angle) {
     if (computing.current) return;
     computing.current = true;
+    automatic.cancel();
     clearTimeout(typingTimer.current);
     setBusy(true);
     setError('');
@@ -112,6 +204,7 @@ export function Calculator() {
     try {
       const calculated = await client.evaluate(value, angle);
       setResult(calculated);
+      justCalculated.current = true;
       const entry = { ...calculated, id: crypto.randomUUID(), date: new Date().toISOString() };
       saveHistory([entry, ...currentEntries.current].slice(0, 100));
       announce(`Resultado: ${mathSpeech(calculated.value)}.`, preferences.autoRead);
@@ -119,8 +212,9 @@ export function Calculator() {
       const message = cause instanceof Error ? cause.message : 'No pude completar el cálculo.';
       setError(message);
       setStatus('');
-      if (preferences.guided) speech.hablar(message);
       input.current?.focus();
+      automatic.cancel();
+      if (preferences.guided) speech.hablar(message);
     } finally {
       computing.current = false;
       setBusy(false);
@@ -135,6 +229,7 @@ export function Calculator() {
     }
   }
   function edit(entry: HistoryEntry) {
+    justCalculated.current = false;
     setExpression(entry.expression);
     changePreferences({ ...preferences, angle: entry.angleMode });
     input.current?.focus();
@@ -144,19 +239,9 @@ export function Calculator() {
   return (
     <div
       className={preferences.maximum ? 'app maximum' : 'app'}
-      onFocusCapture={(e) => {
-        if (!preferences.guided || !preferences.readFocus) return;
-        const target = e.target as HTMLElement;
-        if (!target.matches('button, input, select, summary')) return;
-        const label =
-          target.getAttribute('aria-label') ||
-          (target instanceof HTMLInputElement || target instanceof HTMLSelectElement
-            ? Array.from(target.labels ?? [])
-                .map((l) => l.textContent)
-                .join(' ')
-            : target.textContent);
-        if (label) speech.hablar(label);
-      }}
+      onFocusCapture={automatic.onFocusCapture}
+      onPointerOver={automatic.onPointerOver}
+      onPointerOut={automatic.onPointerOut}
     >
       <a className="skip-link" href="#expression">
         Saltar a la calculadora
@@ -187,8 +272,22 @@ export function Calculator() {
                 : 'Guía por voz desactivada'}
           </span>
           <button
+            className={preferences.guided ? '' : 'primary'}
+            disabled={!speech.available}
+            onClick={() => {
+              automatic.cancel();
+              if (preferences.guided) {
+                changePreferences({ ...preferences, guided: false });
+                speech.detener();
+              } else start(true);
+            }}
+          >
+            {preferences.guided ? 'Desactivar voz automática' : 'Activar voz automática'}
+          </button>
+          <button
             onClick={() => {
               clearTimeout(typingTimer.current);
+              automatic.cancel();
               speech.detener();
             }}
           >
@@ -199,7 +298,10 @@ export function Calculator() {
           <section className="welcome" aria-labelledby="welcome-title">
             <div>
               <h1 id="welcome-title">Bienvenido a MathVoice.</h1>
-              <p>¿Querés activar la guía por voz?</p>
+              <p>
+                Activá la voz una vez. Después, cada control se lee al pasar el puntero o recorrerlo
+                con Tab.
+              </p>
             </div>
             <div className="actions">
               <button className="primary" disabled={!speech.available} onClick={() => start(true)}>
@@ -241,8 +343,8 @@ export function Calculator() {
         <div className="workspace">
           <section className="calculator panel" aria-labelledby="calculator-title">
             <p className="eyebrow">TU ESPACIO MATEMÁTICO</p>
-            <h2 id="calculator-title">Escribí un cálculo.</h2>
-            <p className="intro">Con teclado, a tu ritmo. Con voz, si lo preferís.</p>
+            <h2 id="calculator-title">Tu calculadora.</h2>
+            <p className="intro">Usá los botones o escribí la operación.</p>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -266,6 +368,7 @@ export function Calculator() {
                 onChange={(e) => {
                   const value = e.target.value;
                   setExpression(value);
+                  justCalculated.current = false;
                   setError('');
                   clearTimeout(typingTimer.current);
                   if (preferences.guided && preferences.readTyping)
@@ -296,8 +399,7 @@ export function Calculator() {
                 <button
                   type="button"
                   onClick={() => {
-                    setExpression('');
-                    setError('');
+                    clear();
                     input.current?.focus();
                   }}
                 >
@@ -320,6 +422,23 @@ export function Calculator() {
                 </select>
               </label>
             </form>
+            <Keypad
+              insert={keypadInsert}
+              erase={erase}
+              clear={clear}
+              sign={() => {
+                setExpression(
+                  expression.startsWith('-(') && expression.endsWith(')')
+                    ? expression.slice(2, -1)
+                    : `-(${expression || '0'})`,
+                );
+                justCalculated.current = false;
+              }}
+              calculate={() => void calculate()}
+              busy={busy}
+              memory={memory}
+              onMemory={(action) => void memoryAction(action)}
+            />
             <div
               id="calculation-error"
               role="alert"
@@ -335,6 +454,7 @@ export function Calculator() {
                   <button
                     key={example}
                     onClick={() => {
+                      justCalculated.current = false;
                       setExpression(example);
                       input.current?.focus();
                     }}
@@ -353,7 +473,11 @@ export function Calculator() {
             {result ? (
               <>
                 <p className="result-expression">{result.expression}</p>
-                <p className="result-value" aria-label={`Resultado: ${result.value}`}>
+                <p
+                  className={`result-value ${['Álgebra', 'Cálculo'].includes(result.kind) ? 'symbolic-value' : ''}`}
+                  aria-label={`Resultado: ${result.value}`}
+                  data-speech={`Resultado: ${mathSpeech(result.value)}`}
+                >
                   {result.value}
                 </p>
                 {result.decimal && (
@@ -408,6 +532,13 @@ export function Calculator() {
           {status}
         </div>
         <Tools insert={insert} />
+        <AdvancedCalculator
+          busy={busy}
+          calculate={(value) => {
+            setExpression(value);
+            void calculate(value);
+          }}
+        />
         <Settings preferences={preferences} change={changePreferences} />
         <History
           entries={entries}
@@ -429,7 +560,7 @@ export function Calculator() {
         />
       </main>
       <footer>
-        <span>MathVoice · Primera etapa</span>
+        <span>MathVoice · Calculadora parlante</span>
         <span>Cálculos locales. Sin cuenta.</span>
       </footer>
     </div>

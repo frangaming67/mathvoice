@@ -21,6 +21,7 @@ export interface Preferences {
   volume: number;
   autoRead: boolean;
   readFocus: boolean;
+  readHover: boolean;
   readTyping: boolean;
   readKeys: boolean;
   theme: string;
@@ -38,7 +39,8 @@ export const defaultPreferences: Preferences = {
   pitch: 1,
   volume: 1,
   autoRead: true,
-  readFocus: false,
+  readFocus: true,
+  readHover: true,
   readTyping: false,
   readKeys: false,
   theme: 'light',

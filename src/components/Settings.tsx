@@ -100,6 +100,7 @@ export function Settings({
             [
               ['autoRead', 'Leer resultados automáticamente'],
               ['readFocus', 'Leer controles al enfocarlos'],
+              ['readHover', 'Leer automáticamente al pasar el puntero'],
               ['readTyping', 'Leer expresión después de escribir'],
               ['readKeys', 'Leer teclas escritas'],
             ] as const

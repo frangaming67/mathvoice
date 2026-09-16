@@ -11,7 +11,20 @@
 
 ## Fase 2
 
-Adaptador CAS; simplificar/expandir/factorizar/sustituir, raíces, ecuaciones y sistemas; derivadas parciales y de orden superior; integrales definidas e indefinidas y límites. Verificar dominios, constantes de integración y resultados no resueltos. Explicaciones basadas en procedimientos verificables.
+- [x] Adaptador Nerdamer aislado en el Worker, validación de expresiones y tiempo máximo.
+- [x] Simplificar, expandir, factorizar, sustituir, fracciones parciales, ecuaciones y sistemas lineales.
+- [x] Derivadas parciales y de orden superior; integrales indefinidas con C; integrales definidas de polinomios; límites.
+- [x] Formularios accesibles y lectura matemática de operaciones y soluciones.
+- [ ] Ampliar integrales definidas con análisis de singularidades y dominio.
+- [ ] Desigualdades, series, sistemas no lineales y explicaciones demostradas paso a paso.
+- [ ] Auditoría matemática ampliada de dominios y límites; Nerdamer no garantiza resolución general.
+
+## Mejora 0.2 de la calculadora y la voz
+
+- [x] Teclado numérico completo, continuidad desde el resultado, borrar y cambio de signo.
+- [x] MC, MR, M+ y M− persistentes.
+- [x] Lectura automática por puntero y foco, con cancelación de pendientes mediante Escape.
+- [x] Repositorio privado en GitHub y workflow de pruebas.
 
 ## Fase 3
 

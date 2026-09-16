@@ -21,6 +21,14 @@ function valid(v: unknown): v is Preferences {
   );
 }
 export const preferencesService = {
-  load: () => storage.read('preferences', defaultPreferences, valid),
+  load: () => {
+    const stored = storage.read<Record<string, unknown>>(
+      'preferences',
+      {},
+      (v): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v),
+    );
+    const migrated = { ...defaultPreferences, ...stored };
+    return valid(migrated) ? migrated : defaultPreferences;
+  },
   save: (p: Preferences) => storage.write('preferences', p),
 };

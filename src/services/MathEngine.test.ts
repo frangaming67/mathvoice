@@ -44,7 +44,6 @@ describe('Motor de fase 1', () => {
     'evaluate("2+2")',
     '2;3',
     'det([[1,2],[3,4]])',
-    'diff(x^2,x)',
     'factorial(10000)',
   ])('rechaza con error legible: %s', (expression) => {
     expect(() => engine.evaluate(expression)).toThrow();

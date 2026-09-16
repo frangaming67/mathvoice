@@ -1,6 +1,6 @@
 {
   "name": "mathvoice",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Entorno matemático en español, pensado para trabajar sin mirar la pantalla.",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -16,6 +16,7 @@
   "type": "module",
   "dependencies": {
     "mathjs": "^15.2.0",
+    "nerdamer": "^1.1.13",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

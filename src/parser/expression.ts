@@ -10,6 +10,14 @@ const aliases: Record<string, string> = {
   inf: 'Infinity',
   mcd: 'gcd',
   mcm: 'lcm',
+  derivada: 'diff',
+  integral: 'integrate',
+  limite: 'limit',
+  límite: 'limit',
+  resolver: 'solve',
+  simplificar: 'simplify',
+  factorizar: 'factor',
+  expandir: 'expand',
 };
 export function normalizeExpression(input: string): string {
   return input

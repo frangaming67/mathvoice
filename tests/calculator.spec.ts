@@ -66,6 +66,7 @@ test('accesibilidad automática, temas y reflow a 320 px', async ({ page }) => {
   await page.screenshot({ path: 'test-results/mathvoice-mobile.png', fullPage: true });
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.getByText('Configuración de voz y accesibilidad', { exact: true }).click();
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: 'test-results/mathvoice-desktop.png', fullPage: true });
 });
 
