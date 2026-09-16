@@ -2,11 +2,11 @@
 
 ## Fase 1 — primera entrega
 
-- [ ] Motor básico/científico aislado, alias, fracciones y modos angulares.
-- [ ] SpeechService, lectura matemática, bienvenida y configuración persistente.
-- [ ] Flujo por teclado, temas y controles accesibles.
-- [ ] Historial local con búsqueda, escucha, copia, edición y eliminación.
-- [ ] Pruebas unitarias, navegador, accesibilidad automática y build.
+- [x] Motor básico/científico aislado, alias, fracciones y modos angulares.
+- [x] SpeechService, lectura matemática, bienvenida y configuración persistente.
+- [x] Flujo por teclado, temas y controles accesibles.
+- [x] Historial local con búsqueda, escucha, copia, edición y eliminación.
+- [x] Pruebas unitarias, navegador, accesibilidad automática y build.
 - [ ] Validación manual con personas ciegas y lectores reales (necesaria antes de declarar conformidad).
 
 ## Fase 2
