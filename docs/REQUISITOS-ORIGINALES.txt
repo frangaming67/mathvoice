@@ -1,0 +1,1635 @@
+Quiero que desarrolles una aplicación web completa llamada provisionalmente MathVoice, una calculadora matemática avanzada diseñada prioritariamente para personas ciegas o con baja visión.
+
+NO quiero una calculadora convencional a la que simplemente se le agregue compatibilidad con lector de pantalla. La accesibilidad debe ser parte central de la arquitectura y la experiencia de usuario desde el principio.
+
+La aplicación debe poder utilizarse completamente sin mirar la pantalla.
+
+1. OBJETIVO PRINCIPAL
+
+Crear una única página web que integre:
+
+* Calculadora básica.
+* Calculadora científica.
+* Calculadora algebraica.
+* CAS (Computer Algebra System).
+* Derivadas.
+* Integrales.
+* Límites.
+* Ecuaciones.
+* Sistemas de ecuaciones.
+* Matrices.
+* Vectores.
+* Números complejos.
+* Estadística.
+* Probabilidad.
+* Combinatoria.
+* Trigonometría.
+* Logaritmos.
+* Fracciones.
+* Conversión de unidades.
+* Conversión de bases numéricas.
+* Gráficos 2D.
+* Exploración accesible de gráficos.
+* Historial.
+* Variables.
+* Memoria.
+* Constantes matemáticas.
+* Entrada mediante teclado.
+* Entrada mediante voz.
+* Lectura automática en voz alta.
+
+La aplicación debe hablar por sí misma utilizando síntesis de voz del navegador.
+
+No debe ser obligatorio instalar NVDA, JAWS u otro lector de pantalla para poder utilizar sus funciones principales de voz.
+
+Debe seguir siendo compatible con lectores de pantalla externos.
+
+2. PRINCIPIO FUNDAMENTAL DE ACCESIBILIDAD
+
+Una persona completamente ciega debe poder:
+
+1. Entrar a la página.
+2. Saber inmediatamente dónde está.
+3. Saber qué funciones están disponibles.
+4. Navegar únicamente con teclado.
+5. Escribir una expresión matemática.
+6. Escuchar lo que escribió.
+7. Corregirla.
+8. Ejecutar el cálculo.
+9. Escuchar el resultado.
+10. Pedir que el resultado vuelva a leerse.
+11. Escuchar una explicación del resultado.
+12. Navegar por cálculos anteriores.
+13. Copiar resultados.
+14. Trabajar con ecuaciones, matrices, integrales y otras operaciones avanzadas.
+15. Utilizar gráficos sin depender únicamente de una representación visual.
+
+No debe existir ninguna función esencial que requiera mouse.
+
+3. IDIOMA
+
+La interfaz principal debe estar en español.
+
+La síntesis de voz debe utilizar español siempre que el dispositivo tenga una voz española disponible.
+
+Permitir seleccionar:
+
+* Español Argentina.
+* Español España.
+* Español Latinoamérica.
+* Inglés.
+
+Detectar automáticamente las voces disponibles mediante Web Speech API.
+
+4. SISTEMA DE VOZ
+
+Usar:
+
+window.speechSynthesis
+
+y:
+
+SpeechSynthesisUtterance
+
+Crear un servicio centralizado llamado, por ejemplo:
+
+SpeechService
+
+No repartir llamadas a speechSynthesis por todos los componentes.
+
+SpeechService debe soportar:
+
+* hablar(texto)
+* detener()
+* pausar()
+* continuar()
+* repetir()
+* cambiarVoz()
+* cambiarVelocidad()
+* cambiarTono()
+* cambiarVolumen()
+
+Configuraciones:
+
+Velocidad:
+0.5x a 2.5x.
+
+Volumen:
+0 a 100%.
+
+Tono:
+configurable.
+
+Debe existir un botón:
+
+“Detener voz”
+
+y un atajo global:
+
+Escape
+
+para detener inmediatamente cualquier locución.
+
+5. QUÉ DEBE LEER LA PÁGINA
+
+La página debe poder anunciar:
+
+* Botones.
+* Operaciones seleccionadas.
+* Números escritos.
+* Operadores.
+* Expresión completa.
+* Errores.
+* Resultado.
+* Unidad.
+* Estado del cálculo.
+* Historial.
+* Variables.
+* Elementos de matrices.
+* Coordenadas.
+* Información sobre gráficos.
+
+Ejemplo:
+
+Usuario escribe:
+
+sqrt(25) + sin(pi/2)
+
+La voz debe poder decir:
+
+“Raíz cuadrada de veinticinco más seno de pi dividido dos.”
+
+Al calcular:
+
+“Resultado: seis.”
+
+No leer símbolos matemáticos de forma confusa.
+
+Por ejemplo:
+
+^ debe pronunciarse “elevado a”.
+
+* debe pronunciarse “por”.
+
+/ debe pronunciarse “dividido por”.
+
+sqrt debe decir “raíz cuadrada”.
+
+pi debe decir “pi”.
+
+inf debe decir “infinito”.
+
+6. MODO DE LECTURA MATEMÁTICA
+
+Crear un parser que transforme expresiones matemáticas en lenguaje hablado.
+
+Ejemplo:
+
+x^2 + 3*x - 5
+
+Debe poder leerse como:
+
+“equis al cuadrado más tres por equis menos cinco.”
+
+Ejemplo:
+
+integrate(x^2,x)
+
+“Integral de equis al cuadrado respecto de equis.”
+
+Ejemplo:
+
+limit(sin(x)/x,x,0)
+
+“Límite cuando equis tiende a cero de seno de equis dividido por equis.”
+
+La función de lectura matemática debe estar separada del motor de cálculo.
+
+Crear algo similar a:
+
+MathSpeechFormatter.
+
+7. ENTRADA DE EXPRESIONES
+
+Debe existir un campo principal grande denominado:
+
+“Expresión matemática”.
+
+Permitir escribir expresiones directamente.
+
+Ejemplos:
+
+2+2
+
+sqrt(144)
+
+sin(pi/4)
+
+log(100)
+
+2^10
+
+factorial(10)
+
+solve(x^2-4=0,x)
+
+diff(x^3,x)
+
+integrate(x^2,x)
+
+limit(sin(x)/x,x,0)
+
+También aceptar sintaxis amigable.
+
+Ejemplos:
+
+raiz(25)
+
+sen(30)
+
+derivada(x^2)
+
+integral(x^2)
+
+limite(sen(x)/x,x,0)
+
+Crear alias en español.
+
+8. ENTRADA MEDIANTE VOZ
+
+Implementar reconocimiento de voz si el navegador lo permite.
+
+Usar Web Speech Recognition API cuando esté disponible.
+
+Botón:
+
+“Dictar expresión”.
+
+Ejemplos que debe intentar interpretar:
+
+“dos más dos”.
+
+“raíz cuadrada de ciento cuarenta y cuatro”.
+
+“seno de treinta grados”.
+
+“derivada de equis al cuadrado”.
+
+“integral de equis al cubo”.
+
+“resolver equis al cuadrado menos cuatro igual a cero”.
+
+Antes de ejecutar la expresión reconocida:
+
+leer en voz alta:
+
+“Entendí: …”
+
+y permitir:
+
+Confirmar.
+
+Editar.
+
+Cancelar.
+
+Nunca ejecutar automáticamente una expresión de voz ambigua.
+
+9. CALCULADORA BÁSICA
+
+Incluir:
+
+Suma.
+
+Resta.
+
+Multiplicación.
+
+División.
+
+Porcentajes.
+
+Cambio de signo.
+
+Paréntesis.
+
+Decimales.
+
+Fracciones.
+
+Valor absoluto.
+
+Potencias.
+
+Raíces.
+
+10. CALCULADORA CIENTÍFICA
+
+Incluir:
+
+sin
+
+cos
+
+tan
+
+asin
+
+acos
+
+atan
+
+sinh
+
+cosh
+
+tanh
+
+log
+
+ln
+
+log base n
+
+exp
+
+sqrt
+
+cbrt
+
+x²
+
+x³
+
+xʸ
+
+10ˣ
+
+eˣ
+
+factorial
+
+mod
+
+floor
+
+ceil
+
+round
+
+abs
+
+sign
+
+gcd
+
+lcm
+
+11. MODOS ANGULARES
+
+Permitir:
+
+Grados.
+
+Radianes.
+
+Gradianes.
+
+El modo actual debe anunciarse por voz cuando cambie.
+
+Ejemplo:
+
+“Modo angular: radianes.”
+
+12. CONSTANTES
+
+Incluir como mínimo:
+
+π
+
+e
+
+φ
+
+infinito
+
+velocidad de la luz
+
+constante gravitacional
+
+constante de Planck
+
+número de Avogadro
+
+constante de Boltzmann
+
+Permitir insertar constantes desde el teclado.
+
+13. FRACCIONES
+
+Soportar:
+
+Fracciones exactas.
+
+Simplificación.
+
+Conversión fracción-decimal.
+
+Conversión decimal-fracción.
+
+Números mixtos.
+
+Ejemplo:
+
+1/3 + 1/6
+
+Resultado preferente:
+
+1/2
+
+y opcionalmente:
+
+0.5
+
+14. ÁLGEBRA
+
+Implementar:
+
+Simplificar.
+
+Expandir.
+
+Factorizar.
+
+Sustituir variables.
+
+Resolver ecuaciones.
+
+Resolver desigualdades.
+
+Descomposición en fracciones parciales.
+
+Encontrar raíces.
+
+Ejemplos:
+
+simplify((x^2-1)/(x-1))
+
+factor(x^2-9)
+
+expand((x+2)^3)
+
+solve(x^2-5*x+6=0,x)
+
+15. CÁLCULO
+
+Implementar:
+
+Derivadas.
+
+Derivadas parciales.
+
+Derivadas de orden superior.
+
+Integrales indefinidas.
+
+Integrales definidas.
+
+Límites.
+
+Series cuando sea posible.
+
+Ejemplos:
+
+diff(sin(x),x)
+
+diff(x^5,x,2)
+
+integrate(x^2,x)
+
+integrate(x^2,x,0,5)
+
+limit(sin(x)/x,x,0)
+
+16. SISTEMAS DE ECUACIONES
+
+Permitir introducir sistemas.
+
+Ejemplo:
+
+x+y=10
+x-y=4
+
+Resultado:
+
+x = 7
+y = 3
+
+La voz debe decir cada solución por separado.
+
+17. MATRICES
+
+Crear módulo específico de matrices.
+
+Permitir:
+
+Crear matriz.
+
+Editar matriz.
+
+Sumar.
+
+Restar.
+
+Multiplicar.
+
+Transponer.
+
+Determinante.
+
+Inversa.
+
+Rango.
+
+Traza.
+
+Autovalores.
+
+Autovectores cuando el motor matemático lo permita.
+
+Resolver sistemas matriciales.
+
+Cada celda debe tener etiqueta accesible.
+
+Ejemplo:
+
+“Fila dos, columna tres, valor cinco.”
+
+El usuario debe poder recorrer una matriz con las flechas del teclado.
+
+18. VECTORES
+
+Permitir:
+
+Módulo.
+
+Normalización.
+
+Producto punto.
+
+Producto cruz.
+
+Ángulo entre vectores.
+
+Distancia.
+
+Operaciones vectoriales.
+
+19. NÚMEROS COMPLEJOS
+
+Soportar:
+
+a + bi
+
+Módulo.
+
+Argumento.
+
+Forma polar.
+
+Forma rectangular.
+
+Conjugado.
+
+Potencias.
+
+Raíces.
+
+20. ESTADÍSTICA
+
+Crear módulo estadístico.
+
+Permitir ingresar listas de datos.
+
+Calcular:
+
+Cantidad.
+
+Media.
+
+Mediana.
+
+Moda.
+
+Mínimo.
+
+Máximo.
+
+Rango.
+
+Varianza.
+
+Desviación estándar.
+
+Cuartiles.
+
+Percentiles.
+
+Covarianza.
+
+Correlación.
+
+Regresión lineal.
+
+21. PROBABILIDAD
+
+Incluir:
+
+Permutaciones.
+
+Combinaciones.
+
+nPr.
+
+nCr.
+
+Binomial.
+
+Normal.
+
+Poisson.
+
+Probabilidad básica.
+
+Factoriales.
+
+22. CONVERSIÓN DE UNIDADES
+
+Integrar conversor.
+
+Categorías:
+
+Longitud.
+
+Área.
+
+Volumen.
+
+Masa.
+
+Tiempo.
+
+Velocidad.
+
+Temperatura.
+
+Presión.
+
+Energía.
+
+Potencia.
+
+Datos digitales.
+
+Ángulos.
+
+Ejemplo:
+
+100 km a millas.
+
+25 Celsius a Fahrenheit.
+
+23. BASES NUMÉRICAS
+
+Permitir:
+
+Binario.
+
+Octal.
+
+Decimal.
+
+Hexadecimal.
+
+Conversión entre bases.
+
+Operaciones binarias.
+
+AND.
+
+OR.
+
+XOR.
+
+NOT.
+
+Shift left.
+
+Shift right.
+
+24. GRÁFICOS
+
+Incluir gráficos 2D.
+
+Permitir representar:
+
+y = f(x)
+
+varias funciones simultáneamente.
+
+Configurar rango X/Y.
+
+Zoom.
+
+Puntos importantes.
+
+Intersecciones.
+
+Máximos.
+
+Mínimos.
+
+Ceros.
+
+Pero el gráfico NO puede ser exclusivamente visual.
+
+25. GRÁFICOS ACCESIBLES
+
+Crear un modo:
+
+“Explorar gráfico”.
+
+El usuario debe poder usar:
+
+Flecha izquierda.
+
+Flecha derecha.
+
+para desplazarse por valores de X.
+
+La aplicación debe anunciar:
+
+“equis igual a dos coma cinco; ye igual a cuatro coma siete”.
+
+Permitir seleccionar el paso:
+
+0.01
+0.1
+0.5
+1
+5
+
+Crear también un modo de sonificación.
+
+Mapear:
+
+Valores Y más altos → tono más alto.
+
+Valores Y más bajos → tono más bajo.
+
+Cruce del eje X → señal sonora específica.
+
+Máximo local → señal.
+
+Mínimo local → señal.
+
+Intersección → señal.
+
+Debe existir alternativa textual completa.
+
+26. HISTORIAL
+
+Guardar historial localmente.
+
+Cada entrada debe contener:
+
+Fecha.
+
+Hora.
+
+Expresión.
+
+Resultado.
+
+Tipo de cálculo.
+
+Permitir:
+
+Escuchar.
+
+Copiar.
+
+Editar.
+
+Volver a calcular.
+
+Eliminar.
+
+Vaciar historial.
+
+Buscar en historial.
+
+27. MEMORIA
+
+Implementar:
+
+MC
+
+MR
+
+M+
+
+M-
+
+Variables personalizadas.
+
+Ejemplo:
+
+a = 15
+
+radio = 7
+
+Permitir utilizar posteriormente:
+
+pi * radio^2
+
+28. EXPLICACIÓN DE RESULTADOS
+
+Agregar opción:
+
+“Explicar resultado”.
+
+No limitarse a devolver un número.
+
+Por ejemplo:
+
+Entrada:
+
+solve(x^2-5*x+6=0,x)
+
+Resultado:
+
+x = 2
+x = 3
+
+Explicación:
+
+“La ecuación se puede factorizar como equis menos dos por equis menos tres igual a cero. Por lo tanto, sus soluciones son equis igual a dos y equis igual a tres.”
+
+Diferenciar claramente entre:
+
+Resultado.
+
+Procedimiento.
+
+Explicación.
+
+29. INTERFAZ PRINCIPAL
+
+La página principal debe tener una estructura sencilla.
+
+Orden:
+
+1. Encabezado.
+2. Estado de voz.
+3. Campo de expresión.
+4. Botón calcular.
+5. Botón escuchar expresión.
+6. Botón dictar.
+7. Resultado.
+8. Botón escuchar resultado.
+9. Herramientas matemáticas.
+10. Historial.
+
+No sobrecargar la pantalla inicial con cientos de botones.
+
+Utilizar categorías desplegables accesibles:
+
+Básica.
+
+Científica.
+
+Álgebra.
+
+Cálculo.
+
+Matrices.
+
+Estadística.
+
+Conversores.
+
+Gráficos.
+
+30. MODO CIEGO
+
+Crear un modo específico llamado:
+
+“Modo de máxima accesibilidad”.
+
+Cuando esté activado:
+
+* Hablar cambios de sección.
+* Hablar botones al enfocarlos si el usuario lo desea.
+* Confirmar operaciones.
+* Dar instrucciones de navegación.
+* Priorizar teclado.
+* Simplificar interfaz.
+* Aumentar contraste.
+* Aumentar tamaños de controles.
+* Reducir elementos visuales innecesarios.
+
+31. ATAJOS DE TECLADO
+
+Crear atajos.
+
+Enter:
+Calcular.
+
+Ctrl + Enter:
+Escuchar expresión.
+
+Ctrl + R:
+Repetir resultado.
+
+Ctrl + H:
+Abrir historial.
+
+Ctrl + G:
+Abrir gráficos.
+
+Ctrl + M:
+Abrir matrices.
+
+Ctrl + D:
+Derivada.
+
+Ctrl + I:
+Integral.
+
+Ctrl + L:
+Límite.
+
+Ctrl + Shift + V:
+Dictado de voz.
+
+Escape:
+Detener voz o cerrar modal.
+
+F1:
+Ayuda accesible.
+
+No sobrescribir atajos críticos del navegador.
+
+32. AYUDA INTERACTIVA
+
+Agregar un botón:
+
+“Ayuda”.
+
+Al abrirlo:
+
+leer:
+
+“Bienvenido a MathVoice. Podés escribir una operación o navegar por las categorías. Presioná F1 en cualquier momento para escuchar los comandos disponibles.”
+
+Crear tutorial inicial opcional.
+
+Debe poder saltarse.
+
+33. DISEÑO
+
+Diseño:
+
+Minimalista.
+
+Profesional.
+
+Responsive.
+
+Mobile first.
+
+Compatible con PC.
+
+Compatible con tablet.
+
+Compatible con celular.
+
+Controles grandes.
+
+Contraste elevado.
+
+Tipografía legible.
+
+Evitar animaciones innecesarias.
+
+34. MODOS VISUALES
+
+Ofrecer:
+
+Claro.
+
+Oscuro.
+
+Alto contraste.
+
+Negro/blanco.
+
+Amarillo/negro para baja visión.
+
+Permitir modificar:
+
+Tamaño de fuente.
+
+Espaciado.
+
+Escala general.
+
+35. ESTÁNDARES DE ACCESIBILIDAD
+
+Cumplir como mínimo:
+
+WCAG 2.2 AA.
+
+HTML semántico.
+
+ARIA únicamente cuando sea necesario.
+
+Usar correctamente:
+
+aria-label
+
+aria-describedby
+
+aria-live
+
+role=status
+
+role=alert
+
+fieldset
+
+legend
+
+label
+
+button
+
+nav
+
+main
+
+section
+
+No usar divs clickeables cuando existe un elemento HTML semántico.
+
+36. REGIONES VIVAS
+
+Crear dos regiones ARIA.
+
+Una:
+
+aria-live=“polite”
+
+para:
+
+Resultados.
+
+Cambio de modos.
+
+Estados.
+
+Otra:
+
+aria-live=“assertive”
+
+exclusivamente para:
+
+Errores críticos.
+
+Advertencias importantes.
+
+No saturar al lector de pantalla.
+
+37. FOCO
+
+Gestionar correctamente el foco.
+
+Después de calcular:
+
+No mover el foco arbitrariamente.
+
+Permitir atajo para ir al resultado.
+
+Después de un error:
+
+Llevar el foco al elemento problemático cuando corresponda.
+
+En diálogos:
+
+Aplicar focus trap accesible.
+
+Al cerrar:
+
+devolver foco al elemento que abrió el diálogo.
+
+38. ERRORES
+
+Los mensajes deben ser humanos.
+
+NO:
+
+“Parser exception token 3”.
+
+SÍ:
+
+“No pude interpretar la expresión. Revisá el paréntesis después de seno.”
+
+La voz debe leer errores importantes.
+
+39. MOTOR MATEMÁTICO
+
+Utilizar bibliotecas maduras.
+
+Preferentemente estudiar combinación de:
+
+Math.js
+
+Nerdamer
+
+Algebrite
+
+o una biblioteca CAS equivalente mantenida activamente.
+
+Separar completamente:
+
+UI.
+
+Motor matemático.
+
+Parser.
+
+Sistema de voz.
+
+Historial.
+
+Accesibilidad.
+
+No implementar manualmente operaciones matemáticas complejas si existe una biblioteca fiable.
+
+40. ARQUITECTURA
+
+Utilizar arquitectura modular.
+
+Ejemplo:
+
+src/
+components/
+features/
+calculator/
+scientific/
+algebra/
+calculus/
+matrices/
+statistics/
+graphs/
+conversions/
+services/
+MathEngine
+SpeechService
+VoiceRecognitionService
+HistoryService
+accessibility/
+MathSpeechFormatter
+KeyboardManager
+FocusManager
+utils/
+tests/
+
+41. MOTOR CENTRAL
+
+Crear una interfaz similar a:
+
+MathEngine.evaluate(expression)
+
+MathEngine.solve()
+
+MathEngine.derivative()
+
+MathEngine.integral()
+
+MathEngine.limit()
+
+MathEngine.matrix()
+
+La UI nunca debe depender directamente de una biblioteca matemática concreta.
+
+Eso permitirá reemplazar el motor en el futuro.
+
+42. PRIVACIDAD
+
+Los cálculos básicos deben realizarse localmente cuando sea posible.
+
+No enviar expresiones matemáticas a servidores externos innecesariamente.
+
+No pedir:
+
+Nombre.
+
+Correo.
+
+Cuenta.
+
+Registro.
+
+Ubicación.
+
+La calculadora debe funcionar sin login.
+
+43. FUNCIONAMIENTO OFFLINE
+
+Convertir la aplicación en PWA si es razonable.
+
+Permitir que las funciones principales funcionen offline después de la primera carga.
+
+44. GUARDADO
+
+Guardar localmente:
+
+Configuración.
+
+Idioma.
+
+Voz.
+
+Velocidad.
+
+Tema.
+
+Historial.
+
+Variables.
+
+Preferencias de accesibilidad.
+
+Usar almacenamiento local de forma encapsulada mediante un servicio.
+
+45. EXPORTACIÓN
+
+Permitir exportar historial como:
+
+TXT.
+
+CSV.
+
+JSON.
+
+Permitir copiar resultados al portapapeles mediante botón accesible.
+
+46. FORMATO MATEMÁTICO
+
+Visualmente se puede usar MathJax o KaTeX.
+
+Pero nunca depender exclusivamente del renderizado visual.
+
+Toda expresión renderizada debe tener una representación textual accesible.
+
+47. PRUEBAS DE ACCESIBILIDAD
+
+Crear pruebas específicas.
+
+Verificar:
+
+Tab.
+
+Shift + Tab.
+
+Enter.
+
+Escape.
+
+Flechas.
+
+Lectores de pantalla.
+
+ARIA.
+
+Orden del foco.
+
+Contraste.
+
+Zoom 200%.
+
+Zoom 400%.
+
+Mobile.
+
+Testear como mínimo conceptualmente con:
+
+NVDA + Chrome.
+
+JAWS + Chrome/Edge.
+
+VoiceOver + Safari.
+
+48. TESTS MATEMÁTICOS
+
+Crear tests para:
+
+2+2 = 4
+
+sqrt(144) = 12
+
+sin(pi/2) = 1
+
+2^10 = 1024
+
+factorial(5) = 120
+
+diff(x^2,x) = 2x
+
+integrate(2*x,x) = x² + C
+
+solve(x^2-4=0,x) = {-2,2}
+
+det([[1,2],[3,4]]) = -2
+
+Además probar errores y entradas inválidas.
+
+49. EXPERIENCIA DE PRIMER USO
+
+Cuando se abre por primera vez:
+
+Mostrar:
+
+“Bienvenido a MathVoice.”
+
+Luego ofrecer:
+
+“¿Querés activar la guía por voz?”
+
+Botones:
+
+Activar guía por voz.
+
+Continuar sin guía.
+
+Si se activa:
+
+Explicar brevemente cómo usar la calculadora.
+
+50. PÁGINA INICIAL
+
+La primera interacción debe ser extremadamente simple.
+
+Mostrar:
+
+“Escribí o dictá un cálculo.”
+
+Campo.
+
+Botón Calcular.
+
+Botón Dictar.
+
+Botón Escuchar.
+
+Debajo:
+
+“Más herramientas”.
+
+Nunca obligar al usuario a navegar por un panel complejo para hacer un cálculo simple.
+
+51. RESULTADO
+
+La sección resultado debe contener:
+
+Resultado principal.
+
+Forma exacta.
+
+Aproximación decimal.
+
+Unidad si corresponde.
+
+Variables si corresponde.
+
+Botones:
+
+Escuchar.
+
+Copiar.
+
+Explicar.
+
+Guardar.
+
+Graficar.
+
+52. CONFIGURACIÓN DE VOZ
+
+Crear panel:
+
+Voz.
+
+Idioma.
+
+Velocidad.
+
+Volumen.
+
+Tono.
+
+Leer teclas.
+
+Leer expresión mientras escribo.
+
+Leer resultados automáticamente.
+
+Leer cambios de sección.
+
+Confirmar operaciones peligrosas.
+
+53. NO HACER
+
+No crear una UI llena de botones minúsculos.
+
+No depender del mouse.
+
+No utilizar iconos sin texto accesible.
+
+No depender de colores para transmitir información.
+
+No reproducir voz constantemente sin control del usuario.
+
+No leer toda la pantalla cada vez que cambia algo.
+
+No mover el foco inesperadamente.
+
+No usar canvas como única representación de información.
+
+No crear gráficos inaccesibles.
+
+No esconder funciones detrás de gestos.
+
+No sacrificar accesibilidad por estética.
+
+54. TECNOLOGÍA
+
+Preferencia:
+
+React + TypeScript + Vite.
+
+Alternativamente Next.js si existe una razón arquitectónica clara.
+
+CSS moderno o Tailwind.
+
+Math.js.
+
+Biblioteca CAS apropiada.
+
+KaTeX o MathJax.
+
+Web Speech API.
+
+Web Speech Recognition donde esté disponible.
+
+Charting mediante SVG accesible.
+
+Evitar canvas cuando sea la única representación del gráfico.
+
+55. CALIDAD DEL CÓDIGO
+
+TypeScript estricto.
+
+Componentes pequeños.
+
+Separación de responsabilidades.
+
+Sin código duplicado.
+
+Sin funciones gigantes.
+
+Sin any salvo justificación.
+
+Manejo centralizado de errores.
+
+Tests unitarios.
+
+Tests de accesibilidad.
+
+ESLint.
+
+Prettier.
+
+56. RESPONSIVE
+
+Debe funcionar correctamente desde:
+
+320 px de ancho
+
+hasta monitores grandes.
+
+Los controles táctiles deben medir aproximadamente 44x44 px como mínimo.
+
+57. OBJETIVO FINAL
+
+El objetivo no es crear “una calculadora accesible”.
+
+El objetivo es crear:
+
+un entorno matemático completo y parlante que una persona ciega pueda utilizar de manera independiente desde el navegador.
+
+La aplicación debe ser suficientemente potente para acompañar materias universitarias como:
+
+Álgebra.
+
+Análisis Matemático.
+
+Cálculo.
+
+Álgebra Lineal.
+
+Estadística.
+
+Matemática Discreta.
+
+Lógica.
+
+Geometría Analítica.
+
+Física básica.
+
+58. ORDEN DE IMPLEMENTACIÓN
+
+No intentes desarrollar todo de una vez.
+
+Implementar en fases.
+
+FASE 1:
+
+* Arquitectura.
+* Calculadora básica.
+* Científica.
+* Entrada matemática.
+* Sistema de voz.
+* Accesibilidad.
+* Historial.
+
+FASE 2:
+
+* Álgebra.
+* Derivadas.
+* Integrales.
+* Límites.
+* Ecuaciones.
+
+FASE 3:
+
+* Matrices.
+* Vectores.
+* Complejos.
+* Estadística.
+
+FASE 4:
+
+* Gráficos.
+* Exploración mediante teclado.
+* Sonificación.
+
+FASE 5:
+
+* Dictado.
+* Conversores.
+* PWA.
+* Exportaciones.
+* Optimización.
+
+59. ANTES DE PROGRAMAR
+
+Antes de escribir código:
+
+1. Analizá estos requisitos.
+2. Proponé la arquitectura.
+3. Elegí las bibliotecas matemáticas.
+4. Explicá qué biblioteca resolverá cada categoría.
+5. Identificá limitaciones técnicas.
+6. Diseñá el modelo de accesibilidad.
+7. Diseñá el sistema de voz.
+8. Definí estructura de carpetas.
+9. Definí interfaces principales.
+10. Definí estrategia de tests.
+
+NO empieces generando cientos de líneas de código sin arquitectura.
+
+60. REQUISITO CRÍTICO
+
+En cada funcionalidad nueva preguntate:
+
+“¿Una persona completamente ciega puede descubrir, utilizar y comprender esta función sin ayuda de otra persona?”
+
+Si la respuesta es no, la funcionalidad no está terminada.
+
+La accesibilidad no es una característica secundaria del proyecto.
+
+Es el requisito principal.
