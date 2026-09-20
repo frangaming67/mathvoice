@@ -6,6 +6,7 @@ import { describeElement, useAutomaticSpeech } from './useAutomaticSpeech';
 
 const cleanup = vi.hoisted(() => [] as (() => void)[]);
 vi.mock('react', () => ({
+  useCallback: (callback: () => void) => callback,
   useRef: (value: unknown) => ({ current: value }),
   useEffect: (effect: () => void | (() => void)) => {
     const release = effect();
