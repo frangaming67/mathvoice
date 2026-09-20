@@ -72,6 +72,7 @@ test('accesibilidad automática, temas y reflow a 320 px', async ({ page }) => {
 
 test('Tab, Shift+Tab y atajos de lectura conservan el foco y no calculan', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Saltar a la calculadora' })).toBeAttached();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Saltar a la calculadora' })).toBeFocused();
   await page.keyboard.press('Enter');
