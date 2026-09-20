@@ -1,4 +1,4 @@
-# Estado por fases — entrega 0.3
+# Estado por fases — entrega 0.4
 
 Este estado sigue el punto 58 de [REQUISITOS-ORIGINALES.txt](REQUISITOS-ORIGINALES.txt). Hay una entrega funcional de las cinco fases. Eso no implica haber validado todos los casos matemáticos ni el uso independiente con lectores de pantalla reales.
 
@@ -22,6 +22,8 @@ Pendiente: completar el [protocolo manual](ACCESSIBILITY.md). La voz disponible 
 
 ## Fase 2
 
+Avance 0.4: procedimientos accesibles y persistidos. Se muestran coeficientes, discriminante y fórmula de ecuaciones cuadráticas; despeje lineal; verificación numérica de raíces; derivadas sucesivas; primitiva, extremos y diferencia de integrales; términos de Taylor; análisis de signos de desigualdades. No se muestra una derivación completa de cada regla ni eliminación paso a paso de sistemas.
+
 - Adaptador Nerdamer en Worker con validación de entrada y máximo de seis segundos.
 - Simplificación, expansión, factorización, sustitución y fracciones parciales.
 - Ecuaciones y sistemas lineales de 2–5 ecuaciones con solución única verificada.
@@ -30,7 +32,7 @@ Pendiente: completar el [protocolo manual](ACCESSIBILITY.md). La voz disponible 
 - Integrales indefinidas con `+ C`; definidas con comprobación conservadora del dominio y primitiva cerrada; límites mediante CAS.
 - Taylor de órdenes 0–10, identificado como aproximación local sin cota del error.
 
-Pendiente: sistemas no lineales, desigualdades de mayor alcance, integrales impropias o sin primitiva cerrada, y procedimientos derivados paso a paso. Las explicaciones actuales describen la operación; no constituyen una demostración completa. Un rechazo del análisis de dominio puede ser inconcluso. Nerdamer no garantiza resolución general ni todas las raíces de ecuaciones trascendentes.
+Pendiente: sistemas no lineales, desigualdades de mayor alcance, integrales impropias o sin primitiva cerrada, reglas detalladas de derivación/integración y procedimientos de sistemas y límites. Los pasos disponibles no constituyen una demostración completa para toda expresión. Un rechazo del análisis de dominio puede ser inconcluso. Nerdamer no garantiza resolución general ni todas las raíces de ecuaciones trascendentes.
 
 ## Fase 3
 
@@ -46,6 +48,8 @@ Límites: los cálculos numéricos pueden perder precisión con matrices mal con
 
 ## Fase 4
 
+Avance 0.4: refinamiento de ceros e intersecciones por bisección con control del residuo, estimación local más fina de extremos y eventos sin duplicados. Las intersecciones identifican ambas curvas y generan su señal sonora al explorar cualquiera de ellas. Hay salto al evento con recuperación del foco y descripción de los valores muestreados. Los tramos constantes/coincidentes no se enumeran como puntos aislados.
+
 - Hasta cuatro funciones reales, SVG con trazos distinguibles, rangos configurables y ajuste del rango X.
 - Exploración por flechas, Inicio/Fin y pasos 0.01, 0.1, 0.5, 1 y 5, calculados independientemente de la tabla.
 - Coordenadas habladas, tabla de 401 muestras y lista de ceros, extremos e intersecciones aproximados.
@@ -54,6 +58,8 @@ Límites: los cálculos numéricos pueden perder precisión con matrices mal con
 Límites: el muestreo de 400 intervalos puede omitir eventos y discontinuidades. No equivale a un análisis exacto del dominio, crecimiento o extremos. La detección de saltos es heurística. La evaluación de la sonificación con personas ciegas está pendiente.
 
 ## Fase 5
+
+Avance 0.4: procedimientos incluidos en TXT, CSV y JSON, recuperables desde el historial y validados al leer el almacenamiento. El historial anterior sigue siendo compatible.
 
 La versión 0.3 añade aviso de actualización de la PWA con recarga voluntaria y conservación del historial. CI verifica un presupuesto de 320 KiB gzip para el paquete principal y 3.5 MiB de JavaScript total. Se comprobó la escala de interfaz al 200% con reflow equivalente a 320 píxeles; esto no sustituye las pruebas manuales de zoom y lectores reales.
 

@@ -21,6 +21,7 @@ export interface GraphEvent {
   x: number;
   y: number;
   functionIndex: number;
+  otherFunctionIndex?: number;
 }
 export interface GraphData {
   curves: { expression: string; points: GraphPoint[]; breaks: number[] }[];
@@ -50,6 +51,11 @@ export function graphEvaluator(expression: string, request: GraphRequest) {
       !allowedFunctions.has((child as FunctionNode).fn.name ?? '')
     )
       throw new Error('Esa función no está disponible para graficar.');
+    if (child.type === 'FunctionNode') {
+      const fn = child as FunctionNode;
+      if (fn.args.length !== 1 && !(fn.fn.name === 'log' && fn.args.length === 2))
+        throw new Error('Revisá la cantidad de argumentos de la función del gráfico.');
+    }
     if (
       child.type === 'OperatorNode' &&
       !['+', '-', '*', '/', '^', '%'].includes((child as OperatorNode).op)
@@ -90,21 +96,96 @@ export function graphEvaluator(expression: string, request: GraphRequest) {
     }
   };
 }
+type Evaluator = (x: number) => number | null;
+// A sign change alone is not a root: require a decreasing residual as well.
+function refineZero(evaluate: Evaluator, low: number, high: number): GraphPoint | null {
+  let a = evaluate(low);
+  const b = evaluate(high);
+  if (a === null || b === null || !Number.isFinite(a) || !Number.isFinite(b)) return null;
+  if (a === 0) return { x: low, y: 0 };
+  if (b === 0) return { x: high, y: 0 };
+  if (Math.sign(a) === Math.sign(b)) return null;
+  const scale = Math.max(Math.abs(a), Math.abs(b));
+  let best = { x: Math.abs(a) < Math.abs(b) ? low : high, y: Math.abs(a) < Math.abs(b) ? a : b };
+  for (let i = 0; i < 60; i++) {
+    const x = low / 2 + high / 2;
+    if (x === low || x === high) break;
+    const y = evaluate(x);
+    if (y === null || !Number.isFinite(y)) return null;
+    if (Math.abs(y) < Math.abs(best.y)) best = { x, y };
+    if (y === 0) return { x, y };
+    if (Math.sign(y) === Math.sign(a)) {
+      low = x;
+      a = y;
+    } else {
+      high = x;
+    }
+  }
+  return Math.abs(best.y) <= scale * 1e-9 ? best : null;
+}
+// Refine only extrema already bracketed by three samples. This is a local estimate.
+function refineExtremum(
+  evaluate: Evaluator,
+  low: number,
+  high: number,
+  minimum: boolean,
+): GraphPoint | null {
+  const ratio = (Math.sqrt(5) - 1) / 2;
+  let left = high - ratio * (high - low),
+    right = low + ratio * (high - low);
+  let a = evaluate(left),
+    b = evaluate(right);
+  for (let i = 0; i < 48; i++) {
+    if (a === null || b === null) return null;
+    if (minimum ? a < b : a > b) {
+      high = right;
+      right = left;
+      b = a;
+      left = high - ratio * (high - low);
+      a = evaluate(left);
+    } else {
+      low = left;
+      left = right;
+      a = b;
+      right = low + ratio * (high - low);
+      b = evaluate(right);
+    }
+  }
+  const x = low / 2 + high / 2,
+    y = evaluate(x);
+  return y === null ? null : { x, y };
+}
 export function sampleGraph(request: GraphRequest): GraphData {
   if (
     !request.expressions.length ||
     request.expressions.length > 4 ||
     ![request.minX, request.maxX, request.minY, request.maxY].every(Number.isFinite) ||
     request.maxX <= request.minX ||
-    request.maxY <= request.minY
+    request.maxY <= request.minY ||
+    !Number.isFinite(request.maxX - request.minX) ||
+    !Number.isFinite(request.maxY - request.minY)
   )
     throw new Error(
       'Ingresá de 1 a 4 funciones y rangos válidos, con el mínimo menor que el máximo.',
     );
   const count = 400;
   const step = (request.maxX - request.minX) / count;
+  if (step <= 0 || request.minX + step === request.minX || request.maxX - step === request.maxX)
+    throw new Error('El rango X es demasiado pequeño para distinguir 401 muestras con precisión.');
   const evaluators = request.expressions.map((e) => graphEvaluator(e, request));
   const events: GraphEvent[] = [];
+  const addEvent = (event: GraphEvent) => {
+    if (
+      !events.some(
+        (existing) =>
+          existing.type === event.type &&
+          existing.functionIndex === event.functionIndex &&
+          existing.otherFunctionIndex === event.otherFunctionIndex &&
+          Math.abs(existing.x - event.x) <= step * 1e-5,
+      )
+    )
+      events.push(event);
+  };
   const curves = evaluators.map((evaluate, functionIndex) => {
     const points = Array.from({ length: count + 1 }, (_, i) => {
       const x = request.minX + i * step;
@@ -120,36 +201,41 @@ export function sampleGraph(request: GraphRequest): GraphData {
         continue;
       }
       if (previous && previous.y !== null) {
-        const mid = evaluate((previous.x + current.x) / 2);
+        const mid = evaluate(previous.x / 2 + current.x / 2);
         if (mid === null || Math.abs(current.y - previous.y) > (request.maxY - request.minY) * 2) {
           breaks.push(i);
           continue;
         }
-        if (previous.y * current.y < 0) {
-          const x = previous.x - (previous.y * (current.x - previous.x)) / (current.y - previous.y);
-          const y = evaluate(x);
-          if (
-            y !== null &&
-            Math.abs(y) < Math.max(1, Math.abs(previous.y), Math.abs(current.y)) * 1e-3
-          )
-            events.push({ type: 'cero', x, y: 0, functionIndex });
+        if (Math.sign(previous.y) !== Math.sign(current.y) && previous.y !== 0 && current.y !== 0) {
+          const root = refineZero(evaluate, previous.x, current.x);
+          if (root) addEvent({ type: 'cero', x: root.x, y: root.y!, functionIndex });
         }
       }
-      if (
-        Math.abs(current.y) < 1e-10 &&
-        !events.some(
-          (e) =>
-            e.functionIndex === functionIndex &&
-            e.type === 'cero' &&
-            Math.abs(e.x - current.x) < step,
-        )
-      )
-        events.push({ type: 'cero', x: current.x, y: 0, functionIndex });
+      if (current.y === 0 && previous?.y !== 0 && next?.y !== 0)
+        addEvent({ type: 'cero', x: current.x, y: 0, functionIndex });
       if (previous?.y !== null && previous && next?.y !== null && next) {
-        if (current.y > previous.y && current.y > next.y)
-          events.push({ type: 'máximo local', x: current.x, y: current.y, functionIndex });
-        if (current.y < previous.y && current.y < next.y)
-          events.push({ type: 'mínimo local', x: current.x, y: current.y, functionIndex });
+        if (
+          evaluate(current.x / 2 + next.x / 2) === null ||
+          Math.abs(next.y - current.y) > (request.maxY - request.minY) * 2
+        )
+          continue;
+        const minimum = current.y < previous.y && current.y < next.y;
+        const maximum = current.y > previous.y && current.y > next.y;
+        if (minimum || maximum) {
+          const refined = refineExtremum(evaluate, previous.x, next.x, minimum);
+          if (refined && refined.y !== null) {
+            const point = (minimum ? current.y <= refined.y : current.y >= refined.y)
+              ? current
+              : refined;
+            addEvent({
+              type: minimum ? 'mínimo local' : 'máximo local',
+              x: point.x,
+              y: point.y!,
+              functionIndex,
+            });
+            if (point.y === 0) addEvent({ type: 'cero', x: point.x, y: 0, functionIndex });
+          }
+        }
       }
     }
     return { expression: request.expressions[functionIndex], points, breaks };
@@ -164,13 +250,29 @@ export function sampleGraph(request: GraphRequest): GraphData {
         if ([p.y, q.y, r.y, s.y].some((y) => y === null)) continue;
         const d1 = p.y! - r.y!,
           d2 = q.y! - s.y!;
-        if (d1 * d2 <= 0 && d1 !== d2) {
-          const x = p.x - (d1 * (q.x - p.x)) / (d2 - d1),
-            ya = evaluators[a](x),
-            yb = evaluators[b](x);
-          if (ya !== null && yb !== null && Math.abs(ya - yb) < 1e-3)
-            events.push({ type: 'intersección', x, y: ya, functionIndex: a });
+        if (curves[a].breaks.includes(i) || curves[b].breaks.includes(i)) continue;
+        if (Math.sign(d1) !== Math.sign(d2) && d1 !== d2) {
+          const root = refineZero(
+            (x) => {
+              const ya = evaluators[a](x),
+                yb = evaluators[b](x);
+              return ya === null || yb === null ? null : ya - yb;
+            },
+            p.x,
+            q.x,
+          );
+          if (root) {
+            const y = evaluators[a](root.x);
+            if (y !== null)
+              addEvent({
+                type: 'intersección',
+                x: root.x,
+                y,
+                functionIndex: a,
+                otherFunctionIndex: b,
+              });
+          }
         }
       }
-  return { curves, events: events.slice(0, 100), request };
+  return { curves, events: events.sort((a, b) => a.x - b.x).slice(0, 100), request };
 }

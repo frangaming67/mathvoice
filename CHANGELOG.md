@@ -1,5 +1,15 @@
 # Cambios
 
+## 0.4.0 — 2026-09-20
+
+- Procedimientos con fórmulas y valores del cálculo: ecuaciones lineales/cuadráticas, sustitución de raíces, derivadas sucesivas, integrales, Taylor y análisis de signos de desigualdades.
+- Lectura de cada paso o del procedimiento completo; lectura automática al pasar el puntero; conservación en historial y exportaciones TXT, CSV y JSON.
+- Refinamiento por bisección de ceros/intersecciones y por búsqueda local de extremos; control del residuo y eliminación de duplicados.
+- Intersecciones identificadas por las dos curvas, descripción de valores muestreados y salto accesible a eventos.
+- Validación de argumentos y rangos de gráficos; no se enumeran tramos constantes como ceros aislados.
+
+Avance de las fases 2 y 4, con persistencia/exportación de fase 5. Los procedimientos no cubren todas las reglas de derivación ni métodos generales de resolución; el muestreo sigue pudiendo omitir eventos.
+
 ## 0.3.0 — 2026-09-19
 
 - Matrices con editor por teclado, vectores, complejos, estadística, probabilidad y variables persistentes.

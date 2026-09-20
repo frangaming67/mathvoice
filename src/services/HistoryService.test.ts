@@ -21,3 +21,18 @@ it.each([{ matrix: [null] }, { table: [4] }, { variables: { a: 'dos' } }, { assi
     expect(validHistory([{ ...entry, ...extra }])).toBe(false);
   },
 );
+it('conserva procedimientos válidos y descarta pasos corruptos', () => {
+  expect(
+    validHistory([
+      { ...entry, steps: [{ title: 'Sumar', detail: 'Dos más dos', formula: '2+2=4' }] },
+    ]),
+  ).toBe(true);
+  for (const steps of [
+    [null],
+    [{ title: 'Título', detail: 4 }],
+    [{ title: 'Título', detail: 'Texto', formula: {} }],
+    Array(101).fill({ title: 'Paso', detail: 'Texto' }),
+  ]) {
+    expect(validHistory([{ ...entry, steps }])).toBe(false);
+  }
+});

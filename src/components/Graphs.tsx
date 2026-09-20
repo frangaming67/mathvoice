@@ -32,6 +32,7 @@ export function Graphs({
   const timer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const playback = useRef(0);
   const mounted = useRef(false);
+  const explorer = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     mounted.current = true;
     const stop = (e: KeyboardEvent) => {
@@ -113,7 +114,7 @@ export function Graphs({
         data.request.maxY,
         data.events.find(
           (e) =>
-            e.functionIndex === selected &&
+            (e.functionIndex === selected || e.otherFunctionIndex === selected) &&
             Math.abs(e.x - p.x) < (data.request.maxX - data.request.minX) / 400,
         )?.type,
       );
@@ -143,7 +144,7 @@ export function Graphs({
               data.request.maxY,
               data.events.find(
                 (e) =>
-                  e.functionIndex === selected &&
+                  (e.functionIndex === selected || e.otherFunctionIndex === selected) &&
                   Math.abs(e.x - p.x) < (data.request.maxX - data.request.minX) / 400,
               )?.type,
             );
@@ -242,6 +243,7 @@ export function Graphs({
             extremos. Cada posición se calcula con el paso elegido, independientemente de la tabla.
           </p>
           <button
+            ref={explorer}
             aria-describedby="graph-help"
             onKeyDown={(e) => {
               if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
@@ -286,20 +288,58 @@ export function Graphs({
             Mayor altura produce un tono más alto. Los eventos usan señales suaves distintas: cero,
             tono medio; máximo, agudo; mínimo, grave; intersección, medio agudo. Escape detiene el
             sonido. Los ceros, extremos e intersecciones se estiman por muestreo y pueden omitirse
-            entre puntos.
+            entre puntos. Se refinan las posiciones detectadas con evaluaciones adicionales; esto no
+            demuestra que se hayan encontrado todos los eventos.
           </p>
           <details>
             <summary>Puntos importantes y descripción textual</summary>
+            {data.curves.map((curve, index) => {
+              const finite = curve.points.filter((point) => point.y !== null);
+              const values = finite.map((point) => point.y!);
+              return (
+                <p key={index}>
+                  Función {index + 1}, {curve.expression}: {finite.length} de 401 muestras reales
+                  finitas.
+                  {values.length > 0 &&
+                    ` Valores Y muestreados entre ${Number(Math.min(...values).toPrecision(6))} y ${Number(Math.max(...values).toPrecision(6))}.`}
+                  {curve.breaks.length > 0 &&
+                    ' Hay puntos no definidos o posibles saltos; el trazado se interrumpe en esos lugares.'}
+                </p>
+              );
+            })}
             <p>
               {data.events.length
                 ? `${data.events.length} eventos aproximados encontrados.`
-                : 'No se detectaron eventos en este rango.'}
+                : 'No se detectaron eventos aislados en este rango.'}{' '}
+              Se muestran hasta 100 eventos. Los tramos coincidentes o constantes no se enumeran
+              como puntos aislados.
             </p>
             <ul>
               {data.events.map((event, i) => (
                 <li key={i}>
-                  Función {event.functionIndex + 1}: {event.type}, x ≈{' '}
-                  {Number(event.x.toPrecision(6))}, y ≈ {Number(event.y.toPrecision(6))}.
+                  Función {event.functionIndex + 1}
+                  {event.otherFunctionIndex !== undefined
+                    ? ` y función ${event.otherFunctionIndex + 1}`
+                    : ''}
+                  : {event.type}, x ≈ {Number(event.x.toPrecision(6))}, y ≈{' '}
+                  {Number(event.y.toPrecision(6))}.
+                  <button
+                    onClick={() => {
+                      clearInterval(timer.current);
+                      playback.current++;
+                      sonification.stop();
+                      setPlaying(false);
+                      setSelected(event.functionIndex);
+                      setPosition(event.x);
+                      explorer.current?.focus();
+                      announce(
+                        `${event.type}. Función ${event.functionIndex + 1}${event.otherFunctionIndex !== undefined ? ` y función ${event.otherFunctionIndex + 1}` : ''}. Equis igual a ${Number(event.x.toPrecision(6))}; ye igual a ${Number(event.y.toPrecision(6))}.`,
+                      );
+                    }}
+                    aria-label={`Explorar ${event.type} de función ${event.functionIndex + 1}${event.otherFunctionIndex !== undefined ? ` y función ${event.otherFunctionIndex + 1}` : ''} en x ${Number(event.x.toPrecision(6))}`}
+                  >
+                    Ir a este punto
+                  </button>
                 </li>
               ))}
             </ul>

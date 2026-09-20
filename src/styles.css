@@ -625,3 +625,16 @@ footer {
     font-size: 2.4rem;
   }
 }
+.calculation-steps {
+  margin-block: 1rem;
+}
+.calculation-steps li {
+  margin-block: 1rem;
+}
+.calculation-steps p {
+  overflow-wrap: anywhere;
+}
+.step-formula {
+  font-family: monospace;
+  white-space: pre-wrap;
+}

@@ -20,6 +20,7 @@ import { Dictation } from '../../components/Dictation';
 import { OfflineStatus } from '../../components/OfflineStatus';
 import { toggleSign } from '../../parser/toggleSign';
 import { downloadHistory } from '../../services/ExportService';
+import { CalculationSteps } from '../../components/CalculationSteps';
 
 const client = new CalculatorClient();
 const welcome =
@@ -51,6 +52,7 @@ export function Calculator() {
   const memoryBusy = useRef(false);
   const justCalculated = useRef(false);
   const automatic = useAutomaticSpeech(preferences, listening);
+  const cancelAutomatic = automatic.cancel;
   const input = useRef<HTMLInputElement>(null);
   const helpButton = useRef<HTMLButtonElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -76,9 +78,12 @@ export function Calculator() {
   const announce = useCallback(
     (text: string, voice = true) => {
       setStatus(text);
-      if (voice && preferences.guided) speech.hablar(text);
+      if (voice && preferences.guided) {
+        cancelAutomatic();
+        speech.hablar(text);
+      }
     },
-    [preferences.guided],
+    [preferences.guided, cancelAutomatic],
   );
   const readExpression = useCallback(() => {
     speech.hablar(mathSpeech(input.current?.value ?? ''));
@@ -612,6 +617,13 @@ export function Calculator() {
                     Explicar resultado
                   </button>
                 </div>
+                <CalculationSteps
+                  steps={result.steps}
+                  speak={(text) => {
+                    automatic.cancel();
+                    speech.hablar(text);
+                  }}
+                />
                 {explanation && (
                   <div className="explanation">
                     <h3>Método de cálculo</h3>
@@ -679,7 +691,10 @@ export function Calculator() {
             saveHistory([]);
             announce('Historial vacío.');
           }}
-          speak={(text) => speech.hablar(text)}
+          speak={(text) => {
+            automatic.cancel();
+            speech.hablar(text);
+          }}
           copy={(text) => void copy(text)}
         />
       </main>

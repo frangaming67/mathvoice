@@ -1,5 +1,15 @@
 # Registro de validación
 
+## Entrega 0.4 — 20 de septiembre de 2026
+
+- 167 pruebas unitarias aprobadas. Casos nuevos: coeficientes/discriminante y sustituciones de ecuaciones, extremos invertidos de integrales, derivadas sucesivas, suma de términos de Taylor, signos de desigualdades, pasos persistidos y exportados.
+- Gráficos: raíces e intersecciones fuera de la grilla, funciones con valores pequeños, extremos refinados, duplicados, polos desplazados, tramos constantes, argumentos inválidos y rangos que exceden la precisión disponible.
+- 17 pruebas de navegador: incluyen lectura automática de pasos, escucha individual/completa, ausencia de interrupción por foco pendiente, exportación TXT, recuperación del historial, axe y reflow a 320 píxeles; salto a una intersección con selección y foco correctos.
+- Dos pruebas de producción: cálculo y herramientas sin conexión; actualización del service worker conservando historial y preferencias.
+- Lint, TypeScript, compilación y presupuesto de JavaScript. Aproximadamente 2827 KiB de JavaScript total y 269 kB gzip en la entrada, dentro de los límites de 3.5 MiB y 320 KiB respectivamente.
+
+La voz en las pruebas está simulada. La evidencia no implica una demostración completa del motor matemático, detección exhaustiva de eventos ni validación humana de la sonificación. La captura local `test-results/procedimiento-mobile.png` muestra el procedimiento abierto a 320 píxeles y se regenera con la prueba de navegador.
+
 ## Cierre local del 19 de septiembre de 2026
 
 - 155 pruebas unitarias aprobadas: incluyen logaritmos con base, raíces espurias, límites laterales incompatibles, singularidades y desbordamientos.

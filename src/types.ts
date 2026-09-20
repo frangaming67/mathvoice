@@ -1,4 +1,9 @@
 export type AngleMode = 'rad' | 'deg' | 'grad';
+export interface CalculationStep {
+  title: string;
+  detail: string;
+  formula?: string;
+}
 export interface CalculationResult {
   expression: string;
   value: string;
@@ -11,6 +16,7 @@ export interface CalculationResult {
   table?: { label: string; value: string }[];
   matrix?: string[][];
   variables?: Record<string, number>;
+  steps?: CalculationStep[];
 }
 export interface HistoryEntry extends CalculationResult {
   id: string;

@@ -1,5 +1,12 @@
 import type { HistoryEntry } from '../types';
 export type ExportFormat = 'txt' | 'csv' | 'json';
+const procedure = (entry: HistoryEntry) =>
+  (entry.steps ?? [])
+    .map(
+      (step, i) =>
+        `Paso ${i + 1}. ${step.title}. ${step.detail}${step.formula ? `\n${step.formula}` : ''}`,
+    )
+    .join('\n');
 export function exportHistory(entries: HistoryEntry[], format: ExportFormat): string {
   if (format === 'json')
     return JSON.stringify(
@@ -11,7 +18,7 @@ export function exportHistory(entries: HistoryEntry[], format: ExportFormat): st
     return entries
       .map(
         (e) =>
-          `${e.date} | ${e.kind} | ${e.angleMode}\n${e.expression}\n= ${e.value}${e.unit ? ` ${e.unit}` : ''}\n${e.explanation}`,
+          `${e.date} | ${e.kind} | ${e.angleMode}\n${e.expression}\n= ${e.value}${e.unit ? ` ${e.unit}` : ''}\n${e.explanation}${e.steps?.length ? `\n\n${procedure(e)}` : ''}`,
       )
       .join('\n\n');
   const field = (value: string) =>
@@ -19,8 +26,16 @@ export function exportHistory(entries: HistoryEntry[], format: ExportFormat): st
   return (
     '\uFEFF' +
     [
-      ['Fecha', 'Tipo', 'Modo angular', 'Expresión', 'Resultado', 'Unidad'],
-      ...entries.map((e) => [e.date, e.kind, e.angleMode, e.expression, e.value, e.unit ?? '']),
+      ['Fecha', 'Tipo', 'Modo angular', 'Expresión', 'Resultado', 'Unidad', 'Procedimiento'],
+      ...entries.map((e) => [
+        e.date,
+        e.kind,
+        e.angleMode,
+        e.expression,
+        e.value,
+        e.unit ?? '',
+        procedure(e),
+      ]),
     ]
       .map((row) => row.map(field).join(','))
       .join('\r\n')

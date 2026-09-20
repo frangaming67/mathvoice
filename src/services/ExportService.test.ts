@@ -20,3 +20,12 @@ it('protege celdas CSV de fórmulas al abrirlas en una planilla', () => {
     '"\'=HYPERLINK(""test"")"',
   );
 });
+it('incluye los pasos y las fórmulas en los tres formatos', () => {
+  const steps = [{ title: 'Calcular', detail: 'Sumar ambos números.', formula: '2+2=4' }];
+  const history = [{ ...entries[0], steps }];
+  for (const format of ['txt', 'csv'] as const) {
+    expect(exportHistory(history, format)).toContain('Paso 1. Calcular. Sumar ambos números.');
+    expect(exportHistory(history, format)).toContain('2+2=4');
+  }
+  expect(JSON.parse(exportHistory(history, 'json')).calculations[0].steps).toEqual(steps);
+});

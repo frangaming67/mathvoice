@@ -1,4 +1,4 @@
-# Arquitectura — MathVoice 0.3
+# Arquitectura — MathVoice 0.4
 
 Aplicación cliente de una página con React, TypeScript estricto, Vite y CSS propio. No requiere backend ni registro. Las expresiones se calculan localmente; historial, variables, memoria y preferencias se guardan en el navegador. Dictado y algunas voces pueden usar servicios del proveedor del navegador.
 
@@ -35,6 +35,10 @@ Nerdamer resuelve álgebra y cálculo dentro de `SymbolicEngine`. Los sistemas s
 Para integrales definidas se comprueba el AST original antes de que el CAS cancele factores. `DomainService` usa aritmética de intervalos conservadora; puede rechazar expresiones válidas por no poder confirmar su dominio. Se requieren extremos finitos y una primitiva cerrada. No se admiten integrales impropias. Taylor verifica un entorno del centro y calcula derivadas/factoriales; no estima error ni radio de convergencia.
 
 ## Gráficos, voz y foco
+
+`CalculationResult.steps` transporta títulos, detalles y fórmulas serializables desde el Worker. `CalculationSteps` ofrece un listado semántico, lectura por paso y lectura completa, usando `MathSpeechFormatter` para las fórmulas. Resultado e historial comparten el componente; las exportaciones incluyen los pasos. La validación del historial admite el campo opcional con hasta 100 pasos.
+
+Las posiciones candidatas de ceros e intersecciones se refinan por bisección, hasta 60 iteraciones, con control de residuo relativo a los extremos del intervalo. Los extremos locales ya acotados por tres muestras se refinan por sección áurea, hasta 48 iteraciones. Son estimaciones locales: no prueban continuidad ni exhaustividad. Los eventos conservan los índices de ambas curvas para la navegación y sonificación; se eliminan duplicados antes de ordenar por X y limitar a 100.
 
 Cada gráfico acepta hasta cuatro funciones reales y conserva sus rangos, modo angular y variables. El Worker genera 401 muestras, cortes heurísticos y hasta 100 eventos aproximados. La exploración por teclado evalúa la coordenada solicitada, sin redondearla al índice de la tabla. El evaluador del punto usa una lista restringida de funciones escalares. El SVG, la tabla, las coordenadas y los eventos ofrecen representaciones complementarias; el muestreo no garantiza detectar todas las discontinuidades.
 

@@ -1,7 +1,7 @@
 import nerdamer from 'nerdamer/all.js';
 import { parse, type MathNode, type FunctionNode, type OperatorNode } from 'mathjs';
 import { parseCommand } from '../parser/commands';
-import type { AngleMode, CalculationResult } from '../types';
+import type { AngleMode, CalculationResult, CalculationStep } from '../types';
 import { continuousInterval } from './DomainService';
 import { math } from './mathRuntime';
 
@@ -120,6 +120,55 @@ function polynomial(node: MathNode): boolean {
   });
   return valid;
 }
+const readable = (value: string) => value.replace(/\blog\(/g, 'ln(');
+function equationSteps(body: string, v: string): CalculationStep[] {
+  const steps: CalculationStep[] = [
+    {
+      title: 'Reunir los términos',
+      detail: 'Restar el lado derecho al izquierdo y simplificar, conservando el dominio original.',
+      formula: `${readable(body)} = 0`,
+    },
+  ];
+  if (
+    !polynomial(safeExpression(readable(body))) ||
+    nerdamer(body)
+      .variables()
+      .some((name) => name !== v)
+  )
+    return steps;
+  const raw = nerdamer(`coeffs(expand(${body}),${v})`).toString();
+  const coefficients = parseCommand(`coefficients(${raw.slice(1, -1)})`)?.args ?? [];
+  if (coefficients.length === 2) {
+    const [b, a] = coefficients;
+    steps.push({
+      title: 'Despejar la incógnita',
+      detail: `Ecuación lineal: coeficiente de ${v} = ${a}; término independiente = ${b}. Dividir el opuesto del término independiente por el coeficiente.`,
+      formula: `${v} = -(${b})/(${a})`,
+    });
+  } else if (coefficients.length === 3) {
+    const [c, b, a] = coefficients;
+    const discriminant = nerdamer(`(${b})^2-4*(${a})*(${c})`).toString();
+    steps.push(
+      {
+        title: 'Identificar los coeficientes',
+        detail: `Forma a por ${v} al cuadrado, más b por ${v}, más c igual a cero.`,
+        formula: `a = ${a}; b = ${b}; c = ${c}`,
+      },
+      {
+        title: 'Calcular el discriminante',
+        detail: 'Elevar b al cuadrado y restar cuatro por a por c.',
+        formula: `(${b})^2 - 4*(${a})*(${c}) = ${discriminant}`,
+      },
+      {
+        title: 'Aplicar la fórmula cuadrática',
+        detail:
+          'Obtener un candidato con cada signo de la raíz cuadrada. Un discriminante negativo produce candidatos complejos.',
+        formula: `${v} = (-(${b}) + sqrt(${discriminant}))/(2*(${a})); ${v} = (-(${b}) - sqrt(${discriminant}))/(2*(${a}))`,
+      },
+    );
+  }
+  return steps;
+}
 export class SymbolicEngine {
   supports(expression: string) {
     return commands.has(expression.match(/^([a-z]+)\s*\(/)?.[1] ?? '');
@@ -156,6 +205,7 @@ export class SymbolicEngine {
     let explanation = '';
     let value: string;
     let integral = false;
+    let steps: CalculationStep[] = [];
     if (name === 'solve') {
       const sides = args[0].split('=');
       if (sides.length > 2) throw new Error('Introducí una ecuación con un solo signo igual.');
@@ -167,6 +217,7 @@ export class SymbolicEngine {
           'La ecuación se simplifica a una identidad. Puede tener infinitas soluciones dentro de su dominio original; no hay una lista finita de raíces.',
         );
       request = `solve(${residual}=0,${v})`;
+      steps = equationSteps(residual, v);
       explanation = `Se buscan valores de ${v} que hacen iguales ambos lados de la ecuación. Las soluciones del motor pueden no agotar todas las raíces de ecuaciones trascendentes. Verificá el dominio de la ecuación original.`;
     } else {
       const body = toCas(args[0]);
@@ -175,7 +226,22 @@ export class SymbolicEngine {
         const order = args[2] ?? '1';
         if (!/^[1-9]$|^10$/.test(order))
           throw new Error('El orden de la derivada debe ser un entero entre 1 y 10.');
-        request = `diff(${body},${v},${order})`;
+        let current = body;
+        steps.push({
+          title: 'Elegir la variable',
+          detail: `Derivar respecto de ${v}; las demás variables son constantes. Se usan radianes.`,
+          formula: readable(body),
+        });
+        for (let i = 1; i <= Number(order); i++) {
+          const next = nerdamer(`diff(${current},${v})`).toString();
+          steps.push({
+            title: `Derivada de orden ${i}`,
+            detail: 'Derivar la expresión del paso anterior y simplificar.',
+            formula: `diff(${readable(current)},${v}) = ${readable(next)}`,
+          });
+          current = next;
+        }
+        request = current;
         explanation = `Derivada de orden ${order} respecto de ${v}. Las demás variables se consideran constantes. El resultado describe la tasa de cambio de la función.`;
       }
       if (name === 'integrate') {
@@ -191,6 +257,27 @@ export class SymbolicEngine {
             throw new Error(
               'El motor no encontró una primitiva cerrada para esta integral definida.',
             );
+          steps.push(
+            {
+              title: 'Comprobar el intervalo',
+              detail: `El análisis conservador confirmó continuidad real entre ${Math.min(lower, upper)} y ${Math.max(lower, upper)}. Se conserva el orden de los límites ingresados.`,
+            },
+            {
+              title: 'Obtener una primitiva',
+              detail: `El motor simbólico integra respecto de ${v}.`,
+              formula: `F(${v}) = ${readable(primitive.toString())}`,
+            },
+            {
+              title: 'Evaluar el extremo superior',
+              detail: `Sustituir ${v} por ${args[3]} en la primitiva.`,
+              formula: `F(${args[3]}) = ${readable(primitive.sub(v, toCas(args[3])).toString())}`,
+            },
+            {
+              title: 'Evaluar el extremo inferior',
+              detail: `Sustituir ${v} por ${args[2]} en la primitiva.`,
+              formula: `F(${args[2]}) = ${readable(primitive.sub(v, toCas(args[2])).toString())}`,
+            },
+          );
           request = `(${primitive.sub(v, toCas(args[3])).toString()})-(${primitive.sub(v, toCas(args[2])).toString()})`;
           explanation = `Se obtiene una primitiva F respecto de ${v} y se calcula F(${args[3]}) menos F(${args[2]}), por el teorema fundamental del cálculo.`;
         } else {
@@ -217,6 +304,11 @@ export class SymbolicEngine {
           const coefficient = derivative.sub(v, toCas(args[2]));
           if (!Number.isFinite(Number(coefficient.evaluate().text('decimals'))))
             throw new Error('No pude confirmar derivadas reales finitas en el centro de la serie.');
+          steps.push({
+            title: `Término de orden ${i}`,
+            detail: `Evaluar la derivada de orden ${i} en ${v} = ${args[2]}, dividir por ${i} factorial y multiplicar por la potencia ${i} de la distancia al centro.`,
+            formula: `(${readable(coefficient.toString())})*((${v})-(${args[2]}))^${i}/${i}!`,
+          });
           terms.push(
             `(${coefficient.toString()})*((${v})-(${toCas(args[2])}))^${i}/factorial(${i})`,
           );
@@ -310,10 +402,17 @@ export class SymbolicEngine {
           const a: unknown = left.evaluate(scope),
             b: unknown = right.evaluate(scope);
           if (!finite(a) || !finite(b)) return false;
-          return (
+          const verified =
             Number(math.abs(math.subtract(a, b))) <=
-            1e-8 * Math.max(1, Number(math.abs(a)), Number(math.abs(b)))
-          );
+            1e-8 * Math.max(1, Number(math.abs(a)), Number(math.abs(b)));
+          if (verified && steps.length < 100)
+            steps.push({
+              title: `Verificar ${v} = ${readable(root)}`,
+              detail:
+                'Sustitución en la ecuación original: ambos lados coinciden dentro de la tolerancia relativa de 10 elevado a menos 8.',
+              formula: `${math.format(a, { precision: 12 })} = ${math.format(b, { precision: 12 })}`,
+            });
+          return verified;
         } catch {
           return false;
         }
@@ -325,6 +424,40 @@ export class SymbolicEngine {
       explanation = `Cada solución mostrada se verificó por sustitución numérica en ambos lados de la ecuación original, con tolerancia relativa de 10 elevado a menos 8. Se descartaron candidatos no verificables o fuera del dominio. El motor puede no encontrar todas las raíces de ecuaciones trascendentes.`;
       value = roots.map((root) => `${v} = ${root.replace(/\blog\(/g, 'ln(')}`).join('; ');
     } else value = `${raw.replace(/\blog\(/g, 'ln(')}${integral ? ' + C' : ''}`;
+    if (integral) {
+      const derivative = nerdamer(`diff(${raw},${v})`).toString();
+      steps.push(
+        {
+          title: 'Obtener una primitiva',
+          detail: `Integrar respecto de ${v}.`,
+          formula: readable(raw),
+        },
+        {
+          title: 'Derivar la primitiva',
+          detail:
+            'Esta derivada permite comparar la primitiva con el integrando en su dominio de validez.',
+          formula: `diff(${readable(raw)},${v}) = ${readable(derivative)}`,
+        },
+        {
+          title: 'Añadir la constante',
+          detail:
+            'Las primitivas difieren por una constante en cada intervalo de validez. La derivada de C es cero.',
+          formula: value,
+        },
+      );
+    } else if (name === 'integrate')
+      steps.push({
+        title: 'Restar los valores de la primitiva',
+        detail: 'Valor en el extremo superior menos valor en el inferior.',
+        formula: `F(${args[3]}) - F(${args[2]}) = ${value}`,
+      });
+    if (name === 'series')
+      steps.push({
+        title: 'Sumar los términos',
+        detail:
+          'Simplificar el polinomio. Aproximación local sin cota de error ni radio de convergencia calculados.',
+        formula: value,
+      });
     let decimal: string | undefined;
     if (!integral && name !== 'solve' && !result.variables().length) {
       const approximation = result.evaluate().text('decimals');
@@ -335,6 +468,7 @@ export class SymbolicEngine {
       expression: original,
       value,
       decimal,
+      ...(steps.length ? { steps } : {}),
       angleMode: 'rad',
       kind: ['diff', 'integrate', 'limit', 'series'].includes(name) ? 'Cálculo' : 'Álgebra',
       explanation: `${explanation} El cálculo simbólico usa radianes${angleMode !== 'rad' ? ', independientemente del modo numérico seleccionado' : ''}.`,
@@ -405,6 +539,19 @@ export class SymbolicEngine {
         );
     }
     const bounds = [-Infinity, ...roots, Infinity];
+    const steps: CalculationStep[] = [
+      {
+        title: 'Reunir los términos',
+        detail: 'Restar el lado derecho al izquierdo.',
+        formula: `${body.toString()} ${operator} 0`,
+      },
+      {
+        title: 'Separar los intervalos',
+        detail: roots.length
+          ? `Raíces reales aproximadas: ${roots.join('; ')}. Entre raíces consecutivas el polinomio conserva su signo.`
+          : 'No hay raíces reales que separen intervalos; comprobar el signo en la recta real.',
+      },
+    ];
     const intervals: { low: number; high: number }[] = [];
     for (let i = 0; i < bounds.length - 1; i++) {
       const low = bounds[i],
@@ -420,6 +567,11 @@ export class SymbolicEngine {
       const value: unknown = compiled.evaluate({ [v]: point });
       if (typeof value !== 'number' || !Number.isFinite(value))
         throw new Error('No pude verificar el signo entre las raíces.');
+      steps.push({
+        title: `Comprobar el intervalo ${i + 1}`,
+        detail: `Entre ${low === -Infinity ? 'menos infinito' : low} y ${high === Infinity ? 'más infinito' : high}, elegir ${v} = ${point}. El polinomio vale ${value}; su signo es ${value > 0 ? 'positivo' : value < 0 ? 'negativo' : 'cero'}.`,
+        formula: `(${body.toString()}) ${operator} 0`,
+      });
       if (positive ? (strict ? value > 0 : value >= 0) : strict ? value < 0 : value <= 0) {
         const previous = intervals.at(-1);
         if (!strict && previous?.high === low) previous.high = high;
@@ -443,9 +595,14 @@ export class SymbolicEngine {
           solutions.push(`${v} igual a ${text(root)}`);
       }
     if (!solutions.length) solutions.push('Sin soluciones reales');
+    steps.push({
+      title: 'Elegir intervalos y extremos',
+      detail: `${strict ? 'La desigualdad estricta excluye las raíces.' : 'La desigualdad incluye la igualdad, por lo que se añaden las raíces.'} ${solutions.join('; ')}.`,
+    });
     return {
       expression: original,
       value: solutions.join('; '),
+      steps,
       table: solutions.map((value, i) => ({ label: `Conjunto ${i + 1}`, value })),
       kind: 'Álgebra',
       angleMode: 'rad',

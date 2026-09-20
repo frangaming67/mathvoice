@@ -6,7 +6,13 @@ La entrega **0.3** incorpora herramientas de las cinco fases del [requisito orig
 
 Repositorio: [frangaming67/mathvoice](https://github.com/frangaming67/mathvoice) (privado).
 
+La versión **0.4** amplía las fases 2 y 4: procedimientos con fórmulas, lectura de pasos y eventos de gráficos refinados. Los procedimientos se guardan con cada cálculo y se incluyen en las exportaciones.
+
 ## Empezar
+
+Después de calcular una ecuación, derivada, integral, Taylor o desigualdad, abrí **Procedimiento paso a paso** en el resultado o el historial. Podés escuchar cada paso, escuchar todos o pasar el puntero sobre su texto y fórmula con la voz automática activa. Para ecuaciones lineales y cuadráticas se muestra el despeje o la fórmula; otras ecuaciones muestran la transformación y las verificaciones disponibles.
+
+En **Puntos importantes y descripción textual** del gráfico, **Ir a este punto** selecciona la curva, ubica la coordenada y lleva el foco a **Explorar gráfico**. Las intersecciones nombran ambas funciones. Los rangos de Y informados describen las muestras, no los extremos globales de la función.
 
 En Configuración podés ampliar toda la interfaz entre 100% y 200%; se conserva al volver a abrir la aplicación. Si hay una actualización de la PWA, aparece **Aplicar actualización y recargar**. El botón **Graficar resultado** carga una expresión compatible en el panel de gráficos. **Guardar resultado TXT** descarga el resultado actual.
 

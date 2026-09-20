@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { FormEvent, FocusEvent, PointerEvent } from 'react';
 import type { Preferences } from '../types';
 import { speech } from '../services/SpeechService';
@@ -75,10 +75,10 @@ export function useAutomaticSpeech(preferences: Preferences, suspended = false) 
     text: '',
     time: 0,
   });
-  const cancel = () => {
+  const cancel = useCallback(() => {
     clearTimeout(timer.current);
     timer.current = undefined;
-  };
+  }, []);
   useEffect(() => {
     const stop = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {

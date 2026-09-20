@@ -134,3 +134,46 @@ it.each([
   'inequality(x^2-2e16*x+1<0,x)',
   'inequality(x^2-2*x+0.9999999999999<0,x)',
 ])('rechaza resultados no confirmables: %s', (e) => expect(() => engine.evaluate(e)).toThrow());
+
+it('expone coeficientes, discriminante y comprobaciones de una cuadrática', () => {
+  const result = engine.evaluate('solve(2*x^2-10*x+12=0,x)');
+  expect(result.steps?.find((step) => step.title === 'Identificar los coeficientes')?.formula).toBe(
+    'a = 2; b = -10; c = 12',
+  );
+  expect(
+    result.steps?.find((step) => step.title === 'Calcular el discriminante')?.formula,
+  ).toContain('= 4');
+  const checks = result.steps?.filter((step) => step.title.startsWith('Verificar'));
+  expect(checks).toHaveLength(2);
+  expect(checks?.every((step) => step.formula === '0 = 0')).toBe(true);
+});
+it('el procedimiento de una integral respeta los extremos invertidos y la primitiva', () => {
+  const result = engine.evaluate('integrate(x^2,x,3,1)');
+  expect(result.steps?.find((step) => step.title === 'Evaluar el extremo superior')?.formula).toBe(
+    'F(1) = 1/3',
+  );
+  expect(result.steps?.find((step) => step.title === 'Evaluar el extremo inferior')?.formula).toBe(
+    'F(3) = 9',
+  );
+  expect(result.steps?.at(-1)?.formula).toBe('F(1) - F(3) = -26/3');
+});
+it('las derivadas sucesivas y los términos de Taylor corresponden al cálculo', () => {
+  const derivative = engine.evaluate('diff(x^4,x,3)');
+  expect(derivative.steps?.map((step) => step.formula?.replace(/\s/g, ''))).toEqual([
+    'x^4',
+    'diff(x^4,x)=4*x^3',
+    'diff(4*x^3,x)=12*x^2',
+    'diff(12*x^2,x)=24*x',
+  ]);
+  const series = engine.evaluate('series(exp(x),x,1,3)');
+  const terms = series.steps!.slice(0, -1);
+  for (const x of [0.9, 1, 1.1]) {
+    const sum = terms.reduce((total, step) => total + Number(evaluate(step.formula!, { x })), 0);
+    expect(sum).toBeCloseTo(evaluate(series.value, { x }), 10);
+  }
+});
+it('registra el análisis de signos y la inclusión de extremos', () => {
+  const result = engine.evaluate('inequality(x^2-4<=0,x)');
+  expect(result.steps?.filter((step) => step.title.startsWith('Comprobar'))).toHaveLength(3);
+  expect(result.steps?.at(-1)?.detail).toContain('Desde -2 incluido hasta 2 incluido');
+});

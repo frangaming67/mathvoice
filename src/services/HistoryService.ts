@@ -16,6 +16,21 @@ export function validHistory(value: unknown): value is HistoryEntry[] {
         (v.decimal === undefined || typeof v.decimal === 'string') &&
         (v.unit === undefined || typeof v.unit === 'string') &&
         (v.variables === undefined || validVariables(v.variables)) &&
+        (v.steps === undefined ||
+          (Array.isArray(v.steps) &&
+            v.steps.length <= 100 &&
+            v.steps.every(
+              (step: unknown) =>
+                !!step &&
+                typeof step === 'object' &&
+                'title' in step &&
+                typeof step.title === 'string' &&
+                'detail' in step &&
+                typeof step.detail === 'string' &&
+                (!('formula' in step) ||
+                  step.formula === undefined ||
+                  typeof step.formula === 'string'),
+            ))) &&
         (v.assigned === undefined ||
           (v.assigned &&
             typeof v.assigned.name === 'string' &&

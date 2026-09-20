@@ -3,6 +3,7 @@ import type { HistoryEntry } from '../types';
 import { downloadHistory } from '../services/ExportService';
 import { resultSpeech } from '../accessibility/resultSpeech';
 import { mathSpeech } from '../accessibility/MathSpeechFormatter';
+import { CalculationSteps } from './CalculationSteps';
 export function History({
   entries,
   edit,
@@ -101,6 +102,7 @@ export function History({
                     ? 'Grados'
                     : 'Gradianes'}
               </p>
+              <CalculationSteps steps={e.steps} speak={speak} />
               <div className="actions">
                 <button
                   onClick={() =>
