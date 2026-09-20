@@ -35,19 +35,16 @@ describe('Motor de fase 1', () => {
     '',
     'sqrt(',
     '1/0',
-    'sqrt(-1)',
-    'log(-2)',
-    'asin(2)',
-    'a=3',
-    '[1,2]',
+    'log(0)',
+    'sin(0,1)',
+    'ln(1,2)',
     'import("x")',
     'evaluate("2+2")',
     '2;3',
-    'det([[1,2],[3,4]])',
     'factorial(10000)',
   ])('rechaza con error legible: %s', (expression) => {
     expect(() => engine.evaluate(expression)).toThrow();
   });
   it('rechaza entradas extensas', () =>
-    expect(() => engine.evaluate('1'.repeat(501))).toThrow('larga'));
+    expect(() => engine.evaluate('1'.repeat(10001))).toThrow('larga'));
 });

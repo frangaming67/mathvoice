@@ -1,57 +1,60 @@
-# Arquitectura y decisiones previas a la implementación
+# Arquitectura — MathVoice 0.3
 
-## Actualización 0.2
+Aplicación cliente de una página con React, TypeScript estricto, Vite y CSS propio. No requiere backend ni registro. Las expresiones se calculan localmente; historial, variables, memoria y preferencias se guardan en el navegador. Dictado y algunas voces pueden usar servicios del proveedor del navegador.
 
-Se conserva Math.js para cálculo numérico y se integra Nerdamer 1.1.13 (MIT) detrás de `SymbolicEngine`, dentro del Worker. No se lo considera un motor de resolución general garantizada: se validan AST y argumentos, se rechazan resultados sin resolver, se limita el tiempo y se mantiene un corpus de referencia. Las integrales definidas se limitan a polinomios; los sistemas a ecuaciones lineales con solución única verificada. Desigualdades y series quedan pendientes.
+## Responsabilidades
 
-`useAutomaticSpeech` coordina lectura por puntero (180 ms) y foco (140 ms), elimina repeticiones causadas por elementos hijos y cancela pendientes con Escape. No se agregan elementos al orden de Tab para leer texto: el puntero anuncia encabezados y párrafos, mientras el lector externo conserva la semántica HTML. Un botón permanente permite activar o desactivar la voz. La migración de preferencias preserva las opciones anteriores y agrega la lectura por puntero.
+| Componente o servicio                                                       | Responsabilidad                                                                                                               |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `features/calculator/Calculator`                                            | Coordina expresión, resultados, persistencia, anuncios y herramientas                                                         |
+| `CalculatorClient` y `calculator.worker`                                    | Ejecutan una petición matemática en un Worker y lo terminan al completar o a los seis segundos                                |
+| `MathEngine` y `mathRuntime`                                                | Normalización, validación de AST, aritmética y funciones de Math.js, contexto de variables y resultados serializables         |
+| `SymbolicEngine`                                                            | Traduce comandos validados a Nerdamer y comprueba resultados y límites de alcance                                             |
+| `DomainService`                                                             | Calcula cotas conservadoras sobre intervalos para comprobar continuidad antes de integrar y regularidad local antes de Taylor |
+| `ExtensionFunctions`                                                        | Matrices, vectores, complejos, estadística y distribuciones; usa Math.js, ml-matrix y jStat                                   |
+| `ResultFormatter` y `resultSpeech`                                          | Representaciones escalares, complejas, tablas y matrices; lectura estructurada de resultados                                  |
+| `GraphService`, `GraphClient` y `graph.worker`                              | Validación, muestreo y eventos de curvas, con Worker limitado a seis segundos                                                 |
+| `SonificationService`                                                       | Tonos Web Audio para altura y eventos, activados por gesto del usuario                                                        |
+| `SpeechService`                                                             | Único propietario de `speechSynthesis`: voces, configuración, pausa, repetición y cancelación                                 |
+| `MathSpeechFormatter` y `useAutomaticSpeech`                                | Lectura matemática y coordinación de foco/puntero sin convertir texto estático en controles                                   |
+| `VoiceRecognitionService` y `voiceExpression`                               | Reconocimiento del navegador y conversión limitada de frases españolas; el diálogo exige confirmación                         |
+| `StorageService`, `HistoryService`, `VariableService`, `PreferencesService` | Persistencia local, validación y recuperación ante datos dañados o almacenamiento bloqueado                                   |
+| `ConversionService` y `ExportService`                                       | Unidades, bases, operaciones binarias y archivos TXT/CSV/JSON                                                                 |
+| `FeatureHub`                                                                | Paneles cargados bajo demanda mediante `lazy` y `Suspense`                                                                    |
 
-`Keypad` ofrece controles numéricos nativos y memoria persistente. `AdvancedCalculator` construye comandos CAS mediante formularios. `MathSpeechFormatter` entiende derivadas, integrales, límites, ecuaciones y soluciones separadas. La interfaz conserva siempre una representación textual del resultado.
+## Cálculo y contratos
 
-## Alcance y bibliotecas
+`MathEngine.evaluate(expression, angleMode, variables): CalculationResult` es la entrada al motor. La UI utiliza el contrato asíncrono de `CalculatorClient.evaluate`. El resultado conserva expresión, valor textual, tipo, explicación y modo angular; puede incluir aproximación decimal, tabla, matriz, unidad y asignación de variable. El historial guarda también el contexto de variables para recalcular con el estado original.
 
-React + TypeScript estricto + Vite. Aplicación cliente de una página, sin backend ni registro. CSS propio, controles HTML nativos y texto matemático siempre disponible. No hace falta renderizado visual especializado en la fase 1.
+El parser acepta solo nodos, operadores y funciones de una lista permitida. No evalúa JavaScript. La asignación de variables se procesa explícitamente; las variables deben ser números reales finitos y no pueden reemplazar funciones ni constantes reservadas. Hay límites de longitud y un máximo de 100 variables. El tiempo máximo del Worker limita operaciones costosas; no demuestra que toda entrada válida sea barata.
 
-Math.js: parser, aritmética, funciones científicas y fracciones; posteriormente matrices, vectores, complejos, estadística y unidades. `log(x)` significa base 10 y `ln(x)` logaritmo natural; `log(x,b)` permite otra base. Radianes por defecto. Los modos grados y gradianes afectan trigonometría directa e inversa, no funciones hiperbólicas.
+Math.js aporta aritmética, fracciones, complejos, matrices, estadística básica y unidades. ml-matrix aporta descomposición SVD para rango; jStat aporta distribuciones, covarianza y correlación. `log(x)` significa base 10, `ln(x)` logaritmo natural y `log(x,b)` usa la base indicada. Los modos angulares afectan trigonometría numérica directa/inversa y gráficos; no las funciones hiperbólicas. Los resultados simbólicos siempre usan radianes.
 
-Nerdamer es candidato para álgebra, integrales, límites y ecuaciones (fase 2). Sus módulos documentan esas operaciones, pero antes de integrarlo se validarán mantenimiento, licencia, dominios y casos no resueltos. No se promete que todo problema simbólico tenga solución cerrada. Math.js también proporciona derivación y simplificación; se compararán resultados con un corpus de referencia. Desigualdades y fracciones parciales requieren pruebas específicas antes de habilitarse.
+Nerdamer resuelve álgebra y cálculo dentro de `SymbolicEngine`. Los sistemas se limitan a 2–5 ecuaciones lineales con solución única comprobada. Las desigualdades admiten polinomios de una variable de grado máximo 2, con raíces numéricas y análisis de signo. Derivadas y Taylor tienen orden máximo 10. Los límites y ecuaciones no resueltos generan un mensaje; la ausencia de raíces encontradas no demuestra ausencia de soluciones.
 
-Fuentes consultadas:
+Para integrales definidas se comprueba el AST original antes de que el CAS cancele factores. `DomainService` usa aritmética de intervalos conservadora; puede rechazar expresiones válidas por no poder confirmar su dominio. Se requieren extremos finitos y una primitiva cerrada. No se admiten integrales impropias. Taylor verifica un entorno del centro y calcula derivadas/factoriales; no estima error ni radio de convergencia.
 
-- https://mathjs.org/docs/expressions/parsing.html
-- https://mathjs.org/docs/expressions/security.html
-- https://nerdamer.com/documentation.html
+## Gráficos, voz y foco
 
-## Separación
+Cada gráfico acepta hasta cuatro funciones reales y conserva sus rangos, modo angular y variables. El Worker genera 401 muestras, cortes heurísticos y hasta 100 eventos aproximados. La exploración por teclado evalúa la coordenada solicitada, sin redondearla al índice de la tabla. El evaluador del punto usa una lista restringida de funciones escalares. El SVG, la tabla, las coordenadas y los eventos ofrecen representaciones complementarias; el muestreo no garantiza detectar todas las discontinuidades.
 
-`src/services/MathEngine.ts`: entrada validada, AST restringido a operaciones aprobadas, resultados serializables y errores humanos. Sin eval de JavaScript. Cálculo en Worker, con límite de tiempo y reinicio; ninguna operación pesada debe bloquear la navegación.
+`useAutomaticSpeech` espera 180 ms para puntero y 140 ms para foco, evita repeticiones por elementos hijos y cancela pendientes con Escape. El usuario activa la voz explícitamente. La guía puede apagarse para usar un lector externo. Los paneles mantienen semántica `details/summary`, las matrices tienen etiquetas de coordenadas y los resultados usan tablas HTML.
 
-`src/parser/expression.ts`: normalización de alias españoles; el punto es separador decimal y la coma separa argumentos. No se adivinan comas ambiguas.
+Los anuncios de estado usan una región `polite`; los errores del cálculo principal tienen anuncio urgente. Calcular conserva el foco; los errores de entrada vuelven a la expresión. El diálogo nativo de dictado permite editar, confirmar o cancelar y devuelve el foco al botón de origen. No se calcula automáticamente a partir de una transcripción.
 
-`src/accessibility/MathSpeechFormatter.ts`: recorre AST sin calcular. Conserva agrupación y pronuncia operadores y funciones. No depende del adaptador de evaluación.
+## Persistencia y producción
 
-`src/services/SpeechService.ts`: único propietario de speechSynthesis, selección de voces, velocidad, tono, volumen, repetición, pausa y cancelación. Una locución nueva reemplaza a la anterior para evitar colas largas.
+El historial tiene un máximo de 100 entradas y valida los campos estructurados recuperados. Los datos se mantienen en el navegador; no hay sincronización entre dispositivos. Exportar crea un archivo local. El CSV escapa comillas y neutraliza prefijos que las hojas de cálculo podrían interpretar como fórmulas.
 
-`src/services/StorageService.ts` y `HistoryService.ts`: persistencia versionada, validación y recuperación ante datos corruptos o almacenamiento bloqueado. El historial es local y limitado a 100 entradas.
+`vite-plugin-pwa` genera manifiesto y service worker con Workbox. Precarga recursos de producción, incluidos paneles diferidos y Workers. El modo offline requiere completar la primera carga en HTTPS o localhost. El servidor de desarrollo no ofrece esa garantía. La instalación depende del navegador; el dictado y las voces remotas quedan fuera de la caché.
 
-`src/components/`: formularios, ajustes e historial; `src/features/calculator/`: coordinación de cálculo y estado; `src/accessibility/`: lectura y teclado.
+## Verificación y referencias
 
-## Contratos
+Vitest verifica motores, dominios, formateo, persistencia, exportaciones y parser de dictado. Playwright verifica flujos reales de interfaz y usa axe para revisión automática. Una configuración separada comprueba producción sin red. CI ejecuta lint, unitarias, build, navegador y offline. Ver [VALIDATION.md](VALIDATION.md) para evidencia y [ACCESSIBILITY.md](ACCESSIBILITY.md) para pruebas manuales pendientes.
 
-`MathEngine.evaluate(expression, angleMode): CalculationResult` devuelve expresión, resultado, aproximación opcional, tipo y explicación honesta. La UI usa `CalculatorClient.evaluate(): Promise<CalculationResult>` para aislar el Worker. Las operaciones CAS y matrices tendrán contratos separados en sus fases, sin métodos falsos o botones inertes.
-
-`SpeechService`: hablar, detener, pausar, continuar, repetir, cambiarVoz, cambiarVelocidad, cambiarTono, cambiarVolumen. `HistoryService`: cargar, guardar, eliminar, vaciar. `StorageService`: leer y escribir con resultado verificable.
-
-## Modelo accesible
-
-Orden DOM: encabezado, voz/bienvenida, expresión, acciones, resultado, herramientas, historial. Enlace para saltar al cálculo. Botones y etiquetas nativas, fieldsets, details/summary, foco visible. Una región polite para anuncios, una assertive para errores. El resultado no duplica una región viva. Calcular conserva foco; errores de entrada enfocan el campo. No se atrapa Tab fuera de diálogos. Ayuda inline, sin modal innecesario.
-
-Guía voluntaria con lectura de foco opcional. Modo lector externo evita síntesis de voz mientras conserva ARIA. Escape cancela voz. Enter calcula dentro del formulario; Ctrl+Enter lee la expresión. Alt+Shift+R lleva al resultado; Alt+Shift+H al historial; F1 abre ayuda. No se interceptan Ctrl+R/H/L/D/I/G/M del navegador. Atajos modificados pueden variar con SO/lector: todas las funciones tienen botones equivalentes.
-
-Temas claro, oscuro, contraste, blanco/negro y amarillo/negro. Tamaño y espaciado ajustables. Controles de al menos 44 px, diseño desde 320 px y sin animación requerida.
-
-## Limitaciones y pruebas
-
-Web Speech puede requerir gesto inicial, voces pueden llegar asincrónicamente o no existir. No se promete voz offline si el sistema no tiene una instalada. Dictado en fase 5 deberá advertir que el proveedor del navegador puede procesar audio remotamente. No se certifica WCAG sin auditoría manual y usuarios reales.
-
-Vitest: operaciones, modos angulares, fracciones, entradas inválidas, AST hablado y persistencia. Playwright + axe: navegación por teclado, flujo principal, ayuda, errores, historial, vistas móviles y auditoría automática. Matriz manual: NVDA/Chrome, JAWS/Edge y VoiceOver/Safari, zoom 200/400%, voz real y solo teclado. Build TypeScript y ESLint obligatorios por entrega.
+- [Parser y expresiones de Math.js](https://mathjs.org/docs/expressions/parsing.html)
+- [Seguridad de expresiones de Math.js](https://mathjs.org/docs/expressions/security.html)
+- [Documentación de Nerdamer](https://nerdamer.com/documentation.html)
+- [Distribuciones de jStat](https://jstat.github.io/distributions.html)
+- [ml-matrix](https://github.com/mljs/matrix)
+- [Constantes NIST, CODATA 2022](https://physics.nist.gov/cuu/Constants/Table/allascii.txt)

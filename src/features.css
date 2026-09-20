@@ -1,0 +1,125 @@
+.tool-columns,
+.field-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.feature-section {
+  scroll-margin-top: 16px;
+}
+.tool-grid small {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+:root[data-enlarged='true'] .workspace,
+:root[data-enlarged='true'] .settings-grid,
+:root[data-enlarged='true'] .tool-columns,
+:root[data-enlarged='true'] .field-pair {
+  grid-template-columns: 1fr;
+}
+:root[data-enlarged='true'] .result {
+  position: static;
+}
+:root[data-enlarged='true'] .app {
+  padding-inline: 12px;
+}
+:root[data-enlarged='true'] .panel {
+  padding: 16px;
+}
+.feature-section > summary {
+  font-size: 1.1rem;
+}
+.feature-section > div {
+  padding-top: 16px;
+}
+.feature-section textarea {
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+  resize: vertical;
+}
+.feature-section fieldset {
+  margin-bottom: 18px;
+}
+.matrix-scroll {
+  overflow-x: auto;
+}
+.matrix-editor {
+  border-collapse: collapse;
+  width: 100%;
+}
+.matrix-editor td {
+  padding: 4px;
+}
+.matrix-editor input {
+  min-width: 64px;
+  width: 100%;
+  padding: 8px;
+}
+.matrix-editor caption {
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 8px 0;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.data-table caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 12px 0;
+}
+.data-table td,
+.data-table th {
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.result-value {
+  overflow-wrap: anywhere;
+}
+.result-table {
+  overflow: auto;
+  max-height: 480px;
+}
+.feature-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.feature-nav a {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+@media (max-width: 600px) {
+  .tool-columns,
+  .field-pair {
+    grid-template-columns: 1fr;
+  }
+  .matrix-editor input {
+    min-width: 56px;
+  }
+  .data-table td,
+  .data-table th {
+    padding: 8px;
+  }
+  .feature-nav a {
+    flex: 1;
+    text-align: center;
+  }
+}

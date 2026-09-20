@@ -16,6 +16,7 @@ function valid(v: unknown): v is Preferences {
     Number(p.volume) <= 1 &&
     Number(p.fontSize) >= 16 &&
     Number(p.fontSize) <= 28 &&
+    [1, 1.25, 1.5, 2].includes(Number(p.scale)) &&
     Number(p.spacing) >= 1.4 &&
     Number(p.spacing) <= 2.2
   );

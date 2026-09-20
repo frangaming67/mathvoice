@@ -75,6 +75,7 @@
 }
 body {
   margin: 0;
+  zoom: var(--ui-scale, 1);
 }
 button,
 input,
@@ -163,6 +164,7 @@ p {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
 }
 .brand {
@@ -228,7 +230,7 @@ kbd {
   gap: 20px;
   margin-bottom: 24px;
 }
-.welcome h1 {
+.welcome h2 {
   margin-bottom: 0.4rem;
 }
 .welcome p {

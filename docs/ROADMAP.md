@@ -1,39 +1,68 @@
-# Entregas
+# Estado por fases — entrega 0.3
 
-## Fase 1 — primera entrega
+Este estado sigue el punto 58 de [REQUISITOS-ORIGINALES.txt](REQUISITOS-ORIGINALES.txt). Hay una entrega funcional de las cinco fases. Eso no implica haber validado todos los casos matemáticos ni el uso independiente con lectores de pantalla reales.
 
-- [x] Motor básico/científico aislado, alias, fracciones y modos angulares.
-- [x] SpeechService, lectura matemática, bienvenida y configuración persistente.
-- [x] Flujo por teclado, temas y controles accesibles.
-- [x] Historial local con búsqueda, escucha, copia, edición y eliminación.
-- [x] Pruebas unitarias, navegador, accesibilidad automática y build.
-- [ ] Validación manual con personas ciegas y lectores reales (necesaria antes de declarar conformidad).
+| Fase                                                       | Estado de la entrega                                  | Cierre pendiente                                                          |
+| ---------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
+| 1. Base, científica, voz, accesibilidad e historial        | Implementada, con pruebas automáticas                 | Validación manual con lectores reales y personas ciegas                   |
+| 2. Álgebra y cálculo                                       | Implementada dentro del alcance indicado abajo        | Ampliación matemática, procedimientos detallados y auditoría de dominios  |
+| 3. Matrices, vectores, complejos y estadística             | Implementada, con resultados tabulares y formularios  | Auditoría numérica ampliada y uso con lectores reales                     |
+| 4. Gráficos, teclado y sonificación                        | Implementada con exploración y alternativas textuales | Mejorar detección de eventos y evaluar comprensión del audio con usuarios |
+| 5. Dictado, conversores, PWA, exportaciones y optimización | Implementada; prueba offline de producción disponible | Pruebas de instalación, micrófono real, dispositivos y rendimiento        |
+
+## Fase 1
+
+- Motor básico y científico, fracciones exactas, números mixtos, alias, modos angulares y teclado numérico.
+- Voz centralizada, lectura matemática, activación explícita, lectura automática de foco/puntero y Escape para detener.
+- Preferencias persistentes, cinco temas, tamaño de texto e interlineado, ayuda y navegación por teclado.
+- Historial local de hasta 100 entradas, búsqueda, escucha, copia, edición, recálculo y eliminación.
+- Memoria MC/MR/M+/M− y constantes matemáticas.
+
+Pendiente: completar el [protocolo manual](ACCESSIBILITY.md). La voz disponible depende del navegador y el sistema. Seleccionar una voz inglesa no traduce la interfaz ni convierte el parser de dictado a inglés.
 
 ## Fase 2
 
-- [x] Adaptador Nerdamer aislado en el Worker, validación de expresiones y tiempo máximo.
-- [x] Simplificar, expandir, factorizar, sustituir, fracciones parciales, ecuaciones y sistemas lineales.
-- [x] Derivadas parciales y de orden superior; integrales indefinidas con C; integrales definidas de polinomios; límites.
-- [x] Formularios accesibles y lectura matemática de operaciones y soluciones.
-- [ ] Ampliar integrales definidas con análisis de singularidades y dominio.
-- [ ] Desigualdades, series, sistemas no lineales y explicaciones demostradas paso a paso.
-- [ ] Auditoría matemática ampliada de dominios y límites; Nerdamer no garantiza resolución general.
+- Adaptador Nerdamer en Worker con validación de entrada y máximo de seis segundos.
+- Simplificación, expansión, factorización, sustitución y fracciones parciales.
+- Ecuaciones y sistemas lineales de 2–5 ecuaciones con solución única verificada.
+- Desigualdades polinómicas reales de una variable, hasta grado 2.
+- Derivadas respecto de una variable, incluidas parciales, de órdenes 1–10.
+- Integrales indefinidas con `+ C`; definidas con comprobación conservadora del dominio y primitiva cerrada; límites mediante CAS.
+- Taylor de órdenes 0–10, identificado como aproximación local sin cota del error.
 
-## Mejora 0.2 de la calculadora y la voz
-
-- [x] Teclado numérico completo, continuidad desde el resultado, borrar y cambio de signo.
-- [x] MC, MR, M+ y M− persistentes.
-- [x] Lectura automática por puntero y foco, con cancelación de pendientes mediante Escape.
-- [x] Repositorio privado en GitHub y workflow de pruebas.
+Pendiente: sistemas no lineales, desigualdades de mayor alcance, integrales impropias o sin primitiva cerrada, y procedimientos derivados paso a paso. Las explicaciones actuales describen la operación; no constituyen una demostración completa. Un rechazo del análisis de dominio puede ser inconcluso. Nerdamer no garantiza resolución general ni todas las raíces de ecuaciones trascendentes.
 
 ## Fase 3
 
-Editor matricial con coordenadas y flechas; operaciones matriciales, vectores y complejos; estadística, probabilidad y combinatoria. Variables, memoria y constantes físicas con unidades y fuentes.
+- Editor de matrices de hasta 6 × 6, con etiquetas por fila/columna y navegación con flechas.
+- Suma, resta, producto, determinante, inversa, transpuesta, rango, traza, autovalores, autovectores y resolución `A × X = B`.
+- Vectores: módulo, normalización, productos punto/cruz, ángulo, distancia, suma y resta.
+- Complejos: aritmética, partes real/imaginaria, conjugado, polar/rectangular, potencias, raíz principal y todas las raíces de índice 1–32.
+- Estadística descriptiva, muestra/población, cuartiles, percentiles, covarianza, correlación y regresión lineal.
+- Distribuciones normal, binomial y Poisson; combinaciones y permutaciones.
+- Hasta 100 variables reales persistentes y constantes físicas con unidades y fuente.
+
+Límites: los cálculos numéricos pueden perder precisión con matrices mal condicionadas; no se calcula una garantía general del error. Las variables no almacenan matrices, complejos ni funciones. Las unidades de constantes físicas no se propagan automáticamente.
 
 ## Fase 4
 
-Gráficos SVG de múltiples funciones, rangos y zoom; alternativa textual, muestreo por teclado y sonificación. Distinguir estimaciones numéricas de raíces/extremos exactos; no unir discontinuidades.
+- Hasta cuatro funciones reales, SVG con trazos distinguibles, rangos configurables y ajuste del rango X.
+- Exploración por flechas, Inicio/Fin y pasos 0.01, 0.1, 0.5, 1 y 5, calculados independientemente de la tabla.
+- Coordenadas habladas, tabla de 401 muestras y lista de ceros, extremos e intersecciones aproximados.
+- Sonificación de altura y señales diferenciadas por evento; Escape detiene el recorrido.
+
+Límites: el muestreo de 400 intervalos puede omitir eventos y discontinuidades. No equivale a un análisis exacto del dominio, crecimiento o extremos. La detección de saltos es heurística. La evaluación de la sonificación con personas ciegas está pendiente.
 
 ## Fase 5
 
-Reconocimiento de voz con confirmar/editar/cancelar; conversores y bases; PWA offline, exportación TXT/CSV/JSON, presupuesto de rendimiento y auditoría integral. Nunca ejecutar dictado ambiguo automáticamente.
+La versión 0.3 añade aviso de actualización de la PWA con recarga voluntaria y conservación del historial. CI verifica un presupuesto de 320 KiB gzip para el paquete principal y 3.5 MiB de JavaScript total. Se comprobó la escala de interfaz al 200% con reflow equivalente a 320 píxeles; esto no sustituye las pruebas manuales de zoom y lectores reales.
+
+- Dictado por Web Speech con revisión, edición, confirmación o cancelación antes de calcular.
+- Conversión de unidades en 12 categorías; bases 2, 8, 10 y 16; operaciones binarias de 8/16/32/64 bits.
+- PWA con caché de recursos de producción; prueba de recarga y herramientas diferidas sin red.
+- Exportación TXT, CSV y JSON, con protección de celdas CSV que podrían interpretarse como fórmulas.
+- Carga diferida de paneles y separación del cálculo/gráficos en Workers.
+
+Pendiente: dictado y voces reales en distintos navegadores, instalación y actualización de PWA en dispositivos, medición de rendimiento en equipos modestos y auditoría manual integral. El dictado puede usar servidores del proveedor del navegador y no se garantiza offline. La primera carga completa requiere conexión.
+
+El [registro de validación](VALIDATION.md) separa pruebas automáticas, evidencia histórica y pruebas pendientes. El estado de GitHub debe comprobarse contra el commit publicado; los cambios locales por sí solos no prueban una publicación.

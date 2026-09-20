@@ -1,56 +1,73 @@
 # MathVoice
 
-Entorno matemático en español, pensado para trabajar sin mirar la pantalla.
+Calculadora matemática en español con lectura por voz, navegación por teclado y herramientas para trabajar sin depender del gráfico visual.
 
-## Desarrollo por fases
+La entrega **0.3** incorpora herramientas de las cinco fases del [requisito original](docs/REQUISITOS-ORIGINALES.txt): cálculo básico y científico; álgebra y cálculo simbólico; matrices, vectores, complejos y estadística; gráficos explorables; dictado, conversores, exportaciones y uso sin conexión. El [plan por fases](docs/ROADMAP.md) distingue lo implementado de las limitaciones y validaciones pendientes.
 
-Versión **0.2**: calculadora con teclado numérico, lectura automática al pasar el puntero o enfocar controles, memoria persistente y funciones de álgebra y cálculo.
+Repositorio: [frangaming67/mathvoice](https://github.com/frangaming67/mathvoice) (privado).
 
-Repositorio: https://github.com/frangaming67/mathvoice (privado).
+## Empezar
 
-## Usar la calculadora
+En Configuración podés ampliar toda la interfaz entre 100% y 200%; se conserva al volver a abrir la aplicación. Si hay una actualización de la PWA, aparece **Aplicar actualización y recargar**. El botón **Graficar resultado** carga una expresión compatible en el panel de gráficos. **Guardar resultado TXT** descarga el resultado actual.
 
-Activá **Activar voz automática** una vez: después se leen los botones, campos y textos al recorrerlos con el puntero o Tab. El navegador necesita esa interacción inicial para permitir audio. Escape cancela tanto la locución como lecturas pendientes. Podés apagar la voz desde la barra superior, y controlar por separado lectura de foco y puntero en Configuración.
+Activá **Activar voz automática** una vez. Después se leen los controles al pasar el puntero o recorrerlos con Tab. El navegador necesita esa interacción inicial para habilitar audio. Escape cancela la voz y las lecturas pendientes. Configuración permite ajustar idioma y voz, velocidad, tono, volumen, lectura de foco y lectura de puntero. Si usás un lector de pantalla, podés desactivar la guía para evitar voces simultáneas.
 
-El teclado incluye números, operaciones, paréntesis, porcentaje, borrar, cambio de signo, cuadrado, igual y memoria MC/MR/M+/M−. Después de calcular, un operador continúa desde el resultado y un número empieza otra operación. M+/M− guardan el último resultado numérico, con persistencia local.
+Escribí una expresión o usá el teclado numérico. Un operador después del resultado continúa la cuenta; un número inicia otra. MC, MR, M+ y M− guardan memoria local. Los enlaces a herramientas abren sus formularios. El historial permite escuchar, copiar, editar, recalcular, eliminar y exportar TXT, CSV o JSON.
 
-En **Álgebra y cálculo** podés usar formularios para resolver ecuaciones y sistemas lineales, simplificar, expandir, factorizar, descomponer en fracciones parciales, sustituir, derivar (incluidas parciales y órdenes 1–10), integrar y calcular límites. También podés escribir:
+Usá punto para decimales y coma entre argumentos. `log` es base 10; `ln` es natural. Los modos radianes, grados y gradianes afectan la calculadora numérica y los gráficos. El cálculo simbólico usa radianes.
 
-```text
-solve(x^2-4=0,x)
-system(x+y=10,x-y=4)
-diff(x^5,x,2)
-integrate(2*x,x)
-integrate(x^2,x,0,5)
-limit(sin(x)/x,x,0)
-substitute(x^2+3*x,x,2)
-```
+## Ejemplos
 
-Las integrales indefinidas incluyen `+ C`. Las definidas admiten polinomios por ahora; los sistemas admiten entre 2 y 5 ecuaciones lineales con solución única. El CAS usa radianes independientemente del modo de la calculadora numérica. `log` es base 10, `ln` es natural. El motor simbólico no garantiza resolver todas las ecuaciones o límites; una operación no resuelta produce un mensaje, no un falso resultado.
+| Herramienta                   | Expresión                                     |
+| ----------------------------- | --------------------------------------------- |
+| Fracciones exactas            | `fraction(1,3)+fraction(1,6)`                 |
+| Número mixto                  | `mixed(fraction(7,3))` o `mixedNumber(2,1,3)` |
+| Ecuación                      | `solve(x^2-4=0,x)`                            |
+| Sistema lineal                | `system(x+y=10,x-y=4)`                        |
+| Desigualdad                   | `inequality(x^2-4<=0,x)`                      |
+| Derivada de orden 2           | `diff(x^5,x,2)`                               |
+| Integral definida             | `integrate(sin(x),x,0,pi)`                    |
+| Límite                        | `limit(sin(x)/x,x,0)`                         |
+| Taylor de orden 4             | `series(exp(x),x,0,4)`                        |
+| Determinante                  | `det([[1,2],[3,4]])`                          |
+| Producto vectorial            | `cross([1,0,0],[0,1,0])`                      |
+| Raíces complejas              | `nthRoots(-1,2)`                              |
+| Resumen estadístico muestral  | `stats([1,2,3,4,5],1)`                        |
+| Distribución normal acumulada | `normalcdf(1.96,0,1)`                         |
+| Variable persistente          | `radio=7`, después `pi*radio^2`               |
+| Temperatura                   | `convert(25,"degC","degF")`                   |
+| Base numérica                 | `base("255",10,16)`                           |
 
-## Fases del proyecto
+En **Gráficos**, ingresá hasta cuatro funciones de `x`, una por línea. Configurá los rangos y pulsá **Graficar funciones**. En **Explorar gráfico**, las flechas izquierda y derecha avanzan por el paso elegido; Inicio y Fin van a los extremos. Hay coordenadas habladas, tabla de valores, eventos aproximados y un recorrido sonoro. Escape detiene el audio.
 
-1. Arquitectura, cálculo básico y científico, voz, accesibilidad e historial.
-2. Álgebra, ecuaciones, derivadas, integrales y límites.
-3. Matrices, vectores, complejos y estadística.
-4. Gráficos SVG, exploración por teclado y sonificación.
-5. Dictado con confirmación, conversiones, PWA y exportaciones.
+**Dictar expresión** abre una revisión editable: el cálculo solo se ejecuta con **Confirmar y calcular**. El reconocimiento disponible depende del navegador y puede procesar audio en servidores de su proveedor. La interpretación de frases es limitada; revisá siempre lo entendido.
 
-## Ejecutar
+## Alcance matemático
 
-Requiere Node.js 22.12 o posterior.
+Los sistemas simbólicos admiten entre 2 y 5 ecuaciones lineales con solución única. Las desigualdades admiten una variable y grado máximo 2; las derivadas órdenes 1–10 y Taylor órdenes 0–10. Taylor produce una aproximación local sin estimar su error ni radio de convergencia.
+
+Las integrales definidas requieren extremos finitos, un dominio real continuo que el análisis conservador pueda confirmar y una primitiva cerrada. Se rechazan integrales impropias y también puede rechazarse una integral válida cuyo dominio no pueda verificarse. El CAS no garantiza resolver toda ecuación o límite ni enumerar todas las raíces de ecuaciones trascendentes.
+
+Los gráficos usan 401 puntos y detección aproximada: pueden omitir eventos o discontinuidades entre muestras. Las constantes físicas muestran unidades y fuente NIST/CODATA 2022, pero sus unidades no se propagan en cálculos compuestos. Las variables almacenadas son números reales finitos.
+
+## Desarrollo y pruebas
+
+Requiere Node.js 22.12 o posterior; CI usa Node.js 24.
 
 ```sh
-npm install
+npm ci
 npm run dev
-npm run build
-npm test
 npm run lint
+npm test
+npm run build
+npm run check:bundle
+npx playwright install chromium
 npm run test:e2e
+npm run test:pwa
 ```
 
-Para las pruebas de navegador: `npx playwright install chromium` una vez.
+`test:pwa` compila y prueba la versión de producción: activa el service worker, desconecta la red, recarga y usa cálculo, matrices, CAS y gráficos. `npm run preview` sirve el build local. El modo sin conexión se habilita en producción después de la primera carga completa; requiere HTTPS o localhost. La instalación depende del soporte del navegador. Las voces y el dictado pueden necesitar conexión aunque los cálculos estén disponibles.
 
-Ver [arquitectura](docs/ARCHITECTURE.md), [plan](docs/ROADMAP.md) y [validación accesible](docs/ACCESSIBILITY.md).
+La aplicación no requiere cuenta ni backend. Historial, preferencias, memoria y variables se guardan en el navegador; borrar sus datos elimina ese contenido. No se envían expresiones a un servicio de cálculo.
 
-No necesita cuenta ni envía cálculos a servidores. La disponibilidad y calidad de voces depende del navegador y del sistema operativo. Se puede usar sin voz y con un lector externo. La voz comienza después de activarla explícitamente. Aún quedan matrices, vectores, gráficos, dictado, conversiones y PWA; ver el plan para el estado detallado.
+Ver [arquitectura](docs/ARCHITECTURE.md), [validación](docs/VALIDATION.md) y [protocolo de accesibilidad](docs/ACCESSIBILITY.md). Las pruebas automáticas no certifican WCAG: siguen pendientes pruebas con NVDA, JAWS, VoiceOver y personas ciegas.

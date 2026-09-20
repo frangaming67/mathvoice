@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useImperativeHandle, useRef, useState, type Ref } from 'react';
+export interface AdvancedHandle {
+  selectOperation: (operation: 'diff' | 'integrate' | 'limit') => void;
+}
 
 const operations = [
   ['solve', 'Resolver ecuación', 'x^2-5*x+6=0'],
@@ -11,13 +14,17 @@ const operations = [
   ['limit', 'Calcular límite', 'sin(x)/x'],
   ['substitute', 'Sustituir variable', 'x^2+3*x'],
   ['system', 'Resolver sistema lineal', 'x+y=10\nx-y=4'],
+  ['inequality', 'Resolver desigualdad (grado máximo 2)', 'x^2-4<=0'],
+  ['series', 'Polinomio de Taylor', 'sin(x)'],
 ];
 export function AdvancedCalculator({
   calculate,
   busy,
+  ref,
 }: {
   calculate: (expression: string) => void;
   busy: boolean;
+  ref?: Ref<AdvancedHandle>;
 }) {
   const [operation, setOperation] = useState('solve');
   const [body, setBody] = useState('x^2-5*x+6=0');
@@ -27,6 +34,18 @@ export function AdvancedCalculator({
   const [definite, setDefinite] = useState(false);
   const [lower, setLower] = useState('0');
   const [upper, setUpper] = useState('5');
+  const operationSelect = useRef<HTMLSelectElement>(null);
+  useImperativeHandle(
+    ref,
+    () => ({
+      selectOperation(next) {
+        setOperation(next);
+        setBody(operations.find((op) => op[0] === next)![2]);
+        operationSelect.current?.focus();
+      },
+    }),
+    [],
+  );
   return (
     <section className="panel advanced" id="advanced" aria-labelledby="advanced-title">
       <p className="eyebrow">ÁLGEBRA Y CÁLCULO</p>
@@ -45,18 +64,31 @@ export function AdvancedCalculator({
                   .map((line) => line.trim())
                   .filter(Boolean)
               : [body];
-          if (['solve', 'partfrac', 'diff', 'integrate', 'limit', 'substitute'].includes(operation))
+          if (
+            [
+              'solve',
+              'partfrac',
+              'diff',
+              'integrate',
+              'limit',
+              'substitute',
+              'inequality',
+              'series',
+            ].includes(operation)
+          )
             args.push(variable);
           if (operation === 'diff') args.push(order);
           if (operation === 'limit') args.push(point);
           if (operation === 'substitute') args.push(point);
           if (operation === 'integrate' && definite) args.push(lower, upper);
+          if (operation === 'series') args.push(point, order);
           calculate(`${operation}(${args.join(',')})`);
         }}
       >
         <label>
           Operación simbólica
           <select
+            ref={operationSelect}
             value={operation}
             onChange={(e) => {
               setOperation(e.target.value);
@@ -92,9 +124,16 @@ export function AdvancedCalculator({
           )}
         </label>
         <div className="advanced-fields">
-          {['solve', 'partfrac', 'diff', 'integrate', 'limit', 'substitute'].includes(
-            operation,
-          ) && (
+          {[
+            'solve',
+            'partfrac',
+            'diff',
+            'integrate',
+            'limit',
+            'substitute',
+            'inequality',
+            'series',
+          ].includes(operation) && (
             <label>
               Variable
               <input
@@ -106,12 +145,12 @@ export function AdvancedCalculator({
               />
             </label>
           )}
-          {operation === 'diff' && (
+          {['diff', 'series'].includes(operation) && (
             <label>
-              Orden de derivada
+              {operation === 'series' ? 'Orden de Taylor' : 'Orden de derivada'}
               <input
                 type="number"
-                min="1"
+                min={operation === 'series' ? '0' : '1'}
                 max="10"
                 required
                 value={order}
@@ -130,6 +169,12 @@ export function AdvancedCalculator({
               <input required value={point} onChange={(e) => setPoint(e.target.value)} />
             </label>
           )}
+          {operation === 'series' && (
+            <label>
+              Centro de Taylor
+              <input required value={point} onChange={(e) => setPoint(e.target.value)} />
+            </label>
+          )}
         </div>
         {operation === 'integrate' && (
           <>
@@ -139,7 +184,7 @@ export function AdvancedCalculator({
                 checked={definite}
                 onChange={(e) => setDefinite(e.target.checked)}
               />
-              Integral definida (polinomios)
+              Integral definida (dominio continuo verificado)
             </label>
             {definite && (
               <div className="advanced-fields">

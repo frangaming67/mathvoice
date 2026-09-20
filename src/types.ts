@@ -3,9 +3,14 @@ export interface CalculationResult {
   expression: string;
   value: string;
   decimal?: string;
+  unit?: string;
   kind: string;
   explanation: string;
   angleMode: AngleMode;
+  assigned?: { name: string; value: number };
+  table?: { label: string; value: string }[];
+  matrix?: string[][];
+  variables?: Record<string, number>;
 }
 export interface HistoryEntry extends CalculationResult {
   id: string;
@@ -26,6 +31,7 @@ export interface Preferences {
   readKeys: boolean;
   theme: string;
   fontSize: number;
+  scale: number;
   spacing: number;
   maximum: boolean;
   angle: AngleMode;
@@ -45,6 +51,7 @@ export const defaultPreferences: Preferences = {
   readKeys: false,
   theme: 'light',
   fontSize: 18,
+  scale: 1,
   spacing: 1.6,
   maximum: false,
   angle: 'rad',

@@ -182,6 +182,19 @@ export function Settings({
               onChange={(e) => update('spacing', +e.target.value)}
             />
           </label>
+          <label>
+            Escala general
+            <select value={p.scale} onChange={(e) => update('scale', +e.target.value)}>
+              {[1, 1.25, 1.5, 2].map((value) => (
+                <option key={value} value={value}>
+                  {value * 100}%
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="hint">
+            Amplía toda la interfaz. También podés usar el zoom de tu navegador.
+          </p>
         </fieldset>
       </div>
     </details>

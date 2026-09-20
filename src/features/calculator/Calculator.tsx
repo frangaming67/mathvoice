@@ -11,8 +11,15 @@ import { Settings } from '../../components/Settings';
 import { History } from '../../components/History';
 import { Tools } from '../../components/Tools';
 import { Keypad } from '../../components/Keypad';
-import { AdvancedCalculator } from '../../components/AdvancedCalculator';
+import { AdvancedCalculator, type AdvancedHandle } from '../../components/AdvancedCalculator';
 import { useAutomaticSpeech } from '../../accessibility/useAutomaticSpeech';
+import { FeatureHub } from '../../components/FeatureHub';
+import { variableService } from '../../services/VariableService';
+import { resultSpeech } from '../../accessibility/resultSpeech';
+import { Dictation } from '../../components/Dictation';
+import { OfflineStatus } from '../../components/OfflineStatus';
+import { toggleSign } from '../../parser/toggleSign';
+import { downloadHistory } from '../../services/ExportService';
 
 const client = new CalculatorClient();
 const welcome =
@@ -22,6 +29,7 @@ const angleNames = { rad: 'radianes', deg: 'grados', grad: 'gradianes' };
 export function Calculator() {
   const [preferences, setPreferences] = useState(preferencesService.load);
   const [entries, setEntries] = useState(historyService.load);
+  const [variables, setVariables] = useState(variableService.load);
   const [expression, setExpression] = useState('');
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,6 +38,9 @@ export function Calculator() {
   const [storageWarning, setStorageWarning] = useState(storage.warning);
   const [explanation, setExplanation] = useState(false);
   const [help, setHelp] = useState(false);
+  const [listening, setListening] = useState(false);
+  const advanced = useRef<AdvancedHandle>(null);
+  const [graphRequest, setGraphRequest] = useState<{ id: number; expression: string }>();
   const [memory, setMemory] = useState(() =>
     storage.read(
       'memory',
@@ -39,7 +50,7 @@ export function Calculator() {
   );
   const memoryBusy = useRef(false);
   const justCalculated = useRef(false);
-  const automatic = useAutomaticSpeech(preferences);
+  const automatic = useAutomaticSpeech(preferences, listening);
   const input = useRef<HTMLInputElement>(null);
   const helpButton = useRef<HTMLButtonElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -51,6 +62,8 @@ export function Calculator() {
     document.documentElement.dataset.theme = preferences.theme;
     document.documentElement.style.fontSize = `${preferences.fontSize}px`;
     document.documentElement.style.setProperty('--leading', String(preferences.spacing));
+    document.documentElement.style.setProperty('--ui-scale', String(preferences.scale));
+    document.documentElement.dataset.enlarged = String(preferences.scale > 1);
   }, [preferences]);
   useEffect(
     () => () => {
@@ -84,6 +97,7 @@ export function Calculator() {
         },
         read: readExpression,
         help: openHelp,
+        symbolic: (operation) => advanced.current?.selectOperation(operation),
       });
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -192,7 +206,11 @@ export function Calculator() {
     if (!storage.write('memory', next)) setStorageWarning(storage.warning);
     announce(`Memoria: ${mathSpeech(next)}.`);
   }
-  async function calculate(value = expression, angle: AngleMode = preferences.angle) {
+  async function calculate(
+    value = expression,
+    angle: AngleMode = preferences.angle,
+    scope = variables,
+  ) {
     if (computing.current) return;
     computing.current = true;
     automatic.cancel();
@@ -202,12 +220,17 @@ export function Calculator() {
     setExplanation(false);
     announce('Calculando.', false);
     try {
-      const calculated = await client.evaluate(value, angle);
+      const calculated = await client.evaluate(value, angle, scope);
+      if (calculated.assigned) {
+        const next = { ...variables, [calculated.assigned.name]: calculated.assigned.value };
+        setVariables(next);
+        if (!variableService.save(next)) setStorageWarning(storage.warning);
+      }
       setResult(calculated);
       justCalculated.current = true;
       const entry = { ...calculated, id: crypto.randomUUID(), date: new Date().toISOString() };
       saveHistory([entry, ...currentEntries.current].slice(0, 100));
-      announce(`Resultado: ${mathSpeech(calculated.value)}.`, preferences.autoRead);
+      announce(`Resultado: ${resultSpeech(calculated)}.`, preferences.autoRead);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'No pude completar el cálculo.';
       setError(message);
@@ -240,6 +263,7 @@ export function Calculator() {
     <div
       className={preferences.maximum ? 'app maximum' : 'app'}
       onFocusCapture={automatic.onFocusCapture}
+      onChangeCapture={automatic.onChangeCapture}
       onPointerOver={automatic.onPointerOver}
       onPointerOut={automatic.onPointerOut}
     >
@@ -263,6 +287,7 @@ export function Calculator() {
         </nav>
       </header>
       <main>
+        <h1 className="sr-only">MathVoice, calculadora matemática parlante</h1>
         <div className="voice-bar">
           <span>
             {!speech.available
@@ -297,7 +322,7 @@ export function Calculator() {
         {!preferences.welcomed && (
           <section className="welcome" aria-labelledby="welcome-title">
             <div>
-              <h1 id="welcome-title">Bienvenido a MathVoice.</h1>
+              <h2 id="welcome-title">Bienvenido a MathVoice.</h2>
               <p>
                 Activá la voz una vez. Después, cada control se lee al pasar el puntero o recorrerlo
                 con Tab.
@@ -322,6 +347,9 @@ export function Calculator() {
               <li>Ctrl + Enter: escuchar expresión.</li>
               <li>Alt + Shift + R: ir al resultado.</li>
               <li>Alt + Shift + H: ir al historial.</li>
+              <li>Alt + Shift + G: abrir gráficos. Alt + Shift + M: abrir matrices.</li>
+              <li>Alt + Shift + D, I o L: derivada, integral o límite.</li>
+              <li>Alt + Shift + V: iniciar o cancelar dictado.</li>
               <li>F1: abrir ayuda. Escape: detener voz.</li>
             </ul>
             <p>
@@ -359,7 +387,7 @@ export function Calculator() {
                 id="expression"
                 className="expression"
                 value={expression}
-                maxLength={500}
+                maxLength={10000}
                 autoComplete="off"
                 spellCheck={false}
                 aria-describedby={error ? 'expression-hint calculation-error' : 'expression-hint'}
@@ -422,16 +450,22 @@ export function Calculator() {
                 </select>
               </label>
             </form>
+            <Dictation
+              language={preferences.language}
+              announce={announce}
+              onListeningChange={setListening}
+              confirm={(value, angle) => {
+                setExpression(value);
+                if (angle) changePreferences({ ...preferences, angle });
+                void calculate(value, angle ?? preferences.angle);
+              }}
+            />
             <Keypad
               insert={keypadInsert}
               erase={erase}
               clear={clear}
               sign={() => {
-                setExpression(
-                  expression.startsWith('-(') && expression.endsWith(')')
-                    ? expression.slice(2, -1)
-                    : `-(${expression || '0'})`,
-                );
+                setExpression(toggleSign(expression));
                 justCalculated.current = false;
               }}
               calculate={() => void calculate()}
@@ -474,12 +508,49 @@ export function Calculator() {
               <>
                 <p className="result-expression">{result.expression}</p>
                 <p
-                  className={`result-value ${['Álgebra', 'Cálculo'].includes(result.kind) ? 'symbolic-value' : ''}`}
+                  className={`result-value ${result.table || result.matrix ? 'sr-only' : ['Álgebra', 'Cálculo'].includes(result.kind) ? 'symbolic-value' : ''}`}
                   aria-label={`Resultado: ${result.value}`}
-                  data-speech={`Resultado: ${mathSpeech(result.value)}`}
+                  data-speech={`Resultado: ${resultSpeech(result)}`}
                 >
                   {result.value}
                 </p>
+                {result.matrix && (
+                  <div className="result-table">
+                    <table className="data-table">
+                      <caption>Matriz o vector resultado</caption>
+                      <tbody>
+                        {result.matrix.map((row, i) => (
+                          <tr key={i}>
+                            {row.map((value, j) => (
+                              <td
+                                key={j}
+                                data-speech={`Fila ${i + 1}, columna ${j + 1}, ${mathSpeech(value)}`}
+                              >
+                                {value}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {result.table && (
+                  <table className="data-table">
+                    <caption>Detalle del resultado</caption>
+                    <tbody>
+                      {result.table.map((row) => (
+                        <tr key={row.label}>
+                          <th scope="row">{row.label}</th>
+                          <td data-speech={`${row.label}: ${mathSpeech(row.value)}`}>
+                            {row.value}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {result.unit && <p>Unidad: {result.unit}</p>}
                 {result.decimal && (
                   <p>
                     Aproximación decimal: <strong>{result.decimal}</strong>
@@ -493,11 +564,44 @@ export function Calculator() {
                 <div className="actions">
                   <button
                     disabled={!speech.available}
-                    onClick={() => speech.hablar(`Resultado: ${mathSpeech(result.value)}`)}
+                    onClick={() => speech.hablar(`Resultado: ${resultSpeech(result)}`)}
                   >
                     Escuchar resultado
                   </button>
                   <button onClick={() => void copy(result.value)}>Copiar resultado</button>
+                  <button
+                    onClick={() =>
+                      downloadHistory(
+                        [{ ...result, id: crypto.randomUUID(), date: new Date().toISOString() }],
+                        'txt',
+                      )
+                    }
+                  >
+                    Guardar resultado TXT
+                  </button>
+                  {!result.table &&
+                    !result.matrix &&
+                    !result.assigned &&
+                    result.kind !== 'Complejos' &&
+                    !/[=C]|Infinity/.test(result.value) && (
+                      <button
+                        onClick={() => {
+                          setGraphRequest({ id: Date.now(), expression: result.value });
+                          const panel = document.getElementById(
+                            'graphs',
+                          ) as HTMLDetailsElement | null;
+                          if (panel) {
+                            panel.open = true;
+                            panel.querySelector('summary')?.focus();
+                          }
+                          announce(
+                            'Resultado cargado en Gráficos. Podés editar la función y pulsar Graficar funciones.',
+                          );
+                        }}
+                      >
+                        Graficar resultado
+                      </button>
+                    )}
                   <button
                     onClick={() => {
                       setExplanation(!explanation);
@@ -533,6 +637,7 @@ export function Calculator() {
         </div>
         <Tools insert={insert} />
         <AdvancedCalculator
+          ref={advanced}
           busy={busy}
           calculate={(value) => {
             setExpression(value);
@@ -540,12 +645,31 @@ export function Calculator() {
           }}
         />
         <Settings preferences={preferences} change={changePreferences} />
+        <FeatureHub
+          graphRequest={graphRequest}
+          busy={busy}
+          variables={variables}
+          angle={preferences.angle}
+          announce={announce}
+          calculate={(value) => {
+            setExpression(value);
+            void calculate(value);
+          }}
+          insert={insert}
+          removeVariable={(name) => {
+            const next = { ...variables };
+            delete next[name];
+            setVariables(next);
+            if (!variableService.save(next)) setStorageWarning(storage.warning);
+            announce(`Variable ${name} eliminada.`);
+          }}
+        />
         <History
           entries={entries}
           edit={edit}
           recalculate={(entry) => {
             edit(entry);
-            void calculate(entry.expression, entry.angleMode);
+            void calculate(entry.expression, entry.angleMode, entry.variables ?? variables);
           }}
           remove={(id) => {
             saveHistory(entries.filter((e) => e.id !== id));
@@ -555,7 +679,7 @@ export function Calculator() {
             saveHistory([]);
             announce('Historial vacío.');
           }}
-          speak={(text) => speech.hablar(mathSpeech(text))}
+          speak={(text) => speech.hablar(text)}
           copy={(text) => void copy(text)}
         />
       </main>
@@ -563,6 +687,7 @@ export function Calculator() {
         <span>MathVoice · Calculadora parlante</span>
         <span>Cálculos locales. Sin cuenta.</span>
       </footer>
+      <OfflineStatus />
     </div>
   );
 }

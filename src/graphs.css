@@ -1,0 +1,39 @@
+.graph-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  margin: 20px 0;
+}
+.graph-table {
+  max-height: 420px;
+  overflow: auto;
+}
+.coordinates {
+  padding: 16px;
+  border: 1px solid var(--border);
+  background: var(--soft);
+  border-radius: 8px;
+  margin: 14px 0;
+  font-weight: 600;
+}
+.dictation {
+  margin-top: 16px;
+}
+.dictation .hint {
+  margin-top: 8px;
+}
+dialog {
+  color: var(--text);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: min(620px, calc(100% - 28px));
+  max-height: 90vh;
+  overflow: auto;
+}
+dialog::backdrop {
+  background: #0008;
+}

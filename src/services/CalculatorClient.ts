@@ -1,6 +1,10 @@
 import type { AngleMode, CalculationResult } from '../types';
 export class CalculatorClient {
-  async evaluate(expression: string, angle: AngleMode): Promise<CalculationResult> {
+  async evaluate(
+    expression: string,
+    angle: AngleMode,
+    variables: Record<string, number> = {},
+  ): Promise<CalculationResult> {
     const worker = new Worker(new URL('./calculator.worker.ts', import.meta.url), {
       type: 'module',
     });
@@ -22,7 +26,7 @@ export class CalculatorClient {
         finish();
         reject(new Error('No se pudo iniciar el motor matemático. Volvé a intentarlo.'));
       };
-      worker.postMessage({ expression, angle });
+      worker.postMessage({ expression, angle, variables });
     });
   }
 }

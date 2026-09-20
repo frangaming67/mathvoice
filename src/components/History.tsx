@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import type { HistoryEntry } from '../types';
+import { downloadHistory } from '../services/ExportService';
+import { resultSpeech } from '../accessibility/resultSpeech';
+import { mathSpeech } from '../accessibility/MathSpeechFormatter';
 export function History({
   entries,
   edit,
@@ -63,6 +66,17 @@ export function History({
           placeholder="Expresión o resultado"
         />
       </label>
+      <div className="actions" aria-label="Exportar historial">
+        {(['txt', 'csv', 'json'] as const).map((format) => (
+          <button
+            key={format}
+            disabled={!entries.length}
+            onClick={() => downloadHistory(entries, format)}
+          >
+            Exportar {format.toUpperCase()}
+          </button>
+        ))}
+      </div>
       {!entries.length ? (
         <p className="empty">
           Tus cálculos aparecerán acá.
@@ -89,7 +103,9 @@ export function History({
               </p>
               <div className="actions">
                 <button
-                  onClick={() => speak(`${e.expression} = ${e.value}`)}
+                  onClick={() =>
+                    speak(`${mathSpeech(e.expression)}. Resultado: ${resultSpeech(e)}`)
+                  }
                   aria-label={`Escuchar cálculo ${e.expression}`}
                 >
                   Escuchar
