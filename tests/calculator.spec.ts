@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 
 test('flujo por teclado, fracciones, historial persistente y errores', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Continuar sin guía' }).click();
+  await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
   const input = page.getByLabel('Expresión matemática', { exact: true });
   await expect(input).toBeFocused();
   await input.fill('1/3 + 1/6');
@@ -11,9 +11,11 @@ test('flujo por teclado, fracciones, historial persistente y errores', async ({ 
   await expect(page.getByLabel('Resultado: 1/2', { exact: true })).toBeVisible();
   await expect(input).toBeFocused();
   await page.reload();
+  await page.getByRole('link', { name: 'Historial', exact: true }).click();
   await expect(
     page.getByRole('button', { name: 'Editar cálculo 1/3 + 1/6', exact: true }),
   ).toBeVisible();
+  await page.getByRole('link', { name: 'Calculadora', exact: true }).click();
   await input.fill('1/0');
   await input.press('Enter');
   await expect(page.getByRole('alert')).toContainText('finito');
@@ -21,20 +23,22 @@ test('flujo por teclado, fracciones, historial persistente y errores', async ({ 
   await input.press('F1');
   await expect(page.getByRole('heading', { name: 'Ayuda accesible' })).toBeFocused();
   await page.getByRole('button', { name: 'Cerrar ayuda' }).click();
-  await expect(page.getByRole('button', { name: 'Ayuda F1' })).toBeFocused();
+  await expect(input).toBeFocused();
 });
 
 test('modos, herramientas y recálculo conservan semántica', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Continuar sin guía' }).click();
+  await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
   await page.getByLabel('Modo angular').selectOption('deg');
   await page.getByLabel('Expresión matemática', { exact: true }).fill('sen(30)');
   await page.getByRole('button', { name: 'Calcular', exact: false }).first().click();
   await expect(page.getByLabel('Resultado: 0.5', { exact: true })).toBeVisible();
   await page.getByLabel('Modo angular').selectOption('rad');
+  await page.getByRole('link', { name: 'Historial', exact: true }).click();
   await page.getByRole('button', { name: 'Recalcular sen(30)', exact: true }).click();
   await expect(page.getByLabel('Modo angular')).toHaveValue('deg');
   await expect(page.getByLabel('Resultado: 0.5', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Historial', exact: true }).click();
   await page.getByRole('button', { name: 'Vaciar historial' }).click();
   await page.getByRole('button', { name: 'Sí, eliminar todos' }).click();
   await expect(page.getByText('Tus cálculos aparecerán acá.')).toBeVisible();
@@ -49,8 +53,8 @@ test('accesibilidad automática, temas y reflow a 320 px', async ({ page }) => {
         .analyze()
     ).violations,
   ).toEqual([]);
-  await page.getByRole('button', { name: 'Continuar sin guía' }).click();
-  await page.getByText('Configuración de voz y accesibilidad', { exact: true }).click();
+  await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
+  await page.getByRole('link', { name: 'Configuración', exact: true }).click();
   for (const theme of ['dark', 'contrast', 'mono', 'yellow', 'light']) {
     await page.getByRole('combobox', { name: 'Tema', exact: true }).selectOption(theme);
     expect(
@@ -62,10 +66,10 @@ test('accesibilidad automática, temas y reflow a 320 px', async ({ page }) => {
     true,
   );
   await page.reload();
-  await page.getByText('Configuración de voz y accesibilidad', { exact: true }).click();
+  await page.getByRole('link', { name: 'Configuración', exact: true }).click();
   await page.screenshot({ path: 'test-results/mathvoice-mobile.png', fullPage: true });
   await page.setViewportSize({ width: 1440, height: 1100 });
-  await page.getByText('Configuración de voz y accesibilidad', { exact: true }).click();
+  await page.getByRole('link', { name: 'Configuración', exact: true }).click();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: 'test-results/mathvoice-desktop.png', fullPage: true });
 });

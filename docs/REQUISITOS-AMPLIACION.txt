@@ -1,0 +1,1145 @@
+Quiero que tomes el proyecto actual de MathVoice y lo lleves a un estado realmente terminado, estable y auditable.
+
+IMPORTANTE:
+
+No quiero que vuelvas a “empezar desde la fase 1” si las funcionalidades ya existen.
+
+Quiero que trabajes sobre el proyecto ACTUAL, respetando todo lo implementado, corrigiendo problemas, cerrando pendientes y verificando cada fase de forma sistemática.
+
+A partir de ahora NO uses frases ambiguas como:
+
+“Estoy en la fase 1”
+“Estoy mejorando accesibilidad”
+“Todavía quedan cosas”
+“Estoy revisando”
+
+Quiero estados concretos.
+
+Cada funcionalidad debe quedar clasificada únicamente como:
+
+COMPLETADA Y VERIFICADA
+IMPLEMENTADA PERO PENDIENTE DE VERIFICACIÓN
+INCOMPLETA
+ROTA
+NO IMPLEMENTADA
+
+No marques una fase como completa si alguna funcionalidad crítica sigue fallando.
+
+OBJETIVO GENERAL
+
+MathVoice debe convertirse en una plataforma matemática web completa, accesible y parlante para personas ciegas o con baja visión.
+
+Debe poder utilizarse completamente sin mouse.
+
+Debe funcionar con:
+
+Voz propia de la página.
+NVDA.
+JAWS.
+VoiceOver.
+Navegación únicamente por teclado.
+
+Debe evitar voces simultáneas cuando el usuario activa:
+
+“Usar mi lector de pantalla”.
+
+La accesibilidad no es un añadido.
+
+Es el requisito principal.
+
+PRINCIPIO FUNDAMENTAL
+
+Para cada función preguntate:
+
+“¿Una persona completamente ciega puede descubrir esta función, utilizarla, corregir errores, entender el resultado y volver a encontrarla sin ayuda?”
+
+Si la respuesta es no, esa función NO está terminada.
+
+PRIMERO: AUDITORÍA DEL ESTADO ACTUAL
+
+Antes de modificar código:
+
+Inspeccioná todo el proyecto actual.
+Identificá qué está realmente implementado.
+Revisá las 5 fases completas.
+Revisá tests unitarios.
+Revisá tests E2E.
+Revisá errores actuales.
+Revisá accesibilidad.
+Revisá navegación.
+Revisá arquitectura.
+Revisá estado local vs GitHub.
+
+Quiero que generes internamente una matriz de estado con:
+
+Fase
+Función
+Estado
+Tests
+Problemas encontrados
+Acción necesaria
+
+No me digas que una fase está completa solamente porque “hay código”.
+
+Debe funcionar correctamente.
+
+REGLA DE TRABAJO
+
+No hagas refactors generales innecesarios.
+
+No cambies arquitectura que ya funciona salvo que exista una razón concreta.
+
+No rompas funcionalidades existentes mientras arreglás accesibilidad.
+
+No reescribas módulos completos cuando se puede corregir un problema localizado.
+
+No agregues nuevas funcionalidades mientras existan tests rotos en una fase anterior.
+
+No avances dejando regresiones.
+
+FASE 1 — CALCULADORA, VOZ, ACCESIBILIDAD E HISTORIAL
+
+Esta fase debe quedar completamente cerrada primero.
+
+Debe incluir:
+
+Calculadora básica
+Suma.
+Resta.
+Multiplicación.
+División.
+Porcentajes.
+Cambio de signo.
+Paréntesis.
+Decimales.
+Fracciones.
+Valor absoluto.
+Potencias.
+Raíces.
+Calculadora científica
+sin
+cos
+tan
+asin
+acos
+atan
+sinh
+cosh
+tanh
+log
+ln
+log base n
+exp
+sqrt
+cbrt
+x²
+x³
+xʸ
+10ˣ
+eˣ
+factorial
+mod
+floor
+ceil
+round
+abs
+sign
+gcd
+lcm
+Modos angulares
+Grados.
+Radianes.
+Gradianes.
+
+El cambio debe anunciarse correctamente.
+
+Voz
+
+Debe existir un servicio centralizado.
+
+SpeechService.
+
+Funciones:
+
+speak()
+stop()
+pause()
+resume()
+repeat()
+setVoice()
+setRate()
+setPitch()
+setVolume()
+
+Debe usarse Web Speech API.
+
+Configuración de voz
+Voz.
+Idioma.
+Velocidad.
+Volumen.
+Tono.
+Leer expresión mientras escribo.
+Leer resultado automáticamente.
+Leer cambios de sección.
+Leer teclas si el usuario quiere.
+Detener voz con Escape.
+Opción de lector externo
+
+Implementar correctamente:
+
+“Usar mi lector de pantalla”.
+
+Cuando está activada:
+
+Evitar speechSynthesis automático.
+Mantener regiones ARIA.
+Mantener etiquetas.
+Mantener estados.
+No producir doble lectura.
+No desactivar accesibilidad.
+Entrada matemática
+
+Campo principal:
+
+“Expresión matemática”.
+
+Debe aceptar teclado físico.
+
+Debe conservar lo escrito.
+
+Teclado visual
+
+Debe ser:
+
+Opcional.
+Plegable.
+Navegable.
+No obligatorio.
+No debe estar entre formulario y resultado.
+Resultado
+
+Debe aparecer inmediatamente después del formulario.
+
+Debe tener:
+
+Resultado principal.
+Forma exacta.
+Aproximación.
+Unidad.
+Botón Escuchar.
+Botón Copiar.
+Botón Explicar.
+Botón Guardar.
+Botón Graficar cuando corresponda.
+Historial
+
+Debe estar separado de la herramienta actual.
+
+Cada entrada:
+
+Fecha.
+Hora.
+Expresión.
+Resultado.
+Tipo.
+
+Acciones:
+
+Escuchar.
+Copiar.
+Editar.
+Recalcular.
+Eliminar.
+Vaciar.
+Buscar.
+Estado por herramienta
+
+Cada herramienta debe conservar su propio estado.
+
+Ejemplo:
+
+Si estoy escribiendo una integral, cambio a matrices y vuelvo a integrales, la integral debe seguir ahí.
+
+No usar un único estado compartido que destruya entradas anteriores.
+
+ACCESIBILIDAD DE FASE 1
+
+Debe haber:
+
+HTML semántico.
+Labels reales.
+aria-describedby.
+aria-live.
+role=status.
+role=alert solo donde corresponda.
+Focus management controlado.
+Navegación únicamente por teclado.
+Orden lógico de tabulación.
+Sin divs clickeables cuando corresponde button.
+Sin iconos sin texto accesible.
+Sin información transmitida solo por color.
+Foco
+
+No mover el foco arbitrariamente.
+
+Después de calcular:
+
+Preferentemente anunciar resultado con aria-live.
+
+No saltar automáticamente al resultado salvo que exista una razón clara.
+
+Crear atajo para ir al resultado.
+
+Después de error:
+
+Mover foco al campo problemático solo si ayuda.
+
+El mensaje debe anunciar lo ocurrido.
+
+Ejemplo:
+
+“Error en límite inferior. El foco se movió al campo límite inferior.”
+
+Atajos
+
+Debe existir una estrategia consistente.
+
+Como mínimo:
+
+Enter:
+Calcular.
+
+Escape:
+Detener voz / cerrar diálogo.
+
+Ctrl + Enter:
+Escuchar expresión.
+
+Atajo para:
+
+Resultado.
+Historial.
+Ayuda.
+Herramienta actual.
+
+No sobrescribir atajos críticos del navegador.
+
+Ayuda contextual
+
+Agregar comando tipo:
+
+“¿Dónde estoy?”
+
+Debe poder decir algo como:
+
+“Estás en Calculadora científica. Campo Expresión matemática. Hay un resultado disponible. Teclado visual contraído.”
+
+Agregar ayuda F1.
+
+FASE 2 — ÁLGEBRA Y CÁLCULO
+
+Debe incluir:
+
+Álgebra
+Simplificar.
+Expandir.
+Factorizar.
+Sustituir variables.
+Resolver ecuaciones.
+Resolver desigualdades.
+Raíces.
+Fracciones parciales.
+
+Ejemplos:
+
+simplify((x^2-1)/(x-1))
+
+factor(x^2-9)
+
+expand((x+2)^3)
+
+solve(x^2-5*x+6=0,x)
+
+Derivadas
+Primera derivada.
+Derivadas de orden superior.
+Derivadas parciales.
+
+Ejemplos:
+
+diff(x^3,x)
+
+diff(x^5,x,2)
+
+Integrales
+Indefinidas.
+Definidas.
+Una variable.
+Expresión exacta cuando sea posible.
+Aproximación cuando sea necesario.
+
+Ejemplos:
+
+integrate(x^2,x)
+
+integrate(x^2,x,0,5)
+
+Límites
+
+Ejemplo:
+
+limit(sin(x)/x,x,0)
+
+Debe soportar:
+
+Límite bilateral.
+Izquierda.
+Derecha.
+Infinito cuando sea compatible.
+Sistemas de ecuaciones
+
+Ejemplo:
+
+x+y=10
+x-y=4
+
+Resultado:
+
+x = 7
+y = 3
+
+La voz debe leer cada solución de forma clara.
+
+Pasos
+
+Cada herramienta debe diferenciar:
+
+Resultado.
+Procedimiento.
+Explicación.
+
+No inventar pasos matemáticos falsos.
+
+Si el motor no puede generar pasos fiables, mostrar resultado sin fabricar una demostración.
+
+FASE 3 — MATRICES, VECTORES, COMPLEJOS Y ESTADÍSTICA
+Matrices
+
+Debe permitir:
+
+Crear.
+Editar.
+Sumar.
+Restar.
+Multiplicar.
+Transponer.
+Determinante.
+Inversa.
+Rango.
+Traza.
+Resolver sistemas.
+Autovalores si el motor lo soporta.
+Autovectores si el motor lo soporta.
+
+Cada celda debe anunciar:
+
+“Fila 2, columna 3, valor 5”.
+
+Navegación con flechas.
+
+Vectores
+Norma.
+Normalización.
+Producto punto.
+Producto cruz.
+Ángulo.
+Distancia.
+Operaciones vectoriales.
+Complejos
+Forma a + bi.
+Módulo.
+Argumento.
+Conjugado.
+Forma polar.
+Forma rectangular.
+Potencias.
+Raíces.
+Estadística
+Cantidad.
+Media.
+Mediana.
+Moda.
+Mínimo.
+Máximo.
+Rango.
+Varianza.
+Desviación estándar.
+Cuartiles.
+Percentiles.
+Covarianza.
+Correlación.
+Regresión lineal.
+Probabilidad
+Factorial.
+Permutaciones.
+Combinaciones.
+nPr.
+nCr.
+Binomial.
+Normal.
+Poisson cuando esté implementado correctamente.
+FASE 4 — GRÁFICOS ACCESIBLES Y SONIFICACIÓN
+
+Debe existir gráfico 2D.
+
+Debe poder representar:
+
+y = f(x)
+
+Varias funciones.
+
+Debe tener:
+
+Zoom.
+Rango X/Y.
+Intersecciones.
+Ceros.
+Máximos.
+Mínimos.
+
+Pero el gráfico no puede depender únicamente de lo visual.
+
+Exploración accesible
+
+Modo:
+
+“Explorar gráfico”.
+
+Flecha izquierda / derecha:
+
+Mover valor de X.
+
+Anunciar:
+
+“x igual a 2.5; y igual a 4.7”.
+
+Paso configurable:
+
+0.01
+0.1
+0.5
+1
+5
+Puntos relevantes
+
+Debe poder anunciar:
+
+Cero.
+Intersección.
+Máximo local.
+Mínimo local.
+Discontinuidad si se detecta.
+
+No llamar “exacto” a un punto obtenido numéricamente si es aproximado.
+
+Indicar:
+
+“aproximadamente”.
+
+Sonificación
+
+Debe funcionar sin reemplazar la salida textual.
+
+Concepto:
+
+Y más alto:
+tono más alto.
+
+Y más bajo:
+tono más bajo.
+
+Eventos especiales:
+señal diferenciada.
+
+Debe existir:
+
+Iniciar.
+Pausar.
+Detener.
+Ajustar velocidad.
+
+No permitir audio infinito sin control.
+
+FASE 5 — DICTADO, CONVERSORES, EXPORTACIONES, PWA Y OPTIMIZACIÓN
+Dictado
+
+Usar Speech Recognition cuando esté disponible.
+
+Botón:
+
+“Dictar expresión”.
+
+Flujo obligatorio:
+
+Escuchar.
+Interpretar.
+Mostrar texto reconocido.
+Leer:
+
+“Entendí: ...”
+
+Permitir:
+Confirmar.
+Editar.
+Cancelar.
+
+Nunca ejecutar automáticamente una expresión ambigua.
+
+Debe manejar navegadores sin soporte.
+
+Mostrar:
+
+“El dictado por voz no está disponible en este navegador.”
+
+No romper la aplicación.
+
+Conversión de unidades
+
+Categorías:
+
+Longitud.
+Área.
+Volumen.
+Masa.
+Tiempo.
+Velocidad.
+Temperatura.
+Presión.
+Energía.
+Potencia.
+Datos digitales.
+Ángulos.
+
+Ejemplos:
+
+100 km a millas.
+
+25 Celsius a Fahrenheit.
+
+Bases numéricas
+Binario.
+Octal.
+Decimal.
+Hexadecimal.
+
+Operaciones:
+
+AND.
+OR.
+XOR.
+NOT.
+Shift left.
+Shift right.
+Exportaciones
+
+Historial:
+
+TXT.
+CSV.
+JSON.
+
+Verificar:
+
+Nombre de archivo.
+Encoding.
+Datos correctos.
+Navegadores.
+Accesibilidad del botón.
+Mensaje de éxito.
+PWA
+
+Verificar:
+
+Manifest.
+Service worker.
+Instalación.
+Caché.
+Actualización.
+Funcionalidad offline.
+Fallback offline.
+
+No cachear contenido de forma que rompa actualizaciones.
+
+Offline
+
+Después de primera carga:
+
+Debe poder utilizarse sin conexión para las funciones que no requieran servicios externos.
+
+Debe informarse qué funciones no funcionan offline.
+
+Optimización
+
+No optimizar por optimizar.
+
+Medir antes.
+
+Optimizar:
+
+Bundle.
+Carga inicial.
+Dependencias pesadas.
+Renderizaciones innecesarias.
+Gráficos.
+Service worker.
+Speech.
+Estado.
+
+No sacrificar accesibilidad por rendimiento.
+
+MOTOR MATEMÁTICO
+
+La interfaz nunca debe depender directamente de una biblioteca específica.
+
+Crear o mantener una abstracción:
+
+MathEngine.
+
+Ejemplo:
+
+evaluate()
+
+solve()
+
+differentiate()
+
+integrate()
+
+limit()
+
+matrix()
+
+statistics()
+
+convert()
+
+graph()
+
+Si actualmente existen varias bibliotecas, centralizar la integración detrás del motor.
+
+No cambiar de biblioteca si la actual resuelve bien el problema.
+
+LECTURA MATEMÁTICA
+
+Debe existir una capa separada:
+
+MathSpeechFormatter.
+
+Ejemplos:
+
+x^2
+
+Debe leerse:
+
+“equis al cuadrado”
+
+x^3:
+
+“equis al cubo”
+
+x^5:
+
+“equis elevado a cinco”
+
+sqrt(25):
+
+“raíz cuadrada de veinticinco”
+
+sin(pi/2):
+
+“seno de pi dividido por dos”
+
+integrate(x^2,x):
+
+“integral de equis al cuadrado respecto de equis”
+
+No leer sintaxis de programación sin traducirla.
+
+ERRORES
+
+Nunca mostrar solo errores técnicos.
+
+No:
+
+“Unexpected token line 4”
+
+Sí:
+
+“No pude interpretar la expresión. Revisá el paréntesis después de seno.”
+
+Guardar detalle técnico solo para desarrollo.
+
+PRUEBAS
+
+Actualmente existen pruebas.
+
+No quiero que borres pruebas para hacerlas pasar.
+
+No quiero que cambies una expectativa correcta para ocultar un bug.
+
+Unitarias
+
+Todas deben pasar.
+
+Si existen 167 pruebas:
+
+Objetivo:
+167/167.
+
+Si se agregan nuevas:
+todas deben pasar.
+
+Navegador / E2E
+
+Actualmente se mencionaron 21.
+
+Objetivo:
+21/21.
+
+No des por terminado el trabajo con:
+
+18/21.
+
+Identificá las 3 fallas.
+
+Encontrá causa raíz.
+
+Arreglá una por una.
+
+Volvé a ejecutar todas.
+
+No arregles solo la prueba:
+arreglá el comportamiento real.
+
+MATRIZ DE NAVEGACIÓN A TESTEAR
+
+Probar sin mouse:
+
+Abrir página.
+
+Elegir herramienta.
+
+Entrar al campo.
+
+Escribir expresión.
+
+Escuchar expresión.
+
+Calcular.
+
+Escuchar resultado.
+
+Corregir error.
+
+Cambiar de herramienta.
+
+Volver.
+
+Verificar conservación de estado.
+
+Abrir historial.
+
+Recuperar cálculo.
+
+Volver a herramienta.
+
+Abrir configuración.
+
+Activar lector externo.
+
+Verificar que no haya doble voz.
+
+Cerrar configuración.
+
+Continuar trabajando.
+
+Todo mediante teclado.
+
+LECTORES DE PANTALLA
+
+Preparar la aplicación para:
+
+NVDA + Chrome.
+NVDA + Edge.
+JAWS + Chrome/Edge.
+VoiceOver + Safari.
+
+Si no podés ejecutar un lector real en el entorno automático:
+
+No inventes resultados.
+
+Marcá esas pruebas como:
+
+“Pendiente de validación manual con lector real”.
+
+Pero prepará un protocolo de prueba exacto.
+
+WCAG
+
+Objetivo:
+
+WCAG 2.2 AA.
+
+Verificar:
+
+Contraste.
+Focus visible.
+Orden.
+Labels.
+Inputs.
+Headings.
+Landmarks.
+Estado.
+Errores.
+Zoom 200%.
+Zoom 400%.
+Reflow.
+Teclado.
+RESPONSIVE
+
+Probar como mínimo:
+
+320 px.
+
+375 px.
+
+768 px.
+
+1024 px.
+
+Desktop amplio.
+
+No scroll horizontal global.
+
+Controles mínimos aproximados:
+44x44 px.
+
+COMPATIBILIDAD
+
+Probar:
+
+Chrome.
+
+Edge.
+
+Firefox.
+
+Safari cuando sea posible.
+
+Detectar capacidades.
+
+No asumir que Web Speech funciona igual en todos.
+
+PRIVACIDAD
+
+No exigir cuenta.
+
+No exigir registro.
+
+No enviar cálculos a servidores sin necesidad.
+
+No recopilar información innecesaria.
+
+ESTADO LOCAL Y GITHUB
+
+Actualmente existe una reorganización local no publicada.
+
+Antes de publicar:
+
+Asegurate de que el proyecto compile.
+Ejecutá unit tests.
+Ejecutá E2E.
+Verificá lint.
+Verificá build producción.
+Revisá cambios.
+Confirmá que no hay secretos.
+Confirmá que no hay archivos temporales.
+Confirmá que no se rompe la versión desplegada.
+
+No hagas push si las pruebas críticas siguen fallando.
+
+Cuando esté estable:
+
+Prepará commit claro.
+
+No mezcles cientos de cambios no relacionados en un commit si puede evitarse.
+
+NUEVA CLASIFICACIÓN DE TRABAJO
+
+No vuelvas a decir:
+
+“Estoy en fase 1”
+
+si las demás fases ya existen.
+
+Utilizá esta nomenclatura:
+
+FASE 1:
+Implementación / Verificación.
+
+FASE 2:
+Implementación / Verificación.
+
+FASE 3:
+Implementación / Verificación.
+
+FASE 4:
+Implementación / Verificación.
+
+FASE 5:
+Implementación / Verificación.
+
+Y después:
+
+FASE 6 — HARDENING Y QA FINAL.
+
+FASE 6 — HARDENING Y QA FINAL
+
+Una vez cerradas las 5 fases:
+
+Hacer una pasada transversal.
+
+Buscar:
+
+Regresiones.
+Problemas de accesibilidad.
+Estado perdido.
+Focus bugs.
+Race conditions.
+Speech overlap.
+Errores silenciosos.
+Funciones inaccesibles.
+Código muerto.
+Duplicación.
+Errores móviles.
+Problemas offline.
+Problemas PWA.
+Fallos de exportación.
+Inconsistencias matemáticas.
+
+Después ejecutar:
+
+Unit tests.
+Integration tests.
+E2E.
+Accessibility tests.
+Build.
+Lint.
+Typecheck.
+CRITERIO DE “TERMINADO”
+
+El proyecto solo puede declararse terminado cuando:
+
+Todas las funcionalidades críticas de las 5 fases existen.
+Unit tests pasan al 100%.
+E2E pasan al 100%.
+Build producción pasa.
+Typecheck pasa.
+Lint pasa.
+No hay errores críticos de consola.
+Navegación por teclado funciona.
+No existe doble voz.
+El foco es predecible.
+El estado por herramienta se conserva.
+La aplicación es usable a 200% y 400%.
+La versión móvil funciona.
+Offline funciona donde corresponde.
+Las exportaciones funcionan.
+El lector externo puede usarse.
+La voz propia puede desactivarse.
+Existe protocolo de prueba con NVDA/JAWS/VoiceOver.
+Los problemas conocidos están documentados.
+El estado del repositorio está limpio y preparado para publicar.
+FORMATO DE REPORTE
+
+Cada vez que termines un bloque importante, informame así:
+
+FASE:
+[Nombre]
+
+ESTADO:
+[Completada / Parcial / Rota]
+
+IMPLEMENTADO:
+
+...
+
+CORREGIDO:
+
+...
+
+PRUEBAS:
+
+Unitarias: X/X
+E2E: X/X
+Build: OK/FAIL
+Typecheck: OK/FAIL
+Lint: OK/FAIL
+
+PENDIENTE:
+
+...
+
+BLOQUEADORES:
+
+...
+
+No digas únicamente:
+
+“Todo funciona”.
+
+Quiero evidencia concreta.
+
+ORDEN DE EJECUCIÓN
+
+Trabajá exactamente en este orden:
+
+Auditoría.
+Arreglar tests actualmente fallidos.
+Cerrar accesibilidad de Fase 1.
+Verificar Fase 2.
+Verificar Fase 3.
+Verificar Fase 4.
+Verificar Fase 5.
+Ejecutar Fase 6 de hardening.
+Ejecutar suite completa.
+Revisar build de producción.
+Revisar cambios locales.
+Preparar publicación.
+
+No saltes entre fases sin razón.
+
+No agregues features nuevas mientras existan regresiones críticas.
+
+REGLA FINAL
+
+No quiero velocidad.
+
+Quiero estabilidad.
+
+No quiero que marques tareas como completas por existir código.
+
+Quiero comportamiento verificado.
+
+No quiero que reescribas todo el proyecto.
+
+Quiero que consolides lo que ya existe.
+
+No quiero una calculadora que “más o menos funciona con accesibilidad”.
+
+Quiero una aplicación matemática que una persona ciega pueda usar de forma independiente.
+
+Empezá auditando el estado actual del repositorio y continuá directamente con los problemas reales detectados.
+
+No me pidas confirmación entre fases salvo que exista un bloqueo que realmente requiera una decisión humana.

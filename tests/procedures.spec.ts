@@ -1,3 +1,4 @@
+import { openTool } from './navigation';
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFile } from 'node:fs/promises';
@@ -51,6 +52,7 @@ test('procedimiento leído, accesible, exportable y conservado en el historial',
   expect(text).toContain('Paso 3. Calcular el discriminante.');
   expect(text).toContain('Paso 6. Verificar');
   await page.reload();
+  await page.getByRole('link', { name: 'Historial', exact: true }).click();
   const history = page.locator('#history');
   await history.getByText('Procedimiento paso a paso (6 pasos)', { exact: true }).click();
   await expect(history.getByText('Calcular el discriminante.', { exact: true })).toBeVisible();
@@ -60,8 +62,8 @@ test('salto a intersección selecciona la curva y devuelve el foco al explorador
   page,
 }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Continuar sin guía' }).click();
-  await page.getByRole('link', { name: 'Gráficos', exact: true }).click();
+  await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
+  await openTool(page, 'Gráficos');
   await page.getByLabel('Funciones de x, una por línea (hasta 4)').fill('x\n-x');
   await page.getByRole('button', { name: 'Graficar funciones' }).click();
   await page.getByText('Puntos importantes y descripción textual', { exact: true }).click();

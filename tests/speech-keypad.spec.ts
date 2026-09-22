@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openKeypad, openTool } from './navigation';
 async function mockSpeech(page: Page) {
   await page.addInitScript(() => {
     const spoken: string[] = [];
@@ -20,7 +21,8 @@ const spoken = (page: Page) =>
   page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken);
 test('teclado completo, continuidad del resultado, borrar y memoria', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Continuar sin guía' }).click();
+  await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
+  await openKeypad(page);
   for (const key of ['Dos', 'Sumar', 'Tres', 'Igual, calcular'])
     await page.getByRole('button', { name: key, exact: true }).click();
   await expect(page.getByLabel('Resultado: 5', { exact: true })).toBeVisible();
@@ -33,6 +35,7 @@ test('teclado completo, continuidad del resultado, borrar y memoria', async ({ p
   await page.getByRole('button', { name: 'Recuperar memoria' }).click();
   await expect(page.getByLabel('Expresión matemática', { exact: true })).toHaveValue('(5)');
   await page.reload();
+  await openKeypad(page);
   await expect(page.locator('.memory-bar span')).toHaveText('M: 5');
   await page.getByRole('button', { name: 'Uno', exact: true }).click();
   await page.getByRole('button', { name: 'Dos', exact: true }).click();
@@ -45,6 +48,7 @@ test('hover anuncia, no repite al moverse dentro, foco anuncia y Escape cancela 
   await mockSpeech(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'Activar voz automática', exact: true }).click();
+  await openKeypad(page);
   const seven = page.getByRole('button', { name: 'Siete', exact: true });
   await seven.hover();
   await expect.poll(() => spoken(page)).toContain('Siete');
@@ -66,7 +70,8 @@ test('hover anuncia, no repite al moverse dentro, foco anuncia y Escape cancela 
 });
 test('formulario simbólico deriva e integra con explicación', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Continuar sin guía' }).click();
+  await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
+  await openTool(page, 'Álgebra y cálculo');
   await page.getByRole('combobox', { name: 'Operación simbólica' }).selectOption('diff');
   await page.getByRole('button', { name: 'Calcular operación', exact: true }).click();
   await expect(page.getByLabel('Resultado: 3*x^2', { exact: true })).toBeVisible();

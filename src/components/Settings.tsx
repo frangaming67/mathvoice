@@ -13,8 +13,10 @@ export function Settings({
   const update = <K extends keyof Preferences>(key: K, value: Preferences[K]) =>
     change({ ...p, [key]: value });
   return (
-    <details className="panel settings">
-      <summary>Configuración de voz y accesibilidad</summary>
+    <section className="panel settings" aria-labelledby="settings-title">
+      <h2 id="settings-title" tabIndex={-1}>
+        Configuración de voz y accesibilidad
+      </h2>
       <div className="settings-grid">
         <fieldset>
           <legend>Lectura por voz</legend>
@@ -197,6 +199,6 @@ export function Settings({
           </p>
         </fieldset>
       </div>
-    </details>
+    </section>
   );
 }

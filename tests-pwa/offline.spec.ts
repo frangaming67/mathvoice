@@ -1,3 +1,4 @@
+import { openTool } from '../tests/navigation';
 import { expect, test } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 
@@ -6,7 +7,7 @@ test('producción: recarga sin conexión, herramientas diferidas y cálculo simb
   context,
 }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Continuar sin guía' }).click();
+  await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
   await expect(page.getByText(/Aplicación preparada para usar sin conexión/)).toBeVisible({
     timeout: 30000,
   });
@@ -19,13 +20,14 @@ test('producción: recarga sin conexión, herramientas diferidas y cálculo simb
   await input.fill('2+2');
   await input.press('Enter');
   await expect(page.getByLabel('Resultado: 4', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Matrices', exact: true }).click();
+  await openTool(page, 'Matrices');
   await page.getByRole('button', { name: 'Calcular matriz' }).click();
   await expect(page.getByLabel('Resultado: -2', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Calculadora', exact: true }).click();
   await input.fill('diff(x^3,x)');
   await input.press('Enter');
   await expect(page.getByLabel('Resultado: 3*x^2', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Gráficos', exact: true }).click();
+  await openTool(page, 'Gráficos');
   await page.getByRole('button', { name: 'Graficar funciones' }).click();
   await expect(page.getByRole('button', { name: 'Explorar gráfico', exact: true })).toBeVisible();
   await context.setOffline(false);
@@ -35,7 +37,7 @@ test('actualización requiere acción y conserva historial al recargar', async (
   const original = await readFile('dist/sw.js', 'utf8');
   try {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Continuar sin guía' }).click();
+    await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
     await expect(page.getByText(/Aplicación preparada para usar sin conexión/)).toBeVisible({
       timeout: 30000,
     });
@@ -51,10 +53,11 @@ test('actualización requiere acción y conserva historial al recargar', async (
     const reload = page.waitForEvent('framenavigated', (frame) => frame === page.mainFrame());
     await update.click();
     await reload;
+    await page.getByRole('link', { name: 'Historial', exact: true }).click();
     await expect(
       page.getByRole('button', { name: 'Editar cálculo 2+2', exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Continuar sin guía' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Usar mi lector de pantalla' })).toHaveCount(0);
   } finally {
     await writeFile('dist/sw.js', original);
   }

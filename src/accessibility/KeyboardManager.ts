@@ -5,9 +5,13 @@ export function handleKeyboard(
     read: () => void;
     help: () => void;
     symbolic?: (operation: 'diff' | 'integrate' | 'limit') => void;
+    navigate?: (
+      target: 'basic' | 'tools' | 'result' | 'history' | 'graphs' | 'matrices' | 'dictation',
+    ) => void;
   },
 ) {
   if (event.key === 'Escape') actions.stop();
+  if (document.querySelector('dialog[open]')) return;
   if (event.key === 'F1') {
     event.preventDefault();
     actions.help();
@@ -20,6 +24,20 @@ export function handleKeyboard(
   // Do not move focus behind a modal dialog.
   if (document.querySelector('dialog[open]')) return;
   const key = event.key.toLowerCase();
+  const destinations = {
+    c: 'basic',
+    t: 'tools',
+    r: 'result',
+    h: 'history',
+    g: 'graphs',
+    m: 'matrices',
+    v: 'dictation',
+  } as const;
+  if (key in destinations && actions.navigate) {
+    event.preventDefault();
+    actions.navigate(destinations[key as keyof typeof destinations]);
+    return;
+  }
   const symbolic = { d: 'diff', i: 'integrate', l: 'limit' } as const;
   if (key in symbolic && actions.symbolic) {
     event.preventDefault();

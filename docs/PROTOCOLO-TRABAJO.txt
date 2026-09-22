@@ -1,0 +1,1283 @@
+# PROTOCOLO ESTRICTO DE TRABAJO PARA MATHVOICE
+
+A partir de este momento seguí ESTE ORDEN DE TRABAJO sin desviarte.
+
+Este protocolo tiene prioridad sobre cualquier tendencia a agregar funcionalidades nuevas, refactorizar innecesariamente o volver a fases que ya fueron implementadas.
+
+No quiero que trabajes simultáneamente en muchas áreas.
+
+Terminá, verificá y cerrá cada bloque antes de avanzar.
+
+---
+
+# REGLA 1 — NO EMPEZAR DE NUEVO
+
+Este proyecto YA tiene trabajo realizado.
+
+No reconstruyas MathVoice desde cero.
+
+No vuelvas a implementar una función que ya existe sin antes comprobar si realmente está rota.
+
+Antes de modificar algo:
+
+1. Inspeccioná lo existente.
+2. Determiná si funciona.
+3. Determiná qué problema tiene.
+4. Corregí únicamente lo necesario.
+5. Probalo.
+6. Continuá.
+
+La regla es:
+
+INSPECCIONAR → CORREGIR → PROBAR → CERRAR → CONTINUAR.
+
+Nunca:
+
+REHACER → REHACER → REHACER.
+
+---
+
+# REGLA 2 — ESTADO REAL DEL PROYECTO
+
+No confundas:
+
+“implementado”
+
+con:
+
+“terminado”.
+
+Usá solamente estos estados:
+
+COMPLETADA Y VERIFICADA
+
+IMPLEMENTADA PERO PENDIENTE DE VERIFICACIÓN
+
+INCOMPLETA
+
+ROTA
+
+NO IMPLEMENTADA
+
+Una funcionalidad no está terminada hasta que funciona y fue verificada.
+
+---
+
+# PASO 1 — AUDITORÍA GENERAL
+
+Antes de seguir programando:
+
+Revisá TODO el proyecto actual.
+
+Comprobá:
+
+* Código existente.
+* Componentes.
+* Herramientas matemáticas.
+* Arquitectura.
+* Accesibilidad.
+* Navegación.
+* Voz.
+* SpeechSynthesis.
+* Lectores de pantalla.
+* Atajos.
+* Estado de cada herramienta.
+* Historial.
+* Configuración.
+* Gráficos.
+* Sonificación.
+* PWA.
+* Offline.
+* Exportaciones.
+* Tests.
+* Build.
+* TypeScript.
+* Lint.
+* Estado de Git.
+* Diferencias entre versión local y versión publicada.
+
+Después clasificá cada parte.
+
+No modifiques código todavía si no entendés primero el estado real del proyecto.
+
+---
+
+# PASO 2 — ARREGLAR LO QUE YA ESTÁ FALLANDO
+
+Antes de agregar absolutamente nada nuevo:
+
+Ejecutá todas las pruebas actuales.
+
+Si existen:
+
+167 pruebas unitarias
+
+y:
+
+21 pruebas de navegador
+
+el objetivo inicial es:
+
+167/167 unitarias.
+
+21/21 navegador.
+
+Si actualmente están:
+
+167/167
+
+18/21
+
+entonces primero resolvé las 3 pruebas de navegador restantes.
+
+Orden:
+
+1. Identificar prueba fallida.
+2. Reproducir problema.
+3. Encontrar causa raíz.
+4. Corregir comportamiento real.
+5. Ejecutar esa prueba.
+6. Ejecutar pruebas relacionadas.
+7. Ejecutar suite completa.
+
+No cambies un test correcto para ocultar un bug.
+
+No elimines tests para obtener verde.
+
+---
+
+# PASO 3 — CERRAR LA BASE DE ACCESIBILIDAD
+
+Antes de seguir ampliando matemáticas, la experiencia base debe estar terminada.
+
+Comprobar:
+
+* Una herramienta visible por vez.
+* Menú de herramientas accesible.
+* Campo principal fácil de localizar.
+* Resultado inmediatamente después del formulario.
+* Teclado visual plegable.
+* Historial separado.
+* Configuración separada.
+* Estado independiente por herramienta.
+* Conservación de información al cambiar de herramienta.
+* Navegación completa por teclado.
+* HTML semántico.
+* Labels.
+* ARIA correcto.
+* Mensajes de estado.
+* Mensajes de error.
+* Gestión de foco.
+* Ayuda.
+* “¿Dónde estoy?”
+* Voz propia.
+* Opción “Usar mi lector de pantalla”.
+* Ausencia de doble voz.
+
+No avanzar mientras existan problemas importantes de navegación.
+
+---
+
+# PASO 4 — CERRAR EL SISTEMA DE TECLADO PARA PERSONAS CIEGAS
+
+Después de estabilizar la navegación base, terminar el sistema completo de teclado.
+
+Este bloque es prioritario porque MathVoice está diseñado para una persona ciega.
+
+Debe existir:
+
+MODO ESCRITURA.
+
+y:
+
+MODO TECLADO MATEMÁTICO.
+
+No mezclar ambos.
+
+---
+
+# PASO 4.1 — MODO ESCRITURA
+
+En modo escritura:
+
+Las teclas deben comportarse normalmente.
+
+Debe ser posible escribir:
+
+x^2 + 5*x - 3
+
+sin activar comandos accidentalmente.
+
+No interceptar letras y números mientras el usuario escribe en campos normales.
+
+---
+
+# PASO 4.2 — MODO TECLADO MATEMÁTICO
+
+Crear un modo especializado donde teclas y combinaciones ejecuten funciones matemáticas.
+
+Ejemplos:
+
+R:
+raíz.
+
+S:
+seno.
+
+C:
+coseno.
+
+T:
+tangente.
+
+D:
+derivada.
+
+I:
+integral.
+
+F:
+factorizar.
+
+Etcétera.
+
+Los comandos deben depender del contexto cuando corresponda.
+
+Por ejemplo:
+
+D dentro de cálculo puede significar derivada.
+
+D dentro de matrices puede significar determinante.
+
+La aplicación debe anunciar siempre el contexto actual.
+
+---
+
+# PASO 4.3 — ADMINISTRADOR CENTRAL DE ATAJOS
+
+Todos los shortcuts deben administrarse desde un único sistema.
+
+Por ejemplo:
+
+KeyboardCommandManager.
+
+No distribuir keydown listeners descontrolados por todos los componentes.
+
+Cada comando debe conocer:
+
+* Identificador.
+* Nombre.
+* Tecla.
+* Modificadores.
+* Categoría.
+* Contexto.
+* Acción.
+* Mensaje hablado.
+* Si puede personalizarse.
+
+---
+
+# PASO 4.4 — NO INTERFERIR CON EL LECTOR DE PANTALLA
+
+Antes de asignar combinaciones comprobar conflictos con:
+
+* NVDA.
+* JAWS.
+* VoiceOver.
+* Chrome.
+* Edge.
+* Firefox.
+* Safari.
+* Windows.
+* macOS.
+
+No capturar globalmente:
+
+Insert.
+
+Caps Lock.
+
+Modificadores de VoiceOver.
+
+Ni otros comandos reservados importantes.
+
+No usar role="application" globalmente solo para capturar teclado.
+
+---
+
+# PASO 4.5 — DESCUBRIMIENTO DE ATAJOS
+
+Una persona ciega NO debe necesitar memorizar los comandos antes de usar MathVoice.
+
+Implementar:
+
+“¿Qué hace esta tecla?”
+
+El usuario presiona una tecla.
+
+MathVoice anuncia su función.
+
+Sin ejecutarla.
+
+---
+
+# PASO 4.6 — MODO ENTRENAMIENTO
+
+Crear:
+
+“Practicar teclado”.
+
+En este modo ninguna tecla ejecuta operaciones.
+
+Solo se explica qué haría.
+
+Ejemplo:
+
+Usuario pulsa D.
+
+MathVoice:
+
+“D. Derivada.”
+
+Usuario pulsa Shift+D.
+
+MathVoice:
+
+“Shift D. Derivada de orden superior.”
+
+---
+
+# PASO 4.7 — REFERENCIA DE TECLADO
+
+Crear apartado:
+
+“Teclado y atajos”.
+
+Permitir:
+
+* Consultar atajos.
+* Escucharlos.
+* Buscar una función.
+* Buscar una tecla.
+* Buscar combinaciones.
+* Modificar atajos.
+* Restaurar valores originales.
+
+---
+
+# PASO 4.8 — PALETA DE COMANDOS
+
+Implementar una paleta de comandos accesible.
+
+El usuario debe poder escribir:
+
+integral
+
+derivada
+
+matriz
+
+determinante
+
+media
+
+convertir temperatura
+
+graficar
+
+y encontrar inmediatamente esa herramienta.
+
+Esto es fundamental porque los shortcuts deben ser opcionales.
+
+Nunca obligar al usuario a memorizar 100 teclas.
+
+---
+
+# PASO 4.9 — PERSONALIZACIÓN DEL TECLADO
+
+Permitir cambiar atajos.
+
+Detectar conflictos.
+
+Nunca reemplazar silenciosamente un comando.
+
+Permitir:
+
+Perfil simplificado.
+
+Perfil estándar.
+
+Perfil avanzado.
+
+Perfil personalizado.
+
+Guardar preferencias.
+
+Permitir restaurar configuración predeterminada.
+
+---
+
+# PASO 4.10 — ESTADO AUDIBLE
+
+Debe existir un comando que responda:
+
+“¿Dónde estoy?”
+
+Debe anunciar:
+
+* Herramienta.
+* Modo.
+* Campo.
+* Expresión.
+* Resultado disponible.
+* Error existente.
+* Estado del teclado visual.
+* Estado del modo matemático.
+
+Ejemplo:
+
+“Calculadora científica. Modo escritura. Campo expresión. Hay un resultado disponible. Teclado visual cerrado.”
+
+---
+
+# PASO 5 — VERIFICAR Y CERRAR FASE 1
+
+Una vez estabilizadas accesibilidad y teclado, cerrar completamente Fase 1.
+
+Comprobar:
+
+Calculadora básica.
+
+Calculadora científica.
+
+Trigonometría.
+
+Logaritmos.
+
+Potencias.
+
+Raíces.
+
+Fracciones.
+
+Modos angulares.
+
+Constantes.
+
+SpeechService.
+
+MathSpeechFormatter.
+
+Historial.
+
+Configuración.
+
+Estado por herramienta.
+
+Entrada mediante teclado.
+
+Lectura de expresión.
+
+Lectura de resultado.
+
+Errores hablados.
+
+No avanzar hasta que todo esto funcione.
+
+---
+
+# PASO 6 — VERIFICAR Y CERRAR FASE 2
+
+Revisar:
+
+Álgebra.
+
+Simplificación.
+
+Factorización.
+
+Expansión.
+
+Sustituciones.
+
+Ecuaciones.
+
+Desigualdades.
+
+Sistemas.
+
+Derivadas.
+
+Derivadas de orden superior.
+
+Derivadas parciales.
+
+Integrales indefinidas.
+
+Integrales definidas.
+
+Límites.
+
+Límites laterales.
+
+Explicaciones.
+
+Procedimientos.
+
+No inventar pasos matemáticos.
+
+Cada función debe funcionar también:
+
+* Con teclado.
+* Con voz.
+* Con lector de pantalla.
+* Sin mouse.
+
+Después ejecutar tests.
+
+Solo entonces cerrar Fase 2.
+
+---
+
+# PASO 7 — VERIFICAR Y CERRAR FASE 3
+
+Revisar:
+
+Matrices.
+
+Vectores.
+
+Complejos.
+
+Estadística.
+
+Probabilidad.
+
+Para matrices verificar especialmente navegación por teclado.
+
+Flechas:
+
+Moverse entre celdas.
+
+La aplicación debe anunciar:
+
+“Fila 2, columna 3, valor 5.”
+
+Verificar:
+
+Determinante.
+
+Inversa.
+
+Rango.
+
+Traza.
+
+Transpuesta.
+
+Productos.
+
+Sistemas.
+
+Autovalores y autovectores si están soportados.
+
+Después:
+
+Vectores.
+
+Complejos.
+
+Estadística.
+
+Probabilidad.
+
+Ejecutar tests.
+
+Cerrar Fase 3.
+
+---
+
+# PASO 8 — VERIFICAR Y CERRAR FASE 4
+
+Revisar gráficos.
+
+Nunca evaluar únicamente si “se ve bien”.
+
+Recordá:
+
+El usuario puede ser completamente ciego.
+
+Comprobar:
+
+* Introducción de función.
+* Creación de gráfico.
+* Exploración mediante teclado.
+* Lectura de coordenadas.
+* Cambio de paso.
+* Ceros.
+* Máximos.
+* Mínimos.
+* Intersecciones.
+* Aproximaciones.
+* Varias funciones.
+* Sonificación.
+
+El gráfico debe tener una representación textual equivalente.
+
+Sonificación:
+
+Debe poder:
+
+* Iniciarse.
+* Pausarse.
+* Continuarse.
+* Detenerse.
+
+No permitir audio incontrolable.
+
+Después ejecutar tests.
+
+Cerrar Fase 4.
+
+---
+
+# PASO 9 — VERIFICAR Y CERRAR FASE 5
+
+Revisar:
+
+Dictado.
+
+Conversores.
+
+Bases numéricas.
+
+Exportaciones.
+
+PWA.
+
+Offline.
+
+Optimización.
+
+---
+
+# PASO 9.1 — DICTADO
+
+Flujo:
+
+Escuchar.
+
+Interpretar.
+
+Mostrar interpretación.
+
+Decir:
+
+“Entendí…”
+
+Confirmar.
+
+Editar.
+
+Cancelar.
+
+No ejecutar automáticamente expresiones ambiguas.
+
+---
+
+# PASO 9.2 — CONVERSORES
+
+Verificar todas las categorías.
+
+Longitud.
+
+Masa.
+
+Temperatura.
+
+Velocidad.
+
+Área.
+
+Volumen.
+
+Presión.
+
+Energía.
+
+Potencia.
+
+Datos.
+
+Ángulos.
+
+---
+
+# PASO 9.3 — BASES NUMÉRICAS
+
+Binario.
+
+Octal.
+
+Decimal.
+
+Hexadecimal.
+
+AND.
+
+OR.
+
+XOR.
+
+NOT.
+
+Shifts.
+
+---
+
+# PASO 9.4 — EXPORTACIONES
+
+TXT.
+
+CSV.
+
+JSON.
+
+Comprobar archivos generados y contenido.
+
+---
+
+# PASO 9.5 — PWA Y OFFLINE
+
+Comprobar:
+
+Manifest.
+
+Service Worker.
+
+Caché.
+
+Actualizaciones.
+
+Instalación.
+
+Inicio offline.
+
+Herramientas disponibles offline.
+
+No romper actualizaciones mediante cache antiguo.
+
+---
+
+# PASO 10 — FASE 6: HARDENING GENERAL
+
+Solo después de cerrar 1–5 empezar Fase 6.
+
+No agregar grandes features nuevas.
+
+Buscar problemas transversales.
+
+Comprobar:
+
+* Regresiones.
+* Código muerto.
+* Errores.
+* Race conditions.
+* Doble voz.
+* Fugas de listeners.
+* Focus incorrecto.
+* Estados perdidos.
+* Problemas en historial.
+* Problemas en shortcuts.
+* Colisiones de teclado.
+* Errores matemáticos.
+* Problemas de caché.
+* Problemas móviles.
+* Performance.
+* Accesibilidad.
+
+Corregir uno por uno.
+
+---
+
+# PASO 11 — PRUEBAS AUTOMÁTICAS COMPLETAS
+
+Ejecutar TODO.
+
+Unit tests.
+
+Integration tests.
+
+E2E.
+
+Accessibility tests.
+
+TypeScript.
+
+Lint.
+
+Build producción.
+
+No ejecutar solamente los tests modificados.
+
+Al final ejecutar la suite completa.
+
+Objetivo:
+
+100% de tests críticos pasando.
+
+---
+
+# PASO 12 — PRUEBA COMPLETA SOLO CON TECLADO
+
+Realizar el recorrido completo sin mouse.
+
+1. Abrir MathVoice.
+2. Seleccionar herramienta.
+3. Escribir expresión.
+4. Revisarla.
+5. Calcular.
+6. Escuchar resultado.
+7. Modificar expresión.
+8. Cambiar herramienta.
+9. Volver.
+10. Verificar estado.
+11. Abrir historial.
+12. Recuperar cálculo.
+13. Abrir configuración.
+14. Cambiar voz.
+15. Activar lector externo.
+16. Comprobar ausencia de doble voz.
+17. Usar modo teclado matemático.
+18. Consultar un shortcut.
+19. Usar paleta de comandos.
+20. Ir a otra herramienta.
+21. Volver al resultado.
+
+Todo debe funcionar sin mouse.
+
+---
+
+# PASO 13 — SIMULACIÓN SIN MIRAR LA PANTALLA
+
+Realizar una revisión comportándose como si no existiera interfaz visual.
+
+No depender de:
+
+Colores.
+
+Posición visual.
+
+Iconos.
+
+Gráficos.
+
+Animaciones.
+
+Mouse.
+
+Preguntarse constantemente:
+
+“¿Cómo sabría una persona ciega que esto existe?”
+
+“¿Cómo sabría dónde está?”
+
+“¿Cómo sabría qué ocurrió?”
+
+“¿Cómo vuelve atrás?”
+
+“¿Cómo corrige un error?”
+
+“¿Cómo escucha nuevamente la información?”
+
+Si alguna respuesta depende de mirar la pantalla, existe un problema.
+
+---
+
+# PASO 14 — VALIDACIÓN CON LECTORES DE PANTALLA
+
+Preparar y, cuando el entorno lo permita, realizar pruebas con:
+
+NVDA + Chrome.
+
+NVDA + Edge.
+
+JAWS + Chrome/Edge.
+
+VoiceOver + Safari.
+
+Si no podés ejecutar alguno:
+
+NO digas que fue probado.
+
+Marcá:
+
+“Pendiente de validación manual”.
+
+Crear protocolo exacto para que una persona lo pruebe.
+
+---
+
+# PASO 15 — RESPONSIVE Y BAJA VISIÓN
+
+Verificar:
+
+320 px.
+
+375 px.
+
+768 px.
+
+1024 px.
+
+Desktop.
+
+Zoom:
+
+200%.
+
+400%.
+
+Modos:
+
+Claro.
+
+Oscuro.
+
+Alto contraste.
+
+Controles grandes.
+
+Nada importante debe desaparecer al ampliar.
+
+---
+
+# PASO 16 — AUDITORÍA FINAL DEL REPOSITORIO
+
+Antes de publicar:
+
+Ejecutar:
+
+git status.
+
+Revisar cambios.
+
+Eliminar archivos temporales.
+
+No incluir secretos.
+
+No incluir credenciales.
+
+No incluir basura de desarrollo.
+
+Verificar .gitignore.
+
+Verificar producción.
+
+Verificar variables de entorno.
+
+---
+
+# PASO 17 — BUILD DE PRODUCCIÓN
+
+Ejecutar build real.
+
+No asumir que dev mode garantiza producción.
+
+Debe completar:
+
+Typecheck.
+
+Lint.
+
+Build.
+
+Tests.
+
+Sin errores críticos.
+
+---
+
+# PASO 18 — REVISIÓN FINAL ANTES DE GITHUB
+
+Antes del push confirmar:
+
+* Tests unitarios OK.
+* Tests E2E OK.
+* Build OK.
+* TypeScript OK.
+* Lint OK.
+* Accesibilidad automática OK.
+* Navegación por teclado OK.
+* Voz OK.
+* Modo lector de pantalla OK.
+* Shortcuts OK.
+* Historial OK.
+* Estado por herramienta OK.
+* PWA OK.
+* Offline OK.
+* Exportaciones OK.
+
+Solo entonces preparar publicación.
+
+---
+
+# PASO 19 — GITHUB
+
+Una vez estable:
+
+Preparar commits comprensibles.
+
+No hacer un commit gigantesco si los cambios pueden organizarse de manera segura.
+
+Usar mensajes descriptivos.
+
+Ejemplos:
+
+fix: improve accessible focus navigation
+
+feat: add keyboard command system
+
+fix: prevent speech synthesis with external screen reader mode
+
+test: add keyboard accessibility coverage
+
+Después verificar nuevamente el estado del repositorio.
+
+---
+
+# PASO 20 — REPORTE FINAL
+
+Al terminar informarme exactamente:
+
+FASE 1:
+Estado.
+
+FASE 2:
+Estado.
+
+FASE 3:
+Estado.
+
+FASE 4:
+Estado.
+
+FASE 5:
+Estado.
+
+FASE 6:
+Estado.
+
+TESTS UNITARIOS:
+X/X.
+
+TESTS E2E:
+X/X.
+
+ACCESSIBILITY TESTS:
+X/X.
+
+BUILD:
+OK / FAIL.
+
+TYPECHECK:
+OK / FAIL.
+
+LINT:
+OK / FAIL.
+
+GITHUB:
+Publicado / pendiente.
+
+VALIDACIÓN NVDA:
+Realizada / pendiente.
+
+VALIDACIÓN JAWS:
+Realizada / pendiente.
+
+VALIDACIÓN VOICEOVER:
+Realizada / pendiente.
+
+PROBLEMAS CONOCIDOS:
+lista concreta.
+
+No uses frases como:
+
+“prácticamente terminado”.
+
+“casi todo funciona”.
+
+“debería funcionar”.
+
+Quiero información verificable.
+
+---
+
+# SI TE DESVIÁS DEL PLAN
+
+Si durante el trabajo encontrás una idea nueva que sería buena:
+
+NO la implementes inmediatamente.
+
+Registrala como:
+
+“Mejora futura”.
+
+Continuá con la tarea actual.
+
+Las únicas excepciones son problemas que:
+
+* Bloqueen la fase actual.
+* Generen pérdida de datos.
+* Rompan accesibilidad.
+* Rompan cálculos.
+* Sean problemas de seguridad.
+* Impidan build o tests.
+
+---
+
+# SI APARECE UN BUG DE OTRA FASE
+
+Si mientras verificás una fase encontrás un bug grave en otra:
+
+Registralo.
+
+Si bloquea lo que estás haciendo:
+corregilo.
+
+Si no bloquea:
+guardalo para cuando corresponda esa fase.
+
+No empieces a saltar permanentemente entre módulos.
+
+---
+
+# SI UNA PRUEBA FALLA
+
+No continúes acumulando trabajo encima.
+
+Primero determiná:
+
+¿Es regresión?
+
+¿Es bug?
+
+¿Es test incorrecto?
+
+Corregí la causa.
+
+Repetí pruebas.
+
+Después continuá.
+
+---
+
+# SI UNA FUNCIÓN YA EXISTE
+
+Antes de reemplazarla preguntate:
+
+1. ¿Está realmente rota?
+2. ¿Puede corregirse?
+3. ¿La nueva versión rompería compatibilidad?
+4. ¿Hay tests?
+5. ¿Afecta accesibilidad?
+6. ¿Afecta otros módulos?
+
+Preferir mejorar el código existente antes que reescribir sin necesidad.
+
+---
+
+# PRIORIDAD ABSOLUTA DEL PROYECTO
+
+El orden de prioridades es:
+
+1. CORRECCIÓN MATEMÁTICA.
+2. ACCESIBILIDAD PARA PERSONAS CIEGAS.
+3. NAVEGACIÓN POR TECLADO.
+4. ESTABILIDAD.
+5. CLARIDAD DE VOZ Y RESULTADOS.
+6. COMPATIBILIDAD CON LECTORES DE PANTALLA.
+7. TESTS.
+8. RENDIMIENTO.
+9. APARIENCIA VISUAL.
+10. FUNCIONES EXTRA.
+
+Nunca sacrifiques los primeros puntos para mejorar los últimos.
+
+---
+
+# REGLA DE ACCESIBILIDAD ABSOLUTA
+
+Para cada función nueva o existente hacé esta prueba mental:
+
+Una persona completamente ciega abre MathVoice sin ayuda.
+
+¿Puede encontrar esta función?
+
+¿Puede saber cómo usarla?
+
+¿Puede introducir los datos?
+
+¿Puede saber si cometió un error?
+
+¿Puede corregirlo?
+
+¿Puede ejecutar el cálculo?
+
+¿Puede escuchar el resultado?
+
+¿Puede repetir el resultado?
+
+¿Puede entender qué significa?
+
+¿Puede volver atrás?
+
+¿Puede cambiar de herramienta?
+
+¿Puede hacerlo únicamente con teclado?
+
+Si cualquiera de esas respuestas es NO:
+
+LA FUNCIÓN TODAVÍA NO ESTÁ TERMINADA.
+
+---
+
+# ORDEN RESUMIDO OBLIGATORIO
+
+El orden definitivo de ejecución es:
+
+1. AUDITAR EL PROYECTO ACTUAL.
+2. EJECUTAR TESTS ACTUALES.
+3. ARREGLAR TODOS LOS TESTS FALLIDOS.
+4. ESTABILIZAR ACCESIBILIDAD BASE.
+5. TERMINAR SISTEMA COMPLETO DE TECLADO Y ATAJOS.
+6. VERIFICAR Y CERRAR FASE 1.
+7. VERIFICAR Y CERRAR FASE 2.
+8. VERIFICAR Y CERRAR FASE 3.
+9. VERIFICAR Y CERRAR FASE 4.
+10. VERIFICAR Y CERRAR FASE 5.
+11. EJECUTAR FASE 6 DE HARDENING.
+12. EJECUTAR TODOS LOS TESTS.
+13. HACER PRUEBA SOLO CON TECLADO.
+14. HACER AUDITORÍA DE ACCESIBILIDAD.
+15. VALIDAR LECTORES DE PANTALLA.
+16. PROBAR RESPONSIVE Y ZOOM.
+17. BUILD DE PRODUCCIÓN.
+18. AUDITAR REPOSITORIO.
+19. PREPARAR GITHUB.
+20. PUBLICAR.
+21. GENERAR REPORTE FINAL.
+
+NO CAMBIES ESTE ORDEN salvo que aparezca un bloqueo técnico real que haga imposible continuar.
+
+Si eso ocurre, explicá exactamente:
+
+* Qué está bloqueado.
+* Por qué.
+* Qué evidencia existe.
+* Qué necesitás hacer.
+* Qué tareas pueden continuar mientras tanto.
+
+No uses el bloqueo como excusa para empezar otra reestructuración completa.
+
+El objetivo es TERMINAR MathVoice, no mantenerlo eternamente en desarrollo.

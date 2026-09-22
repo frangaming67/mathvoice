@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense } from 'react';
+import type { ToolId } from './toolCatalog';
 import type { AngleMode } from '../types';
 const MatrixCalculator = lazy(() =>
   import('./MatrixCalculator').then((m) => ({ default: m.MatrixCalculator })),
@@ -16,6 +17,8 @@ const Variables = lazy(() => import('./Variables').then((m) => ({ default: m.Var
 const Converters = lazy(() => import('./Converters').then((m) => ({ default: m.Converters })));
 const Graphs = lazy(() => import('./Graphs').then((m) => ({ default: m.Graphs })));
 type Props = {
+  active: ToolId | null;
+  visited: ToolId[];
   calculate: (expression: string) => void;
   busy: boolean;
   variables: Record<string, number>;
@@ -35,40 +38,19 @@ const labels = [
   ['graphs', 'Gráficos'],
 ];
 export function FeatureHub(props: Props) {
-  const [opened, setOpened] = useState<Record<string, boolean>>({});
   return (
     <>
-      <nav className="feature-nav" aria-label="Herramientas avanzadas">
-        {labels.map(([id, label]) => (
-          <a
-            key={id}
-            href={`#${id}`}
-            onClick={() => {
-              const target = document.getElementById(id) as HTMLDetailsElement | null;
-              if (target) {
-                target.open = true;
-                target.querySelector('summary')?.focus();
-              }
-            }}
-          >
-            {label}
-          </a>
-        ))}
-      </nav>
       {labels.map(([id, label]) => (
-        <details
+        <div
           key={id}
           id={id}
           className="panel feature-section"
-          onToggle={(e) => {
-            const open = e.currentTarget.open;
-            setOpened((previous) => ({ ...previous, [id]: open }));
-          }}
+          hidden={props.active !== id}
+          aria-label={label}
         >
-          <summary>{label}</summary>
-          {opened[id] && (
+          {props.visited.includes(id as ToolId) && (
             <div>
-              <Suspense fallback={<p>Cargando herramienta…</p>}>
+              <Suspense fallback={<p role="status">Cargando herramienta…</p>}>
                 {id === 'matrices' ? (
                   <MatrixCalculator calculate={props.calculate} busy={props.busy} />
                 ) : id === 'vectors' ? (
@@ -81,6 +63,7 @@ export function FeatureHub(props: Props) {
                   <Converters calculate={props.calculate} busy={props.busy} />
                 ) : id === 'graphs' ? (
                   <Graphs
+                    active={props.active === 'graphs'}
                     key={props.graphRequest?.id ?? 'initial'}
                     initialExpression={props.graphRequest?.expression}
                     variables={props.variables}
@@ -98,7 +81,7 @@ export function FeatureHub(props: Props) {
               </Suspense>
             </div>
           )}
-        </details>
+        </div>
       ))}
     </>
   );

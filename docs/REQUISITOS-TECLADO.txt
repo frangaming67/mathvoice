@@ -1,0 +1,1225 @@
+SISTEMA COMPLETO DE TECLADO MATEMÁTICO ACCESIBLE
+
+La aplicación debe incorporar un sistema avanzado de control mediante teclado diseñado específicamente para una persona ciega.
+
+El objetivo es que prácticamente todas las funciones matemáticas importantes puedan ejecutarse sin mouse y sin tener que recorrer visualmente botones.
+
+Debe existir un apartado específico llamado:
+
+“Teclado y atajos”
+
+Este apartado debe permitir:
+
+Consultar todos los atajos.
+Escuchar todos los atajos.
+Buscar una función.
+Buscar qué hace una tecla.
+Personalizar teclas.
+Restaurar configuración predeterminada.
+Activar o desactivar el modo de teclado matemático.
+Practicar los atajos sin ejecutar operaciones.
+Crear combinaciones personalizadas.
+DOS MODOS DE TECLADO
+
+Implementar claramente dos modos:
+
+1. MODO ESCRITURA
+
+Es el modo normal.
+
+Las teclas sirven para escribir expresiones.
+
+Ejemplo:
+
+x^2 + 5*x - 3
+
+Los números y letras deben escribirse normalmente.
+
+No interceptar innecesariamente:
+
+Letras.
+Números.
+Espacio.
+Backspace.
+Delete.
+Flechas.
+Home.
+End.
+
+cuando el usuario está escribiendo dentro de un campo.
+
+2. MODO TECLADO MATEMÁTICO
+
+Crear un modo especial donde las teclas físicas funcionan como comandos matemáticos.
+
+Debe poder activarse y desactivarse fácilmente.
+
+Cuando se active, anunciar por voz:
+
+“Modo teclado matemático activado.”
+
+Cuando se desactive:
+
+“Modo escritura activado.”
+
+Debe existir siempre una forma sencilla de saber qué modo está activo.
+
+El estado también debe estar disponible para lectores de pantalla mediante ARIA.
+
+SEGURIDAD DEL MODO TECLADO
+
+Nunca secuestrar todas las teclas permanentemente.
+
+El modo matemático debe funcionar únicamente cuando:
+
+Está activado explícitamente.
+El foco está dentro del área de trabajo de MathVoice.
+El usuario no está escribiendo en un input o textarea, salvo combinaciones específicas.
+
+No interferir con:
+
+NVDA.
+JAWS.
+VoiceOver.
+Navegador.
+Sistema operativo.
+
+No sobrescribir atajos importantes como:
+
+Ctrl + L
+Ctrl + T
+Ctrl + W
+Ctrl + R del navegador
+Alt + F4
+Ctrl + Shift + T
+Ctrl + Tab
+Alt + Tab
+
+Tener especial cuidado con combinaciones utilizadas por lectores de pantalla.
+
+MAPA DE TECLAS
+
+Crear un sistema centralizado:
+
+KeyboardCommandManager
+
+No distribuir listeners independientes por todos los componentes.
+
+Cada comando debe tener:
+
+id
+nombre
+descripción
+tecla
+combinación
+categoría
+herramienta
+acción
+mensajeHablado
+personalizable
+contexto
+
+Ejemplo conceptual:
+
+{
+id: "square-root",
+name: "Raíz cuadrada",
+shortcut: "R",
+category: "cientifica",
+spokenLabel: "Raíz cuadrada"
+}
+
+TECLAS NUMÉRICAS
+
+En modo matemático:
+
+0 a 9:
+Insertar números.
+
+Punto:
+Separador decimal.
+
+Coma:
+Separador cuando corresponda.
+
+Backspace:
+Borrar último elemento.
+
+Delete:
+Borrar elemento seleccionado.
+
+Enter:
+Calcular.
+
+Escape:
+Detener voz / cancelar acción actual.
+
+OPERACIONES BÁSICAS
+
+Asignar accesos rápidos fáciles de recordar.
+
++:
+Suma.
+
+-:
+Resta.
+
+*:
+Multiplicación.
+
+/:
+División.
+
+%:
+Porcentaje.
+
+(:
+Abrir paréntesis.
+
+):
+Cerrar paréntesis.
+
+=:
+Calcular o insertar igualdad dependiendo del contexto.
+
+POTENCIAS Y RAÍCES
+
+Ejemplo de mapeo:
+
+Q:
+Cuadrado.
+
+Shift + Q:
+Cubo.
+
+P:
+Potencia.
+
+R:
+Raíz cuadrada.
+
+Shift + R:
+Raíz cúbica.
+
+Alt + R:
+Raíz de índice n.
+
+La aplicación debe anunciar:
+
+“Raíz cuadrada insertada.”
+
+o:
+
+“Potencia insertada. Escriba el exponente.”
+
+TRIGONOMETRÍA
+
+Ejemplo:
+
+S:
+Seno.
+
+C:
+Coseno.
+
+T:
+Tangente.
+
+Shift + S:
+Arcoseno.
+
+Shift + C:
+Arcocoseno.
+
+Shift + T:
+Arcotangente.
+
+Alt + S:
+Seno hiperbólico.
+
+Alt + C:
+Coseno hiperbólico.
+
+Alt + T:
+Tangente hiperbólica.
+
+El usuario debe poder cambiar estos atajos.
+
+LOGARITMOS
+
+L:
+Logaritmo base diez.
+
+Shift + L:
+Logaritmo natural.
+
+Alt + L:
+Logaritmo de base personalizada.
+
+E:
+Exponencial.
+
+CÁLCULO
+
+Crear accesos rápidos específicos.
+
+D:
+Derivada.
+
+Shift + D:
+Derivada de orden superior.
+
+Alt + D:
+Derivada parcial.
+
+I:
+Integral indefinida.
+
+Shift + I:
+Integral definida.
+
+Alt + I:
+Integral múltiple si está soportada.
+
+M:
+Límite.
+
+Shift + M:
+Límite por izquierda.
+
+Alt + M:
+Límite por derecha.
+
+Cuando se pulse una función que requiere información adicional, no ejecutarla ciegamente.
+
+Ejemplo:
+
+Usuario pulsa I.
+
+La aplicación dice:
+
+“Integral. Escriba la función.”
+
+Después:
+
+“Variable de integración.”
+
+Después, si corresponde:
+
+“Límite inferior.”
+
+“Límite superior.”
+
+ÁLGEBRA
+
+F:
+Factorizar.
+
+Shift + F:
+Expandir.
+
+A:
+Simplificar.
+
+Shift + A:
+Sustituir variable.
+
+O:
+Resolver ecuación.
+
+Shift + O:
+Resolver sistema.
+
+MATRICES
+
+Crear una capa específica para matrices.
+
+Ejemplo:
+
+Alt + M:
+Abrir herramienta matrices, salvo conflicto con límites.
+
+Una vez dentro de Matrices:
+
+N:
+Nueva matriz.
+
+A:
+Sumar matrices.
+
+S:
+Restar matrices.
+
+M:
+Multiplicar matrices.
+
+T:
+Transponer.
+
+D:
+Determinante.
+
+I:
+Inversa.
+
+R:
+Rango.
+
+V:
+Autovalores.
+
+Shift + V:
+Autovectores.
+
+Las teclas deben cambiar de significado según la herramienta activa.
+
+El sistema debe anunciar el contexto.
+
+Ejemplo:
+
+“Contexto: matrices.”
+
+NAVEGACIÓN EN MATRICES
+
+Flecha arriba:
+Fila anterior.
+
+Flecha abajo:
+Fila siguiente.
+
+Flecha izquierda:
+Columna anterior.
+
+Flecha derecha:
+Columna siguiente.
+
+Home:
+Primera columna.
+
+End:
+Última columna.
+
+Ctrl + Home:
+Primera celda.
+
+Ctrl + End:
+Última celda.
+
+Al cambiar:
+
+“Fila 2, columna 3, valor 7.”
+
+VECTORES
+
+Dentro de la herramienta Vectores:
+
+N:
+Norma.
+
+D:
+Producto punto.
+
+C:
+Producto cruz.
+
+A:
+Ángulo.
+
+R:
+Normalizar.
+
+ESTADÍSTICA
+
+Dentro de Estadística:
+
+M:
+Media.
+
+E:
+Mediana.
+
+O:
+Moda.
+
+D:
+Desviación estándar.
+
+V:
+Varianza.
+
+Q:
+Cuartiles.
+
+P:
+Percentiles.
+
+C:
+Correlación.
+
+R:
+Regresión.
+
+PROBABILIDAD
+
+Dentro de Probabilidad:
+
+F:
+Factorial.
+
+C:
+Combinaciones.
+
+P:
+Permutaciones.
+
+B:
+Binomial.
+
+N:
+Normal.
+
+O:
+Poisson.
+
+NÚMEROS COMPLEJOS
+
+Dentro de Complejos:
+
+M:
+Módulo.
+
+A:
+Argumento.
+
+C:
+Conjugado.
+
+P:
+Forma polar.
+
+R:
+Forma rectangular.
+
+CONVERSORES
+
+Dentro de Conversión:
+
+L:
+Longitud.
+
+M:
+Masa.
+
+T:
+Temperatura.
+
+V:
+Velocidad.
+
+E:
+Energía.
+
+P:
+Presión.
+
+D:
+Datos digitales.
+
+A:
+Ángulos.
+
+GRÁFICOS
+
+Crear navegación completamente accesible.
+
+G:
+Abrir gráfico.
+
+Dentro del gráfico:
+
+Flecha izquierda:
+Moverse hacia valores menores de X.
+
+Flecha derecha:
+Moverse hacia valores mayores de X.
+
+Flecha arriba:
+Aumentar paso.
+
+Flecha abajo:
+Reducir paso.
+
+Home:
+Inicio del intervalo.
+
+End:
+Final del intervalo.
+
+Z:
+Buscar cero cercano.
+
+M:
+Buscar mínimo cercano.
+
+Shift + M:
+Buscar máximo cercano.
+
+I:
+Buscar intersección.
+
+S:
+Iniciar sonificación.
+
+Espacio:
+Pausar/reanudar sonificación.
+
+Escape:
+Detener.
+
+En cada punto decir:
+
+“X 2 coma 5. Y 4 coma 73.”
+
+CAMBIO ENTRE HERRAMIENTAS
+
+Debe existir navegación rápida entre herramientas.
+
+No depender exclusivamente de Tab.
+
+Crear una combinación para abrir:
+
+“Selector rápido de herramientas”.
+
+Al abrirlo debe anunciar:
+
+“Selector de herramientas. Escriba parte del nombre de una herramienta.”
+
+Ejemplo:
+
+El usuario escribe:
+
+inte
+
+Resultado:
+
+“Integral.”
+
+Enter abre la herramienta.
+
+Debe funcionar parecido a una paleta de comandos.
+
+PALETA DE COMANDOS
+
+Crear una función extremadamente importante:
+
+“Paleta de comandos”.
+
+Desde allí una persona ciega puede escribir el nombre de cualquier función.
+
+Ejemplos:
+
+“derivada”
+
+“determinante”
+
+“media”
+
+“integral”
+
+“convertir temperatura”
+
+“resolver ecuación”
+
+y ejecutar la herramienta correspondiente.
+
+La búsqueda debe tolerar términos parciales.
+
+Debe anunciar:
+
+“N resultados.”
+
+Y permitir navegar con flechas.
+
+Esto sirve como alternativa cuando el usuario no recuerda un atajo.
+
+¿QUÉ HACE ESTA TECLA?
+
+Crear una función:
+
+“Identificar tecla”.
+
+Cuando esté activa:
+
+Al presionar cualquier tecla o combinación NO ejecutar nada.
+
+Solo anunciar su función.
+
+Ejemplo:
+
+Usuario pulsa:
+
+Shift + D
+
+La página dice:
+
+“Shift D. Derivada de orden superior.”
+
+Usuario pulsa:
+
+Ctrl + H
+
+Dice:
+
+“Control H. Abrir historial.”
+
+Este modo debe poder cerrarse con Escape.
+
+MODO ENTRENAMIENTO
+
+Crear:
+
+“Practicar teclado”.
+
+Este modo es esencial.
+
+Mientras está activo:
+
+No ejecutar cálculos.
+No modificar expresiones.
+No cambiar de herramienta.
+Simplemente anunciar qué haría cada tecla.
+
+Ejemplo:
+
+“Tecla R. Raíz cuadrada.”
+
+“Shift R. Raíz cúbica.”
+
+“Alt R. Raíz de índice personalizado.”
+
+Debe existir también una opción:
+
+“Practicar por categoría”.
+
+Categorías:
+
+Básica.
+Científica.
+Álgebra.
+Cálculo.
+Matrices.
+Estadística.
+Gráficos.
+LISTADO AUDIBLE DE ATAJOS
+
+Agregar opción:
+
+“Escuchar atajos”.
+
+El usuario puede elegir una categoría.
+
+Ejemplo:
+
+“Cálculo.”
+
+La aplicación dice:
+
+“D, derivada.
+Shift D, derivada de orden superior.
+I, integral.
+Shift I, integral definida.
+M, límite.”
+
+Permitir:
+
+Pausar.
+Continuar.
+Anterior.
+Siguiente.
+Detener.
+
+BUSCAR ATAJO POR FUNCIÓN
+
+Campo:
+
+“Buscar función”.
+
+Ejemplo:
+
+Usuario escribe:
+
+“integral”
+
+La aplicación debe responder:
+
+“Integral indefinida: tecla I en modo cálculo.”
+
+“Integral definida: Shift I.”
+
+BUSCAR FUNCIÓN DE UNA TECLA
+
+También debe funcionar al revés.
+
+Campo:
+
+“Buscar tecla”.
+
+Ejemplo:
+
+Usuario introduce:
+
+Shift + D
+
+Resultado:
+
+“Derivada de orden superior.”
+
+PERSONALIZACIÓN
+
+Permitir cambiar cualquier atajo configurable.
+
+Ejemplo:
+
+Función:
+“Integral”.
+
+Atajo actual:
+I.
+
+Botón:
+“Cambiar”.
+
+La página dice:
+
+“Presione la nueva combinación.”
+
+El usuario pulsa:
+
+Alt + I.
+
+La página debe verificar conflictos.
+
+Si ya existe:
+
+“Alt I ya está asignado a integral múltiple. ¿Desea reemplazarlo?”
+
+Nunca reemplazar silenciosamente otro comando.
+
+PERFILES DE TECLADO
+
+Permitir:
+
+Perfil estándar.
+
+Perfil simplificado.
+
+Perfil avanzado.
+
+Perfil personalizado.
+
+Simplificado
+
+Pocos comandos principales.
+
+Estándar
+
+Funciones frecuentes.
+
+Avanzado
+
+Muchas combinaciones.
+
+Personalizado
+
+Definido completamente por el usuario.
+
+GUARDADO
+
+Guardar automáticamente:
+
+Atajos personalizados.
+Perfil seleccionado.
+Modo activo.
+Preferencias de voz relacionadas.
+
+Debe persistir entre sesiones.
+
+RESTAURAR
+
+Agregar:
+
+“Restaurar atajos predeterminados.”
+
+Antes de restaurar:
+
+Confirmar.
+
+Después:
+
+Anunciar:
+
+“Atajos restaurados.”
+
+IMPORTAR Y EXPORTAR ATAJOS
+
+Permitir exportar el mapa personalizado como JSON.
+
+Permitir importarlo posteriormente.
+
+Esto permite que una persona configure una computadora y use la misma distribución en otra.
+
+Validar siempre el archivo antes de aplicarlo.
+
+COMANDOS SECUENCIALES
+
+Además de combinaciones simultáneas, soportar secuencias cuando ayuden a memorizar.
+
+Ejemplo:
+
+G luego D:
+Ir a derivadas.
+
+G luego I:
+Ir a integrales.
+
+G luego M:
+Ir a matrices.
+
+La aplicación debe decir después de G:
+
+“Comando Ir a. Presione la herramienta.”
+
+Si no se completa en unos segundos:
+
+Cancelar.
+
+No ejecutar acciones accidentales.
+
+REPETIR ÚLTIMA ACCIÓN
+
+Crear comando:
+
+“Repetir última acción”.
+
+Ejemplo:
+
+Si el último cálculo fue:
+
+derivada de x²
+
+el usuario puede repetirlo rápidamente.
+
+DESHACER Y REHACER
+
+Implementar:
+
+Deshacer.
+
+Rehacer.
+
+Pero evitar sobrescribir Ctrl + Z y Ctrl + Y cuando interfiera con un campo de texto.
+
+Dentro del campo de expresión deben conservar su comportamiento convencional.
+
+FAVORITOS
+
+Permitir marcar funciones matemáticas como favoritas.
+
+Ejemplo:
+
+Integral.
+Derivada.
+Determinante.
+Resolver sistema.
+
+Crear una capa de accesos rápidos personales.
+
+El usuario puede asignar:
+
+F2
+F3
+F4
+etc.
+
+si esas teclas están disponibles y no generan conflictos.
+
+TECLAS DE FUNCIÓN
+
+Permitir utilizar F2-F12 de manera configurable.
+
+F1 debe mantenerse para ayuda.
+
+Ejemplo recomendado:
+
+F1:
+Ayuda.
+
+F2:
+Cambiar modo teclado/escritura.
+
+F3:
+Repetir resultado.
+
+F4:
+Ir a resultado.
+
+F5:
+Evitar usar por defecto porque normalmente recarga el navegador.
+
+F6:
+Puede tener conflictos con navegación del navegador, por lo que no asignarlo sin análisis.
+
+No asumir que todas las teclas F están libres.
+
+AYUDA CONTEXTUAL
+
+La ayuda debe cambiar según la herramienta.
+
+Ejemplo:
+
+En Integrales:
+
+“Está en Integrales.
+I inicia una integral indefinida.
+Shift I inicia una integral definida.
+Control Enter escucha la expresión.
+Enter calcula.
+F1 abre la ayuda completa.”
+
+ESTADO AUDIBLE
+
+Crear comando:
+
+“Estado”.
+
+Debe anunciar:
+
+Herramienta actual.
+Modo actual.
+Campo actual.
+Expresión actual si existe.
+Si existe resultado.
+Si hay error.
+Teclado visual abierto/cerrado.
+
+Ejemplo:
+
+“Calculadora científica. Modo teclado matemático. Campo expresión. Expresión seno de pi dividido dos. Hay un resultado disponible.”
+
+REPETICIÓN
+
+Debe existir acceso rápido para escuchar:
+
+Último mensaje.
+Expresión.
+Resultado.
+Error.
+Herramienta actual.
+
+Separadamente.
+
+Una persona ciega debe poder pedir que se repita cualquier información importante.
+
+CONFIRMACIÓN AUDITIVA
+
+Permitir configurar cuánto habla la aplicación.
+
+Niveles:
+
+Mínimo
+
+Solo errores y resultados.
+
+Normal
+
+Acciones importantes, herramienta y resultado.
+
+Detallado
+
+Anuncia cada comando y cambio.
+
+Entrenamiento
+
+Explica ampliamente cada tecla.
+
+SONIDOS CORTOS
+
+Además de voz, permitir sonidos opcionales para acciones frecuentes.
+
+Ejemplo:
+
+Cálculo completado.
+
+Error.
+
+Cambio de herramienta.
+
+Inicio de dictado.
+
+Fin de dictado.
+
+Pero:
+
+Los sonidos nunca deben ser la única forma de comunicar información.
+
+Siempre debe existir alternativa hablada o textual.
+
+DOCUMENTACIÓN ACCESIBLE
+
+Crear una página:
+
+“Referencia de teclado”.
+
+Debe estar organizada por headings semánticos.
+
+Ejemplo:
+
+H1:
+Referencia de teclado.
+
+H2:
+General.
+
+H2:
+Calculadora científica.
+
+H2:
+Cálculo.
+
+H2:
+Matrices.
+
+H2:
+Gráficos.
+
+Cada función debe incluir:
+
+Nombre.
+Tecla.
+Descripción.
+Contexto.
+
+Debe poder recorrerse perfectamente con lector de pantalla.
+
+REQUISITO CRÍTICO SOBRE LECTORES DE PANTALLA
+
+Antes de definir cualquier atajo predeterminado:
+
+Revisar posibles conflictos con:
+
+NVDA.
+JAWS.
+VoiceOver.
+Chrome.
+Edge.
+Firefox.
+Safari.
+Windows.
+macOS.
+
+No utilizar teclas reservadas como si estuvieran disponibles.
+
+Una combinación que funciona visualmente pero bloquea una función importante de NVDA no es aceptable.
+
+NUNCA USAR ROLE=APPLICATION GLOBALMENTE
+
+No convertir toda la página en role="application" únicamente para capturar teclado.
+
+Esto puede romper la navegación convencional de lectores de pantalla.
+
+Si en algún componente especializado fuera estrictamente necesario, limitarlo al componente concreto y justificarlo.
+
+Preferir controles HTML semánticos y manejo contextual de eventos.
+
+MODIFICADORES DEL LECTOR
+
+No capturar combinaciones que utilicen las teclas modificadoras habituales de lectores de pantalla.
+
+Por ejemplo, no asumir que:
+
+Insert
+
+Caps Lock
+
+VoiceOver modifier
+
+están disponibles.
+
+OBJETIVO DEL SISTEMA DE TECLADO
+
+Una persona ciega que conozca MathVoice debería poder realizar la mayoría de sus cálculos prácticamente sin usar Tab.
+
+Ejemplo:
+
+Activar modo matemático.
+
+Presionar D.
+
+Escribir:
+
+x^3
+
+Enter.
+
+Escuchar:
+
+“Resultado. Tres equis al cuadrado.”
+
+Y continuar trabajando inmediatamente.
+
+Pero una persona que no recuerde D debe poder:
+
+Abrir la paleta de comandos.
+Escribir “derivada”.
+Pulsar Enter.
+Obtener exactamente la misma función.
+
+Nunca obligar al usuario a memorizar los atajos.
+
+Los atajos deben acelerar el uso, no ser un requisito para poder utilizar la aplicación.
+
+PRUEBAS ESPECÍFICAS DEL TECLADO
+
+Agregar pruebas automáticas para:
+
+Activar/desactivar modo matemático.
+Cambio de contexto.
+Operaciones básicas.
+Atajos científicos.
+Cálculo.
+Matrices.
+Gráficos.
+Entrenamiento.
+Identificación de teclas.
+Personalización.
+Conflictos.
+Restauración.
+Persistencia.
+Paleta de comandos.
+Escape.
+Foco.
+Inputs.
+No interferencia con escritura normal.
+
+También realizar validación manual con lectores de pantalla reales.
+
+CRITERIO DE FINALIZACIÓN
+
+El sistema de teclado NO está terminado solamente porque los shortcuts responden.
+
+Debe verificarse que:
+
+Se pueden descubrir.
+Se pueden aprender.
+Se pueden escuchar.
+Se pueden cambiar.
+Se pueden restaurar.
+No interfieren con escritura.
+No interfieren con lectores de pantalla.
+El usuario sabe en qué contexto está.
+La misma tecla puede tener acciones contextuales sin causar confusión.
+Siempre existe una alternativa a memorizarla.
+Los errores son anunciados.
+El usuario puede cancelar cualquier operación.
+
+El objetivo final es que una persona completamente ciega pueda llegar a manejar MathVoice de forma extremadamente rápida utilizando principalm

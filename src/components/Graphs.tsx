@@ -10,11 +10,13 @@ export function Graphs({
   angle,
   announce,
   initialExpression = 'x^2\nx+2',
+  active = true,
 }: {
   variables: Record<string, number>;
   angle: AngleMode;
   announce: (message: string) => void;
   initialExpression?: string;
+  active?: boolean;
 }) {
   const [expressions, setExpressions] = useState(initialExpression),
     [minX, setMinX] = useState('-5'),
@@ -33,6 +35,14 @@ export function Graphs({
   const playback = useRef(0);
   const mounted = useRef(false);
   const explorer = useRef<HTMLButtonElement>(null);
+  // Reset only the playback state when hidden; keep the graph and its draft.
+  if (!active && playing) setPlaying(false);
+  useEffect(() => {
+    if (active) return;
+    playback.current++;
+    clearInterval(timer.current);
+    sonification.stop();
+  }, [active]);
   useEffect(() => {
     mounted.current = true;
     const stop = (e: KeyboardEvent) => {

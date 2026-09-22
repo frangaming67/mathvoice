@@ -49,7 +49,7 @@ export function AdvancedCalculator({
   return (
     <section className="panel advanced" id="advanced" aria-labelledby="advanced-title">
       <p className="eyebrow">ÁLGEBRA Y CÁLCULO</p>
-      <h2 id="advanced-title">Más allá de los números</h2>
+      <h2 id="advanced-title">Álgebra y cálculo</h2>
       <p className="hint">
         Completá los campos; la calculadora arma la operación por vos. Las funciones simbólicas usan
         radianes.

@@ -1,9 +1,10 @@
+import { openTool } from './navigation';
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Continuar sin guía' }).click();
+  await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
 });
 
 test('atajos de herramientas, Taylor y graficar resultado', async ({ page }) => {
@@ -15,7 +16,9 @@ test('atajos de herramientas, Taylor y graficar resultado', async ({ page }) => 
   await page.getByRole('button', { name: 'Graficar resultado', exact: true }).click();
   await expect(page.getByLabel('Funciones de x, una por línea (hasta 4)')).toHaveValue('3*x^2');
   await page.keyboard.press('Alt+Shift+m');
-  await expect(page.locator('#matrices > summary')).toBeFocused();
+  await expect(
+    page.getByRole('heading', { name: 'Herramienta actual: Matrices', exact: true }),
+  ).toBeFocused();
   await page.keyboard.press('Alt+Shift+i');
   await expect(page.getByLabel('Operación simbólica')).toHaveValue('integrate');
   await page.keyboard.press('Alt+Shift+l');
@@ -32,22 +35,22 @@ test('atajos de herramientas, Taylor y graficar resultado', async ({ page }) => 
 
 test('escala general persistente y reflow equivalente a 320 píxeles', async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 1000 });
-  await page.getByText('Configuración de voz y accesibilidad', { exact: true }).click();
+  await page.getByRole('link', { name: 'Configuración', exact: true }).click();
   await page.getByRole('combobox', { name: 'Escala general', exact: true }).selectOption('2');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.reload();
-  await page.getByText('Configuración de voz y accesibilidad', { exact: true }).click();
+  await page.getByRole('link', { name: 'Configuración', exact: true }).click();
   await expect(page.getByRole('combobox', { name: 'Escala general', exact: true })).toHaveValue(
     '2',
   );
   await page.getByRole('combobox', { name: 'Escala general', exact: true }).selectOption('1');
   await page.setViewportSize({ width: 320, height: 800 });
-  await page.getByRole('link', { name: 'Conversores', exact: true }).click();
+  await openTool(page, 'Conversores');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test('matriz editable con flechas, inversa tabular y estadística', async ({ page }) => {
-  await page.getByRole('link', { name: 'Matrices', exact: true }).click();
+  await openTool(page, 'Matrices');
   const first = page.getByRole('spinbutton', { name: 'Matriz A, fila 1, columna 1, valor 1' });
   await first.focus();
   await first.press('ArrowRight');
@@ -64,7 +67,7 @@ test('matriz editable con flechas, inversa tabular y estadística', async ({ pag
   await page.getByRole('button', { name: 'Calcular matriz' }).click();
   const result = page.getByRole('region', { name: 'Resultado', exact: true });
   await expect(result.getByRole('cell', { name: '-0.5', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Estadística', exact: true }).click();
+  await openTool(page, 'Estadística');
   await page.getByRole('button', { name: 'Calcular estadística' }).click();
   await expect(result.getByRole('cell', { name: '2.5', exact: true })).toBeVisible();
   await expect(result.getByRole('row', { name: /Media 3/ })).toBeVisible();
@@ -79,7 +82,7 @@ test('variables persistentes, conversión de temperatura y exportación', async 
   await input.fill('radio*2');
   await input.press('Enter');
   await expect(page.getByLabel('Resultado: 14', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Conversores', exact: true }).click();
+  await openTool(page, 'Conversores');
   await page.getByLabel('Categoría de unidades').selectOption('Temperatura');
   await page.getByLabel('Valor a convertir').fill('25');
   await page.getByLabel('Unidad de origen').selectOption('degC');
@@ -91,12 +94,13 @@ test('variables persistentes, conversión de temperatura y exportación', async 
       .getByRole('cell', { name: '77', exact: true }),
   ).toBeVisible();
   const download = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'Historial', exact: true }).click();
   await page.getByRole('button', { name: /Exportar JSON/ }).click();
   expect((await download).suggestedFilename()).toMatch(/\.json$/);
 });
 
 test('gráfico: paso exacto de 0.01, bordes, tabla y Escape', async ({ page }) => {
-  await page.getByRole('link', { name: 'Gráficos', exact: true }).click();
+  await openTool(page, 'Gráficos');
   await page.getByRole('button', { name: 'Graficar funciones' }).click();
   const explore = page.getByRole('button', { name: 'Explorar gráfico', exact: true });
   await expect(explore).toBeVisible();
@@ -127,7 +131,10 @@ test('herramientas abiertas: accesibilidad y reflow móvil', async ({ page }) =>
     'Conversores',
     'Gráficos',
   ]) {
-    await page.getByRole('link', { name, exact: true }).click();
+    await openTool(page, name);
+    expect(
+      (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations,
+    ).toEqual([]);
   }
   await page.getByRole('button', { name: 'Graficar funciones' }).click();
   await expect(page.getByRole('button', { name: 'Explorar gráfico', exact: true })).toBeVisible();
@@ -139,6 +146,7 @@ test('herramientas abiertas: accesibilidad y reflow móvil', async ({ page }) =>
     ).violations,
   ).toEqual([]);
   await page.setViewportSize({ width: 320, height: 800 });
+  await openTool(page, 'Matrices');
   await page.getByLabel('Columnas de A').selectOption('6');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
