@@ -12,7 +12,7 @@ import { History } from '../../components/History';
 import { Tools } from '../../components/Tools';
 import { Keypad } from '../../components/Keypad';
 import { AdvancedCalculator, type AdvancedHandle } from '../../components/AdvancedCalculator';
-import { useAutomaticSpeech } from '../../accessibility/useAutomaticSpeech';
+import { describeElement, useAutomaticSpeech } from '../../accessibility/useAutomaticSpeech';
 import { FeatureHub } from '../../components/FeatureHub';
 import { variableService } from '../../services/VariableService';
 import { resultSpeech } from '../../accessibility/resultSpeech';
@@ -47,6 +47,7 @@ export function Calculator() {
   const [visited, setVisited] = useState<ToolId[]>(['basic']);
   const focusFrame = useRef<number | undefined>(undefined);
   const helpOrigin = useRef<HTMLElement | null>(null);
+  const lastField = useRef<HTMLElement | null>(null);
   const calculationOrigin = useRef<{ tool: ToolId; field: HTMLElement | null }>({
     tool: 'basic',
     field: null,
@@ -132,7 +133,7 @@ export function Calculator() {
       setStatus(text);
       if (voice && preferences.guided) {
         cancelAutomatic();
-        speech.hablar(text);
+        speech.hablarAutomatico(text);
       }
     },
     [preferences.guided, cancelAutomatic],
@@ -142,10 +143,11 @@ export function Calculator() {
     speech.hablar(mathSpeech(input.current?.value ?? ''));
   }, [cancelAutomatic]);
   const openHelp = useCallback(() => {
+    if (help) return;
     helpOrigin.current = document.activeElement as HTMLElement;
     setHelp(true);
     focusTarget('help-title');
-  }, [focusTarget]);
+  }, [focusTarget, help]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) =>
       handleKeyboard(e, {
@@ -166,6 +168,8 @@ export function Calculator() {
   }, [readExpression, openHelp, navigate, openTool]);
 
   function changePreferences(next: Preferences) {
+    cancelAutomatic();
+    clearTimeout(typingTimer.current);
     setPreferences(next);
     speech.configure(next);
     if (!preferencesService.save(next)) setStorageWarning(storage.warning);
@@ -209,7 +213,7 @@ export function Calculator() {
     } else insert(value, false);
     justCalculated.current = false;
     if (preferences.guided)
-      speech.hablar(
+      speech.hablarAutomatico(
         (
           {
             '+': 'Más',
@@ -312,7 +316,7 @@ export function Calculator() {
       setStatus('');
       if (document.activeElement === focused) origin?.focus();
       automatic.cancel();
-      if (preferences.guided) speech.hablar(message);
+      if (preferences.guided) speech.hablarAutomatico(message);
     } finally {
       computing.current = false;
       setBusy(false);
@@ -333,11 +337,37 @@ export function Calculator() {
     openTool('basic', 'expression');
     announce('Cálculo listo para editar.');
   }
+  function whereAmI() {
+    const section = help
+      ? 'Ayuda'
+      : view === 'history'
+        ? 'Historial'
+        : view === 'settings'
+          ? 'Configuración'
+          : toolName(activeTool);
+    const field = lastField.current;
+    const currentField = field?.getClientRects().length
+      ? describeElement(field)
+      : 'Ningún campo de edición enfocado';
+    const keypad = document.getElementById('keypad-panel') as HTMLDetailsElement | null;
+    const draft = Array.from(
+      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+        '[data-expression], #expression',
+      ),
+    ).find((element) => element.getClientRects().length)?.value;
+    announce(
+      `${section}. Modo escritura. ${preferences.guided ? 'Guía por voz activada' : 'Lector de pantalla externo'}. Campo: ${currentField}. ${draft ? `Expresión: ${mathSpeech(draft)}.` : 'Sin expresión en esta sección.'} ${result ? `Hay resultado: ${resultSpeech(result)}.` : 'Sin resultado.'} ${error ? `Error: ${error}.` : 'Sin errores.'} Teclado de botones ${keypad?.open ? 'abierto' : 'cerrado'}.`,
+    );
+  }
 
   return (
     <div
       className={preferences.maximum ? 'app maximum' : 'app'}
-      onFocusCapture={automatic.onFocusCapture}
+      onFocusCapture={(event) => {
+        if ((event.target as HTMLElement).matches('input, textarea, select'))
+          lastField.current = event.target as HTMLElement;
+        automatic.onFocusCapture(event);
+      }}
       onChangeCapture={automatic.onChangeCapture}
       onPointerOver={automatic.onPointerOver}
       onPointerOut={automatic.onPointerOut}
@@ -417,6 +447,7 @@ export function Calculator() {
       <main>
         <h1>Calculadora accesible</h1>
         <div className="voice-bar">
+          <button onClick={whereAmI}>¿Dónde estoy?</button>
           <span>
             {!speech.available
               ? 'Síntesis de voz no disponible en este navegador'
@@ -531,6 +562,20 @@ export function Calculator() {
               <p className="eyebrow">TU ESPACIO MATEMÁTICO</p>
               <h2 id="calculator-title">Escribir o dictar una operación</h2>
               <p className="intro">Usá los botones o escribí la operación.</p>
+              {view === 'work' &&
+                !help &&
+                (activeTool === 'basic' || activeTool === 'scientific') && (
+                  <Dictation
+                    language={preferences.language}
+                    announce={announce}
+                    onListeningChange={setListening}
+                    confirm={(value, angle) => {
+                      setExpression(value);
+                      if (angle) changePreferences({ ...preferences, angle });
+                      void calculate(value, angle ?? preferences.angle);
+                    }}
+                  />
+                )}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -558,7 +603,10 @@ export function Calculator() {
                     setError('');
                     clearTimeout(typingTimer.current);
                     if (preferences.guided && preferences.readTyping)
-                      typingTimer.current = setTimeout(() => speech.hablar(mathSpeech(value)), 900);
+                      typingTimer.current = setTimeout(
+                        () => speech.hablarAutomatico(mathSpeech(value)),
+                        900,
+                      );
                   }}
                   onKeyDown={(e) => {
                     if (e.ctrlKey && e.key === 'Enter') e.preventDefault();
@@ -569,7 +617,7 @@ export function Calculator() {
                       !e.ctrlKey &&
                       !e.altKey
                     )
-                      speech.hablar(mathSpeech(e.key));
+                      speech.hablarAutomatico(mathSpeech(e.key));
                   }}
                 />
                 <p className="hint" id="expression-hint">
@@ -608,33 +656,6 @@ export function Calculator() {
                   </select>
                 </label>
               </form>
-              <Dictation
-                language={preferences.language}
-                announce={announce}
-                onListeningChange={setListening}
-                confirm={(value, angle) => {
-                  setExpression(value);
-                  if (angle) changePreferences({ ...preferences, angle });
-                  void calculate(value, angle ?? preferences.angle);
-                }}
-              />
-              <div className="examples">
-                <span>Probá un ejemplo</span>
-                <div className="actions">
-                  {['1/3 + 1/6', 'sqrt(144)', '2^10'].map((example) => (
-                    <button
-                      key={example}
-                      onClick={() => {
-                        justCalculated.current = false;
-                        setExpression(example);
-                        input.current?.focus();
-                      }}
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </section>
           </div>
           <div hidden={activeTool !== 'scientific'}>
@@ -838,6 +859,26 @@ export function Calculator() {
                 memory={memory}
                 onMemory={(action) => void memoryAction(action)}
               />
+            </details>
+            <details className="panel">
+              <summary>Ejemplos de operaciones</summary>
+              <div className="examples">
+                <span>Probá un ejemplo</span>
+                <div className="actions">
+                  {['1/3 + 1/6', 'sqrt(144)', '2^10'].map((example) => (
+                    <button
+                      key={example}
+                      onClick={() => {
+                        justCalculated.current = false;
+                        setExpression(example);
+                        input.current?.focus();
+                      }}
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </details>
           </div>
         </div>

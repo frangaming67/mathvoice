@@ -6,6 +6,7 @@ export class SpeechService {
   private rate = 1;
   private pitch = 1;
   private volume = 1;
+  private automaticEnabled = false;
   get available() {
     return typeof window !== 'undefined' && 'speechSynthesis' in window;
   }
@@ -18,11 +19,16 @@ export class SpeechService {
     return () => window.speechSynthesis.removeEventListener('voiceschanged', callback);
   }
   configure(p: Preferences) {
+    this.automaticEnabled = p.guided;
+    if (!p.guided) this.detener();
     this.voice = p.voice;
     this.language = p.language;
     this.rate = p.rate;
     this.pitch = p.pitch;
     this.volume = p.volume;
+  }
+  hablarAutomatico(text: string) {
+    return this.automaticEnabled ? this.hablar(text) : false;
   }
   hablar(text: string) {
     if (!this.available) return false;

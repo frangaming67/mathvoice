@@ -36,6 +36,14 @@ export function Settings({
             Si usás un lector de pantalla, podés desactivar la guía para evitar dos voces
             simultáneas.
           </p>
+          <button type="button" onClick={() => update('guided', false)}>
+            Usar mi lector de pantalla
+          </button>
+          <p>
+            {p.guided
+              ? 'Voz automática de MathVoice activada.'
+              : 'Modo lector externo: MathVoice no habla automáticamente. Los botones Escuchar permiten pedir voz explícitamente.'}
+          </p>
           <label>
             Idioma de la voz
             <select

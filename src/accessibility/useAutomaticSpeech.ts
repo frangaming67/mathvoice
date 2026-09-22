@@ -109,7 +109,7 @@ export function useAutomaticSpeech(preferences: Preferences, suspended = false) 
       // React may update labels and selected values after the capture event.
       const currentText = describeElement(element);
       last.current = { element, text: currentText, time: Date.now() };
-      speech.hablar(currentText);
+      speech.hablarAutomatico(currentText);
     }, delay);
   }
   return {

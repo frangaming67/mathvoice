@@ -181,6 +181,7 @@ export function Graphs({
         <label>
           Funciones de x, una por línea (hasta 4)
           <textarea
+            data-expression
             rows={3}
             required
             value={expressions}

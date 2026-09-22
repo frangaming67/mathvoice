@@ -106,6 +106,7 @@ export function AdvancedCalculator({
           {operation === 'system' ? 'Ecuaciones, una por línea' : 'Función o ecuación'}
           {operation === 'system' ? (
             <textarea
+              data-expression
               required
               value={body}
               maxLength={400}
@@ -115,6 +116,7 @@ export function AdvancedCalculator({
             />
           ) : (
             <input
+              data-expression
               required
               value={body}
               maxLength={400}

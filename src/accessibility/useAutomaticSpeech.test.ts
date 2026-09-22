@@ -13,7 +13,9 @@ vi.mock('react', () => ({
     if (release) cleanup.push(release);
   },
 }));
-vi.mock('../services/SpeechService', () => ({ speech: { hablar: vi.fn(), detener: vi.fn() } }));
+vi.mock('../services/SpeechService', () => ({
+  speech: { hablarAutomatico: vi.fn(), detener: vi.fn() },
+}));
 
 class Element {
   tagName = 'P';
@@ -117,7 +119,7 @@ it('lee cambios de selector después de que se actualizó su valor', () => {
   automatic.onChangeCapture({ target: select } as unknown as FormEvent<HTMLDivElement>);
   select.selectedOptions[0].text = 'Grados';
   vi.advanceTimersByTime(150);
-  expect(speech.hablar).toHaveBeenCalledWith('Modo angular: Grados');
+  expect(speech.hablarAutomatico).toHaveBeenCalledWith('Modo angular: Grados');
 });
 it('Escape cancela la lectura pendiente al pasar el puntero', () => {
   const automatic = useAutomaticSpeech({ ...defaultPreferences, guided: true });
@@ -130,7 +132,7 @@ it('Escape cancela la lectura pendiente al pasar el puntero', () => {
   } as unknown as PointerEvent<HTMLDivElement>);
   keyListeners.forEach((listener) => listener({ key: 'Escape' } as KeyboardEvent));
   vi.advanceTimersByTime(200);
-  expect(speech.hablar).not.toHaveBeenCalled();
+  expect(speech.hablarAutomatico).not.toHaveBeenCalled();
   expect(speech.detener).toHaveBeenCalledOnce();
 });
 it('suspende foco, puntero y cambios durante el dictado', () => {
@@ -145,5 +147,5 @@ it('suspende foco, puntero y cambios durante el dictado', () => {
   } as unknown as PointerEvent<HTMLDivElement>);
   automatic.onChangeCapture({ target: select } as unknown as FormEvent<HTMLDivElement>);
   vi.advanceTimersByTime(300);
-  expect(speech.hablar).not.toHaveBeenCalled();
+  expect(speech.hablarAutomatico).not.toHaveBeenCalled();
 });

@@ -17,6 +17,7 @@ export function Dictation({
   const service = useRef(new VoiceRecognitionService()),
     dialog = useRef<HTMLDialogElement>(null),
     button = useRef<HTMLButtonElement>(null);
+  const reviewFrame = useRef<number | undefined>(undefined);
   const [supported] = useState(() => new VoiceRecognitionService().supported);
   const [listening, setListening] = useState(false),
     [expression, setExpression] = useState(''),
@@ -24,14 +25,19 @@ export function Dictation({
     [angle, setAngle] = useState<'deg' | 'rad' | undefined>(undefined);
   useEffect(() => {
     const recognition = service.current;
-    return () => recognition.cancel();
-  }, []);
+    return () => {
+      recognition.cancel();
+      if (reviewFrame.current !== undefined) cancelAnimationFrame(reviewFrame.current);
+      onListeningChange(false);
+    };
+  }, [onListeningChange]);
   function listeningChanged(value: boolean) {
     setListening(value);
     onListeningChange(value);
   }
   function cancel() {
     service.current.cancel();
+    if (reviewFrame.current !== undefined) cancelAnimationFrame(reviewFrame.current);
     listeningChanged(false);
     dialog.current?.close();
     button.current?.focus();
@@ -52,9 +58,9 @@ export function Dictation({
         setExpression(parsed.expression);
         setAngle(parsed.angle);
         listeningChanged(false);
-        requestAnimationFrame(() => {
+        reviewFrame.current = requestAnimationFrame(() => {
           dialog.current?.showModal();
-          speech.hablar(
+          announce(
             `Entendí: ${mathSpeech(parsed.expression)}. Confirmá, editá o cancelá antes de calcular.`,
           );
         });
