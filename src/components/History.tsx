@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { HistoryEntry } from '../types';
 import { downloadHistory } from '../services/ExportService';
 import { resultSpeech } from '../accessibility/resultSpeech';
@@ -23,6 +23,7 @@ export function History({
 }) {
   const [query, setQuery] = useState('');
   const [confirm, setConfirm] = useState(false);
+  const clearButton = useRef<HTMLButtonElement>(null);
   const filtered = entries.filter((e) =>
     `${e.expression} ${e.value}`.toLowerCase().includes(query.toLowerCase()),
   );
@@ -35,15 +36,18 @@ export function History({
             Historial <span className="count">{entries.length}</span>
           </h2>
         </div>
-        <button disabled={!entries.length} onClick={() => setConfirm(true)}>
+        <button ref={clearButton} disabled={!entries.length} onClick={() => setConfirm(true)}>
           Vaciar historial
         </button>
       </div>
       {confirm && (
-        <div className="confirmation">
-          <p>¿Eliminar todos los cálculos guardados en este dispositivo?</p>
+        <div className="confirmation" role="group" aria-labelledby="clear-history-question">
+          <p id="clear-history-question">
+            ¿Eliminar todos los cálculos guardados en este dispositivo?
+          </p>
           <div className="actions">
             <button
+              aria-describedby="clear-history-question"
               onClick={() => {
                 clear();
                 setConfirm(false);
@@ -52,7 +56,15 @@ export function History({
             >
               Sí, eliminar todos
             </button>
-            <button autoFocus onClick={() => setConfirm(false)}>
+            <button
+              autoFocus
+              aria-describedby="clear-history-question"
+              data-speech="¿Eliminar todos los cálculos guardados en este dispositivo? Cancelar conserva el historial."
+              onClick={() => {
+                setConfirm(false);
+                clearButton.current?.focus();
+              }}
+            >
               Cancelar
             </button>
           </div>

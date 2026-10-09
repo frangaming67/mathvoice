@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { focusToolField, useToolCommands } from '../keyboard/CommandContext';
 export function StatisticsCalculator({
   calculate,
   busy,
@@ -12,14 +13,20 @@ export function StatisticsCalculator({
   const [sample, setSample] = useState(true);
   const [percentile, setPercentile] = useState('90');
   const paired = ['regression', 'covariance', 'correlation'].includes(op);
+  const section = useRef<HTMLElement>(null);
+  useToolCommands('statistics', (command) => {
+    if (command.type !== 'tool' || !command.operation) return;
+    setOp(command.operation === 'quartiles' ? 'stats' : command.operation);
+    focusToolField(section.current, 'textarea');
+  });
   return (
-    <section aria-labelledby="stats-title">
+    <section ref={section} aria-labelledby="stats-title">
       <h2 id="stats-title">Estadística</h2>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           calculate(
-            `${op}([${data}]${paired ? `,[${y}]` : op === 'stats' ? `,${sample ? 1 : 0}` : op === 'percentile' ? `,${percentile}` : ''})`,
+            `${op}([${data}]${paired ? `,[${y}]` : op === 'stats' ? `,${sample ? 1 : 0}` : ['std', 'variance'].includes(op) ? `,"${sample ? 'unbiased' : 'uncorrected'}"` : op === 'percentile' ? `,${percentile}` : ''})`,
           );
         }}
       >
@@ -31,6 +38,11 @@ export function StatisticsCalculator({
           Análisis estadístico
           <select value={op} onChange={(e) => setOp(e.target.value)}>
             {[
+              ['mean', 'Media'],
+              ['median', 'Mediana'],
+              ['mode', 'Moda'],
+              ['std', 'Desviación estándar'],
+              ['variance', 'Varianza'],
               ['stats', 'Resumen estadístico completo'],
               ['percentile', 'Percentil'],
               ['covariance', 'Covarianza muestral'],
@@ -43,7 +55,7 @@ export function StatisticsCalculator({
             ))}
           </select>
         </label>
-        {op === 'stats' && (
+        {['stats', 'std', 'variance'].includes(op) && (
           <label>
             <input type="checkbox" checked={sample} onChange={(e) => setSample(e.target.checked)} />
             Datos de una muestra (divisor n−1 en la varianza)

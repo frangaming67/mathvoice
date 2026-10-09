@@ -31,12 +31,12 @@ Los tests automáticos simulan síntesis y reconocimiento para comprobar la lóg
 
 ## Atajos implementados
 
-Además de los atajos de la tabla, Alt+Shift+G abre gráficos; M abre matrices; D, I y L seleccionan derivada, integral y límite; V inicia o cancela dictado. Estos accesos respetan un diálogo abierto y conservan alternativas mediante controles visibles.
+Además de los atajos de la tabla, Alt+Shift+G abre gráficos; M abre matrices; D y L seleccionan derivada y límite; V inicia o cancela dictado. Alt+Shift+P abre la paleta; K, la referencia; E anuncia «¿Dónde estoy?». F2 cambia entre escritura y teclado matemático. Integral y menú de herramientas siguen disponibles en la paleta y formularios; Alt+Shift+I/T se reservan al navegador. Estos accesos respetan un diálogo abierto y conservan alternativas mediante controles visibles. [Conflictos y fuentes consultadas](KEYBOARD-CONFLICTS.md).
 
 | Tecla                                 | Acción                                                                     |
 | ------------------------------------- | -------------------------------------------------------------------------- |
 | Enter en un formulario                | Ejecutar su acción                                                         |
-| Ctrl+Enter                            | Escuchar expresión                                                         |
+| Ctrl+Enter en un campo o área matemática | Escuchar expresión; conserva activación nativa sobre botones/enlaces       |
 | Escape                                | Detener voz y sonificación; cancelar el diálogo de dictado si está abierto |
 | Alt+Shift+R                           | Enfocar resultado                                                          |
 | Alt+Shift+H                           | Enfocar historial                                                          |

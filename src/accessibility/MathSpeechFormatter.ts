@@ -180,7 +180,7 @@ export function mathSpeech(expression: string): string {
       if (command.name === 'integrate')
         return `Integral de ${mathSpeech(a[0])} respecto de ${mathSpeech(a[1] ?? 'x')}${a[2] ? `, desde ${mathSpeech(a[2])} hasta ${mathSpeech(a[3])}` : ''}`;
       if (command.name === 'limit')
-        return `Límite cuando ${mathSpeech(a[1])} tiende a ${mathSpeech(a[2])} de ${mathSpeech(a[0])}`;
+        return `Límite${a[3] === 'left' ? ' por izquierda' : a[3] === 'right' ? ' por derecha' : ''} cuando ${mathSpeech(a[1])} tiende a ${mathSpeech(a[2])} de ${mathSpeech(a[0])}`;
       if (command.name === 'solve')
         return `Resolver ${mathSpeech(a[0])} para ${mathSpeech(a[1] ?? 'x')}`;
       if (command.name === 'inequality')

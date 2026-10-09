@@ -29,7 +29,9 @@ test('una herramienta visible, resultado antes del teclado y cambio explícito c
           ),
       ),
   ).toBe(true);
-  await page.keyboard.press('Alt+Shift+t');
+  await page.keyboard.press('Alt+Shift+p');
+  await page.getByRole('combobox', { name: 'Buscar comando' }).fill('Elegir herramienta');
+  await page.keyboard.press('Enter');
   const chooser = page.getByRole('combobox', { name: 'Elegir herramienta', exact: true });
   await expect(chooser).toBeFocused();
   await chooser.selectOption({ label: 'Matrices' });
@@ -66,6 +68,9 @@ test('conserva borradores y vuelve al formulario que produjo el resultado', asyn
   await expect(
     page.getByRole('spinbutton', { name: 'Matriz A, fila 1, columna 1, valor 9', exact: true }),
   ).toHaveValue('9');
+  // Results belong to their tool; returning restores the algebra result and its edit target.
+  await expect(page.getByRole('button', { name: 'Volver a editar el cálculo' })).toHaveCount(0);
+  await openTool(page, 'Álgebra y cálculo');
   await page.getByRole('button', { name: 'Volver a editar el cálculo' }).click();
   await expect(body).toBeFocused();
   await body.fill('sin(');

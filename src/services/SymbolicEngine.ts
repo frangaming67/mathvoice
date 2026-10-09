@@ -183,7 +183,7 @@ export class SymbolicEngine {
     const counts: Record<string, number[]> = {
       diff: [1, 2, 3],
       integrate: [1, 2, 4],
-      limit: [3],
+      limit: [3, 4],
       solve: [1, 2],
       simplify: [1],
       expand: [1],
@@ -201,6 +201,9 @@ export class SymbolicEngine {
     )
       ? variable(args[1])
       : 'x';
+    const limitSide = name === 'limit' ? (args[3] ?? 'both') : 'both';
+    if (!['both', 'left', 'right'].includes(limitSide))
+      throw new Error('El sentido del límite debe ser both, left o right.');
     let request: string;
     let explanation = '';
     let value: string;
@@ -291,6 +294,16 @@ export class SymbolicEngine {
           args[2] === 'Infinity' || args[2] === '-Infinity' ? args[2] : String(realNumber(args[2]));
         request = `limit(${body},${v},${point})`;
         explanation = `Se estudia el valor al que se acerca la expresión cuando ${v} tiende a ${args[2]}. El punto no necesita pertenecer al dominio de la función. El motor puede dejar límites sin resolver.`;
+        if (limitSide !== 'both') {
+          if (point.includes('Infinity'))
+            throw new Error(
+              'Los límites laterales requieren un punto finito. Para infinito usá el límite sin sentido lateral.',
+            );
+          const sign = limitSide === 'left' ? -1 : 1;
+          const transformed = nerdamer(body).sub(v, `(${point})+(${sign})/(${v})`).toString();
+          request = `limit(${transformed},${v},Infinity)`;
+          explanation = `Límite por ${limitSide === 'left' ? 'izquierda' : 'derecha'} cuando ${v} tiende a ${args[2]}. Se sustituye la variable por ${point} ${sign === -1 ? 'menos' : 'más'} 1/t y se estudia t hacia infinito positivo.`;
+        }
       }
       if (name === 'series') {
         const center = realNumber(args[2]);
@@ -333,6 +346,19 @@ export class SymbolicEngine {
         'El motor simbólico no pudo resolver esta operación. Revisá la expresión, su dominio y la variable.',
       );
     }
+    if (name === 'limit' && limitSide !== 'both' && result.toString().includes('limit(')) {
+      // A finite substitution is valid only after proving continuity on a closed
+      // one-sided interval in the original expression, before CAS simplification.
+      const point = realNumber(args[2]);
+      const edge = point + (limitSide === 'left' ? -1 : 1) * Math.max(1, Math.abs(point)) * 1e-3;
+      continuousInterval(safeExpression(args[0]), v, [
+        Math.min(point, edge),
+        Math.max(point, edge),
+      ]);
+      result = nerdamer(nerdamer(toCas(args[0])).sub(v, toCas(args[2])).toString());
+      explanation +=
+        ' El motor dejó la transformación sin resolver; se verificó continuidad en un intervalo lateral cerrado y se evaluó el punto.';
+    }
     const raw = result.toString();
     if (name === 'limit' && raw.startsWith('['))
       throw new Error(
@@ -342,7 +368,7 @@ export class SymbolicEngine {
       const point = realNumber(args[2]);
       const numeric = safeExpression(args[0]).compile();
       const target = Number(result.evaluate().text('decimals'));
-      for (const direction of [-1, 1]) {
+      for (const direction of limitSide === 'left' ? [-1] : limitSide === 'right' ? [1] : [-1, 1]) {
         const values = [1e-3, 1e-4, 1e-5, 1e-6].map((scale) => {
           const value: unknown = numeric.evaluate({
             [v]: point + direction * Math.max(1, Math.abs(point)) * scale,
@@ -362,11 +388,12 @@ export class SymbolicEngine {
             (!Number.isFinite(last) || Math.abs(last) > Math.abs(values[0]));
         if (!consistent)
           throw new Error(
-            'No pude confirmar un límite bilateral: revisá los límites por izquierda y por derecha.',
+            limitSide === 'both'
+              ? 'No pude confirmar un límite bilateral: revisá los límites por izquierda y por derecha.'
+              : 'No pude confirmar el límite lateral en el dominio real del lado solicitado.',
           );
       }
-      explanation +=
-        ' Se comprobaron aproximaciones por ambos lados como control de coherencia, no como demostración de convergencia.';
+      explanation += ` Se comprobaron aproximaciones ${limitSide === 'both' ? 'por ambos lados' : 'por el lado solicitado'} como control de coherencia, no como demostración de convergencia.`;
     }
     if (/\b(integrate|defint|limit|solve|diff)\(/.test(raw))
       throw new Error(

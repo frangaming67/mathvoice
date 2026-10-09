@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { focusToolField, useToolCommands } from '../keyboard/CommandContext';
 const configs: Record<string, { label: string; fields: string[]; defaults: string[] }> = {
+  factorial: { label: 'Factorial', fields: ['Entero no negativo'], defaults: ['5'] },
   combinations: { label: 'Combinaciones nCr', fields: ['n', 'r'], defaults: ['10', '3'] },
   permutations: { label: 'Permutaciones nPr', fields: ['n', 'r'], defaults: ['10', '3'] },
   binomialpdf: {
@@ -34,8 +36,17 @@ export function ProbabilityCalculator({
 }) {
   const [op, setOp] = useState('combinations');
   const [args, setArgs] = useState(configs.combinations.defaults);
+  const section = useRef<HTMLElement>(null);
+  useToolCommands('probability', (command) => {
+    if (command.type !== 'tool' || !command.operation || !configs[command.operation]) return;
+    if (command.operation !== op) {
+      setOp(command.operation);
+      setArgs(configs[command.operation].defaults);
+    }
+    focusToolField(section.current);
+  });
   return (
-    <section aria-labelledby="probability-title">
+    <section ref={section} aria-labelledby="probability-title">
       <h2 id="probability-title">Probabilidad y combinatoria</h2>
       <form
         onSubmit={(e) => {

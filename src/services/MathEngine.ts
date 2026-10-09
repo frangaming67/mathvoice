@@ -9,7 +9,7 @@ import { physicalConstants, physicalScope } from './PhysicalConstants';
 
 const symbolic = new SymbolicEngine();
 const functions = new Set(
-  'sin cos tan asin acos atan sinh cosh tanh log ln exp sqrt cbrt factorial mod floor ceil round abs sign gcd lcm fraction det inv transpose trace add subtract multiply dot cross norm conj re im arg complex lusolve mean median mode min max variance std sum prod combinations permutations'.split(
+  'sin cos tan asin acos atan sinh cosh tanh log ln exp sqrt cbrt nthRoot factorial mod floor ceil round abs sign gcd lcm fraction det inv transpose trace add subtract multiply dot cross norm conj re im arg complex lusolve mean median mode min max variance std sum prod combinations permutations'.split(
     ' ',
   ),
 );
@@ -36,6 +36,7 @@ const arities: Record<string, number[]> = {
   mixed: [1],
   mixedNumber: [3],
   nthRoots: [2],
+  nthRoot: [2],
   convert: [3],
   base: [3],
   bitop: [4],

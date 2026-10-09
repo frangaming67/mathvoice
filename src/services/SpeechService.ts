@@ -7,6 +7,13 @@ export class SpeechService {
   private pitch = 1;
   private volume = 1;
   private automaticEnabled = false;
+  private generation = 0;
+  private paused = false;
+  private pendingNext: (() => void) | undefined;
+  private listActive = false;
+  get readingList() {
+    return this.listActive;
+  }
   get available() {
     return typeof window !== 'undefined' && 'speechSynthesis' in window;
   }
@@ -34,6 +41,10 @@ export class SpeechService {
     if (!this.available) return false;
     this.detener();
     this.last = text;
+    window.speechSynthesis.speak(this.utterance(text));
+    return true;
+  }
+  private utterance(text: string) {
     const utterance = new SpeechSynthesisUtterance(text);
     const voices = this.voices();
     utterance.voice =
@@ -45,17 +56,56 @@ export class SpeechService {
     utterance.rate = this.rate;
     utterance.pitch = this.pitch;
     utterance.volume = this.volume;
-    window.speechSynthesis.speak(utterance);
+    return utterance;
+  }
+  hablarLista(messages: string[], onIndex: (index: number) => void) {
+    if (!this.available || !messages.length) return false;
+    this.detener();
+    const generation = this.generation;
+    const items = [...messages];
+    this.listActive = true;
+    const next = (index: number) => {
+      if (generation !== this.generation) return;
+      if (index >= items.length) {
+        this.listActive = false;
+        return;
+      }
+      if (this.paused) {
+        this.pendingNext = () => next(index);
+        return;
+      }
+      this.last = items[index];
+      const utterance = this.utterance(items[index]);
+      utterance.onend = () => next(index + 1);
+      utterance.onerror = () => {
+        if (generation === this.generation) this.detener();
+      };
+      onIndex(index);
+      if (generation === this.generation) window.speechSynthesis.speak(utterance);
+    };
+    next(0);
     return true;
   }
   detener() {
-    if (this.available) window.speechSynthesis.cancel();
+    this.generation++;
+    this.pendingNext = undefined;
+    this.listActive = false;
+    if (this.available) {
+      window.speechSynthesis.cancel();
+      if (this.paused) window.speechSynthesis.resume();
+    }
+    this.paused = false;
   }
   pausar() {
+    this.paused = true;
     if (this.available) window.speechSynthesis.pause();
   }
   continuar() {
+    this.paused = false;
     if (this.available) window.speechSynthesis.resume();
+    const next = this.pendingNext;
+    this.pendingNext = undefined;
+    next?.();
   }
   repetir() {
     if (this.last) this.hablar(this.last);

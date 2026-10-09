@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { AngleMode, CalculationResult, HistoryEntry, Preferences } from '../../types';
 import { CalculatorClient } from '../../services/CalculatorClient';
 import { preferencesService } from '../../services/PreferencesService';
@@ -23,35 +23,87 @@ import { downloadHistory } from '../../services/ExportService';
 import { CalculationSteps } from '../../components/CalculationSteps';
 import { ToolChooser } from '../../components/ToolChooser';
 import { toolName, type ToolId } from '../../components/toolCatalog';
+import { KeyboardCommandManager } from '../../keyboard/KeyboardCommandManager';
+import { keyboardSettingsService, type KeyboardSettings } from '../../keyboard/KeyboardSettings';
+import { commandById, type MathCommand } from '../../keyboard/commands';
+import { CommandBus } from '../../keyboard/CommandBus';
+import { CommandContext } from '../../keyboard/CommandContext';
+import { EditHistory } from '../../keyboard/EditHistory';
+import { KeyboardPanel } from '../../components/KeyboardPanel';
+import { CommandPalette } from '../../components/CommandPalette';
+import { FunctionPrompt } from '../../components/FunctionPrompt';
+import { feedbackSound } from '../../services/FeedbackSoundService';
 
 const client = new CalculatorClient();
 const welcome =
   'Bienvenido a MathVoice. Escribí una operación y presioná Enter para calcular. Control más Enter lee la expresión. Escape detiene la voz. Tab recorre los controles. F1 abre la ayuda.';
 const angleNames = { rad: 'radianes', deg: 'grados', grad: 'gradianes' };
+type ToolCalculationState = {
+  result: CalculationResult | null;
+  error: string;
+  explanation: boolean;
+};
+const emptyCalculation: ToolCalculationState = { result: null, error: '', explanation: false };
 
 export function Calculator() {
   const [preferences, setPreferences] = useState(preferencesService.load);
+  const [keyboard, setKeyboard] = useState(keyboardSettingsService.load);
+  const [keyboardManager] = useState(() => new KeyboardCommandManager());
+  const [commandBus] = useState(() => new CommandBus());
+  const [editHistory] = useState(() => new EditHistory());
+  const [palette, setPalette] = useState(false);
+  const [functionPrompt, setFunctionPrompt] = useState<MathCommand | null>(null);
+  const [practice, setPractice] = useState<{
+    mode: 'identify' | 'training';
+    category: string;
+  } | null>(null);
+  const [vectorContext, setVectorContext] = useState<'vectors' | 'complex'>('vectors');
+  const dialogOrigin = useRef<HTMLElement | null>(null);
+  const lastCalculation = useRef<
+    Partial<
+      Record<
+        ToolId,
+        {
+          value: string;
+          angle: AngleMode;
+          scope: Record<string, number>;
+        }
+      >
+    >
+  >({});
   const [entries, setEntries] = useState(historyService.load);
+  const [historySaved, setHistorySaved] = useState(true);
   const [variables, setVariables] = useState(variableService.load);
   const [expression, setExpression] = useState('');
-  const [result, setResult] = useState<CalculationResult | null>(null);
+  const [calculations, setCalculations] = useState<Partial<Record<ToolId, ToolCalculationState>>>(
+    {},
+  );
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [announcementId, setAnnouncementId] = useState(0);
   const [storageWarning, setStorageWarning] = useState(storage.warning);
-  const [explanation, setExplanation] = useState(false);
+  const pendingStorageWarning = useRef('');
   const [help, setHelp] = useState(false);
-  const [view, setView] = useState<'work' | 'history' | 'settings'>('work');
+  const [view, setView] = useState<'work' | 'history' | 'settings' | 'keyboard'>('work');
   const [activeTool, setActiveTool] = useState<ToolId>('basic');
+  // Basic and scientific are two views of the same expression form.
+  const calculationKey = activeTool === 'scientific' ? 'basic' : activeTool;
+  const { result, error, explanation } = calculations[calculationKey] ?? emptyCalculation;
+  function updateCalculation(patch: Partial<ToolCalculationState>, tool = calculationKey) {
+    setCalculations((previous) => ({
+      ...previous,
+      [tool]: { ...emptyCalculation, ...previous[tool], ...patch },
+    }));
+  }
+  const setError = (error: string) => updateCalculation({ error });
   const [choice, setChoice] = useState<ToolId>('basic');
   const [visited, setVisited] = useState<ToolId[]>(['basic']);
   const focusFrame = useRef<number | undefined>(undefined);
   const helpOrigin = useRef<HTMLElement | null>(null);
   const lastField = useRef<HTMLElement | null>(null);
-  const calculationOrigin = useRef<{ tool: ToolId; field: HTMLElement | null }>({
-    tool: 'basic',
-    field: null,
-  });
+  const calculationOrigin = useRef<
+    Partial<Record<ToolId, { tool: ToolId; field: HTMLElement | null }>>
+  >({});
   const [listening, setListening] = useState(false);
   const advanced = useRef<AdvancedHandle>(null);
   const [graphRequest, setGraphRequest] = useState<{ id: number; expression: string }>();
@@ -64,7 +116,7 @@ export function Calculator() {
   );
   const memoryBusy = useRef(false);
   const justCalculated = useRef(false);
-  const automatic = useAutomaticSpeech(preferences, listening);
+  const automatic = useAutomaticSpeech(preferences, listening || !!practice);
   const cancelAutomatic = automatic.cancel;
   const input = useRef<HTMLInputElement>(null);
   const helpButton = useRef<HTMLButtonElement>(null);
@@ -75,8 +127,13 @@ export function Calculator() {
     if (focusFrame.current !== undefined) cancelAnimationFrame(focusFrame.current);
     focusFrame.current = requestAnimationFrame(() => document.getElementById(id)?.focus());
   }, []);
+  useLayoutEffect(() => {
+    if (practice && view === 'keyboard' && !help) document.getElementById('practice-area')?.focus();
+  }, [practice, view, help]);
   const openTool = useCallback(
     (tool: ToolId, target = 'workspace-title') => {
+      keyboardManager.cancelSequence();
+      commandBus.cancelPending();
       cancelAutomatic();
       speech.detener();
       setHelp(false);
@@ -86,7 +143,7 @@ export function Calculator() {
       setVisited((previous) => (previous.includes(tool) ? previous : [...previous, tool]));
       focusTarget(target);
     },
-    [cancelAutomatic, focusTarget],
+    [cancelAutomatic, focusTarget, keyboardManager, commandBus],
   );
   const navigate = useCallback(
     (
@@ -94,6 +151,8 @@ export function Calculator() {
         'basic' | 'tools' | 'result' | 'history' | 'graphs' | 'matrices' | 'dictation' | 'settings',
     ) => {
       cancelAutomatic();
+      keyboardManager.cancelSequence();
+      commandBus.cancelPending();
       speech.detener();
       setHelp(false);
       if (target === 'history' || target === 'settings') {
@@ -108,7 +167,7 @@ export function Calculator() {
         requestAnimationFrame(() => document.getElementById('dictation-button')?.click());
       } else openTool(target, target === 'basic' ? 'expression' : 'workspace-title');
     },
-    [cancelAutomatic, focusTarget, openTool],
+    [cancelAutomatic, focusTarget, openTool, keyboardManager, commandBus],
   );
 
   useEffect(() => {
@@ -123,24 +182,44 @@ export function Calculator() {
     () => () => {
       clearTimeout(typingTimer.current);
       speech.detener();
+      keyboardManager.dispose();
+      commandBus.cancelPending();
+      feedbackSound.stop();
       if (focusFrame.current !== undefined) cancelAnimationFrame(focusFrame.current);
     },
-    [],
+    [keyboardManager, commandBus],
   );
 
   const announce = useCallback(
     (text: string, voice = true) => {
-      setStatus(text);
-      if (voice && preferences.guided) {
+      const warning = pendingStorageWarning.current;
+      pendingStorageWarning.current = '';
+      const message = [text, warning].filter(Boolean).join(' ');
+      setStatus(message);
+      setAnnouncementId((previous) => previous + 1);
+      if (voice || warning) {
         cancelAutomatic();
-        speech.hablarAutomatico(text);
+        speech.hablarAutomatico(message);
       }
     },
-    [preferences.guided, cancelAutomatic],
+    [cancelAutomatic],
   );
+  function reportStorageFailure() {
+    setStorageWarning(storage.warning);
+    pendingStorageWarning.current = storage.warning;
+    // Merge with the action's announcement, or announce alone when it has none.
+    queueMicrotask(() => {
+      if (pendingStorageWarning.current) announce('');
+    });
+  }
   const readExpression = useCallback(() => {
     cancelAutomatic();
-    speech.hablar(mathSpeech(input.current?.value ?? ''));
+    const draft = Array.from(
+      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+        '[data-expression], #expression',
+      ),
+    ).find((element) => element.getClientRects().length)?.value;
+    speech.hablar(draft ? mathSpeech(draft) : 'No hay expresión visible en esta sección.');
   }, [cancelAutomatic]);
   const openHelp = useCallback(() => {
     if (help) return;
@@ -148,44 +227,39 @@ export function Calculator() {
     setHelp(true);
     focusTarget('help-title');
   }, [focusTarget, help]);
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) =>
-      handleKeyboard(e, {
-        stop: () => {
-          clearTimeout(typingTimer.current);
-          speech.detener();
-        },
-        read: readExpression,
-        help: openHelp,
-        navigate,
-        symbolic: (operation) => {
-          openTool('advanced');
-          requestAnimationFrame(() => advanced.current?.selectOperation(operation));
-        },
-      });
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [readExpression, openHelp, navigate, openTool]);
-
   function changePreferences(next: Preferences) {
     cancelAutomatic();
     clearTimeout(typingTimer.current);
     setPreferences(next);
     speech.configure(next);
-    if (!preferencesService.save(next)) setStorageWarning(storage.warning);
+    const saved = preferencesService.save(next);
+    if (!saved) reportStorageFailure();
+    return saved;
   }
   function saveHistory(next: HistoryEntry[]) {
     currentEntries.current = next;
     setEntries(next);
-    if (!historyService.save(next)) setStorageWarning(storage.warning);
+    const saved = historyService.save(next);
+    setHistorySaved(saved);
+    if (!saved) reportStorageFailure();
   }
   function start(guided: boolean) {
-    changePreferences({ ...preferences, welcomed: true, guided, readFocus: true, readHover: true });
+    const saved = changePreferences({
+      ...preferences,
+      welcomed: true,
+      guided,
+      readFocus: true,
+      readHover: true,
+    });
+    const warning = saved ? '' : ` ${storage.warning}`;
     openTool('basic', 'expression');
     requestAnimationFrame(() => {
       automatic.cancel();
       if (guided)
-        speech.hablar(`${welcome} Pasá el puntero sobre cualquier control para escucharlo.`);
+        speech.hablarLista(
+          [`${welcome} Pasá el puntero sobre cualquier control para escucharlo.${warning}`],
+          () => {},
+        );
     });
   }
   function insert(value: string, focus = true) {
@@ -240,8 +314,7 @@ export function Calculator() {
   }
   function clear() {
     setExpression('');
-    setResult(null);
-    setError('');
+    updateCalculation({ result: null, error: '', explanation: false });
     justCalculated.current = false;
   }
   async function memoryAction(action: 'clear' | 'recall' | 'add' | 'subtract') {
@@ -273,7 +346,7 @@ export function Calculator() {
       }
     }
     setMemory(next);
-    if (!storage.write('memory', next)) setStorageWarning(storage.warning);
+    if (!storage.write('memory', next)) reportStorageFailure();
     announce(`Memoria: ${mathSpeech(next)}.`);
   }
   async function calculate(
@@ -283,40 +356,49 @@ export function Calculator() {
   ) {
     if (computing.current) return;
     computing.current = true;
+    const targetTool = view === 'history' ? 'basic' : calculationKey;
+    lastCalculation.current[targetTool] = { value, angle, scope: { ...scope } };
     const focused = document.activeElement as HTMLElement | null;
     const origin =
       (focused?.matches('input, textarea')
         ? focused
-        : focused?.closest('form')?.querySelector<HTMLElement>('input, textarea')) ?? input.current;
-    calculationOrigin.current = {
+        : focused?.closest('form')?.querySelector<HTMLElement>('input, textarea')) ??
+      Array.from(
+        document.querySelectorAll<HTMLElement>(
+          '.workspace input:not([type=checkbox]), .workspace textarea',
+        ),
+      ).find((field) => field.getClientRects().length) ??
+      input.current;
+    calculationOrigin.current[targetTool] = {
       tool: view === 'history' ? 'basic' : activeTool,
       field: view === 'history' ? input.current : origin,
     };
     automatic.cancel();
     clearTimeout(typingTimer.current);
     setBusy(true);
-    setError('');
-    setExplanation(false);
+    updateCalculation({ error: '', explanation: false }, targetTool);
     announce('Calculando.', false);
     try {
       const calculated = await client.evaluate(value, angle, scope);
       if (calculated.assigned) {
         const next = { ...variables, [calculated.assigned.name]: calculated.assigned.value };
         setVariables(next);
-        if (!variableService.save(next)) setStorageWarning(storage.warning);
+        if (!variableService.save(next)) reportStorageFailure();
       }
-      setResult(calculated);
-      justCalculated.current = true;
+      updateCalculation({ result: calculated }, targetTool);
+      if (targetTool === 'basic') justCalculated.current = true;
       const entry = { ...calculated, id: crypto.randomUUID(), date: new Date().toISOString() };
       saveHistory([entry, ...currentEntries.current].slice(0, 100));
       announce(`Resultado: ${resultSpeech(calculated)}.`, preferences.autoRead);
+      if (keyboard.sounds) void feedbackSound.play('success');
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'No pude completar el cálculo.';
-      setError(message);
+      updateCalculation({ error: message }, targetTool);
       setStatus('');
       if (document.activeElement === focused) origin?.focus();
       automatic.cancel();
       if (preferences.guided) speech.hablarAutomatico(message);
+      if (keyboard.sounds) void feedbackSound.play('error');
     } finally {
       computing.current = false;
       setBusy(false);
@@ -342,9 +424,11 @@ export function Calculator() {
       ? 'Ayuda'
       : view === 'history'
         ? 'Historial'
-        : view === 'settings'
-          ? 'Configuración'
-          : toolName(activeTool);
+        : view === 'keyboard'
+          ? 'Teclado y atajos'
+          : view === 'settings'
+            ? 'Configuración'
+            : toolName(activeTool);
     const field = lastField.current;
     const currentField = field?.getClientRects().length
       ? describeElement(field)
@@ -356,572 +440,953 @@ export function Calculator() {
       ),
     ).find((element) => element.getClientRects().length)?.value;
     announce(
-      `${section}. Modo escritura. ${preferences.guided ? 'Guía por voz activada' : 'Lector de pantalla externo'}. Campo: ${currentField}. ${draft ? `Expresión: ${mathSpeech(draft)}.` : 'Sin expresión en esta sección.'} ${result ? `Hay resultado: ${resultSpeech(result)}.` : 'Sin resultado.'} ${error ? `Error: ${error}.` : 'Sin errores.'} Teclado de botones ${keypad?.open ? 'abierto' : 'cerrado'}.`,
+      `${section}. ${keyboard.mode === 'math' ? 'Modo teclado matemático' : 'Modo escritura'}. ${preferences.guided ? 'Guía por voz activada' : 'Lector de pantalla externo'}. Campo: ${currentField}. ${draft ? `Expresión: ${mathSpeech(draft)}.` : 'Sin expresión en esta sección.'} ${result ? `Hay resultado: ${resultSpeech(result)}.` : 'Sin resultado.'} ${error ? `Error: ${error}.` : 'Sin errores.'} Teclado de botones ${keypad?.open ? 'abierto' : 'cerrado'}.`,
     );
   }
 
+  function changeKeyboard(next: KeyboardSettings) {
+    keyboardManager.cancelSequence();
+    setKeyboard(next);
+    if (!keyboardSettingsService.save(next)) reportStorageFailure();
+    if (next.mode !== keyboard.mode)
+      announce(
+        next.mode === 'math' ? 'Modo teclado matemático activado.' : 'Modo escritura activado.',
+      );
+  }
+  function stopAll() {
+    clearTimeout(typingTimer.current);
+    cancelAutomatic();
+    speech.detener();
+    feedbackSound.stop();
+    commandBus.sendIfMounted('graphs', { type: 'graph', operation: 'stop' });
+  }
+  function openKeyboard() {
+    stopAll();
+    keyboardManager.cancelSequence();
+    commandBus.cancelPending();
+    setHelp(false);
+    setView('keyboard');
+    focusTarget('keyboard-title');
+  }
+  function closeCommandDialog() {
+    setPalette(false);
+    setFunctionPrompt(null);
+    requestAnimationFrame(() => {
+      if (dialogOrigin.current?.getClientRects().length) dialogOrigin.current.focus();
+      else document.getElementById('workspace-title')?.focus();
+    });
+  }
+  function exitPractice() {
+    setPractice(null);
+    focusTarget('keyboard-title');
+    announce('Práctica finalizada. Tus datos se conservaron.');
+  }
+  function explicitRead(message: string) {
+    cancelAutomatic();
+    speech.hablar(message);
+  }
+  function executeCommand(command: MathCommand) {
+    setPalette(false);
+    keyboardManager.cancelSequence();
+    cancelAutomatic();
+    const action = command.action;
+    if (action.type === 'insert') {
+      if (activeTool === 'advanced' && view === 'work')
+        commandBus.send('advanced', {
+          type: 'tool',
+          tool: 'advanced',
+          operation: 'insert',
+          variant: action.value,
+        });
+      else {
+        editHistory.record(expression);
+        if (view !== 'work' || !['basic', 'scientific'].includes(activeTool))
+          openTool('basic', 'math-keyboard-area');
+        keypadInsert(action.value);
+      }
+    } else if (action.type === 'function') {
+      dialogOrigin.current = document.activeElement as HTMLElement;
+      setFunctionPrompt(command);
+    } else if (action.type === 'tool') {
+      openTool(action.tool);
+      if (action.variant === 'complex') setVectorContext('complex');
+      else if (action.tool === 'vectors') setVectorContext('vectors');
+      if (action.operation) commandBus.send(action.tool, action);
+      announce(
+        `${command.name}. Contexto: ${command.category}. Completá los campos antes de calcular.`,
+        keyboard.verbosity !== 'minimal',
+      );
+      if (keyboard.sounds) void feedbackSound.play('change');
+    } else if (action.type === 'graph') {
+      if (activeTool !== 'graphs' || view !== 'work') openTool('graphs');
+      commandBus.send('graphs', action);
+    } else {
+      switch (action.operation) {
+        case 'mode': {
+          const mode = keyboard.mode === 'math' ? 'writing' : 'math';
+          changeKeyboard({ ...keyboard, mode });
+          setView('work');
+          setHelp(false);
+          focusTarget(
+            mode === 'math'
+              ? 'math-keyboard-area'
+              : ['basic', 'scientific'].includes(activeTool)
+                ? 'expression'
+                : 'workspace-title',
+          );
+          break;
+        }
+        case 'palette':
+          dialogOrigin.current = document.activeElement as HTMLElement;
+          setPalette(true);
+          break;
+        case 'keyboard':
+          openKeyboard();
+          break;
+        case 'where':
+          whereAmI();
+          break;
+        case 'help':
+          openHelp();
+          break;
+        case 'stop':
+          stopAll();
+          break;
+        case 'read-expression':
+          readExpression();
+          break;
+        case 'read-result':
+          explicitRead(result ? `Resultado: ${resultSpeech(result)}.` : 'No hay resultado.');
+          break;
+        case 'read-error':
+          explicitRead(error || 'No hay errores.');
+          break;
+        case 'read-message':
+          explicitRead(status || 'No hay un mensaje anterior.');
+          break;
+        case 'read-tool':
+          explicitRead(`Herramienta actual: ${toolName(activeTool)}.`);
+          break;
+        case 'repeat-action': {
+          const last = lastCalculation.current[calculationKey];
+          if (last) void calculate(last.value, last.angle, last.scope);
+          else announce('Todavía no hay un cálculo para repetir.');
+          break;
+        }
+        case 'calculate':
+          if (activeTool === 'advanced')
+            document.querySelector<HTMLFormElement>('#advanced form')?.requestSubmit();
+          else void calculate();
+          break;
+        case 'erase':
+        case 'delete':
+        case 'undo':
+        case 'redo': {
+          if (activeTool === 'advanced') {
+            commandBus.send('advanced', {
+              type: 'tool',
+              tool: 'advanced',
+              operation: action.operation,
+            });
+            break;
+          }
+          if (!['basic', 'scientific'].includes(activeTool)) {
+            announce(
+              'No hay una edición matemática para deshacer en esta herramienta. Dentro de un campo usá su edición habitual.',
+            );
+            break;
+          }
+          if (action.operation === 'undo' || action.operation === 'redo') {
+            const value = editHistory[action.operation](expression);
+            if (value === undefined) announce('No hay más cambios disponibles.');
+            else {
+              setExpression(value);
+              justCalculated.current = false;
+              announce(
+                `${action.operation === 'undo' ? 'Deshecho' : 'Rehecho'}. ${mathSpeech(value)}`,
+              );
+            }
+          } else {
+            editHistory.record(expression);
+            if (action.operation === 'erase') erase();
+            else {
+              const start = input.current?.selectionStart ?? expression.length;
+              const end = input.current?.selectionEnd ?? start;
+              setExpression(
+                expression.slice(0, start) + expression.slice(end > start ? end : start + 1),
+              );
+              justCalculated.current = false;
+            }
+          }
+          break;
+        }
+        case 'diff':
+        case 'integrate':
+        case 'limit':
+          openTool('advanced');
+          commandBus.send('advanced', {
+            type: 'tool',
+            tool: 'advanced',
+            operation: action.operation,
+          });
+          break;
+        case 'basic':
+        case 'tools':
+        case 'result':
+        case 'history':
+        case 'graphs':
+        case 'matrices':
+        case 'dictation':
+        case 'settings':
+          navigate(action.operation);
+          break;
+      }
+    }
+    if (['detailed', 'training'].includes(keyboard.verbosity) && action.type === 'insert')
+      announce(
+        `${command.spokenLabel}. ${keyboard.verbosity === 'training' ? command.description : ''}`,
+      );
+  }
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      keyboardManager.handle(event, {
+        settings: keyboard,
+        context: activeTool === 'vectors' ? vectorContext : activeTool,
+        insideApp: !!target?.closest('.app'),
+        insideWorkspace: !!target?.closest('[data-keyboard-workspace]'),
+        editing: !!target?.closest(
+          'input, textarea, select, [contenteditable=true], [role=textbox]',
+        ),
+        nativeActivation: !!target?.closest('button, a, summary'),
+        modal: !!document.querySelector('dialog[open]'),
+        practice: practice?.mode ?? null,
+        practiceCategory: practice?.category ?? '',
+        execute: executeCommand,
+        announce,
+        stop: stopAll,
+        exitPractice,
+        legacy: (event) =>
+          handleKeyboard(event, {
+            stop: stopAll,
+            read: readExpression,
+            help: openHelp,
+            navigate,
+            symbolic: (operation) => {
+              openTool('advanced');
+              requestAnimationFrame(() => advanced.current?.selectOperation(operation));
+            },
+          }),
+      });
+    };
+    const release = (event: KeyboardEvent) => keyboardManager.release(event);
+    const observe = (event: KeyboardEvent) => keyboardManager.observe(event);
+    const blur = () => keyboardManager.reset();
+    window.addEventListener('keydown', observe, true);
+    window.addEventListener('keydown', handler);
+    window.addEventListener('keyup', release, true);
+    window.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('keydown', observe, true);
+      window.removeEventListener('keyup', release, true);
+      window.removeEventListener('blur', blur);
+    };
+  });
+
   return (
-    <div
-      className={preferences.maximum ? 'app maximum' : 'app'}
-      onFocusCapture={(event) => {
-        if ((event.target as HTMLElement).matches('input, textarea, select'))
-          lastField.current = event.target as HTMLElement;
-        automatic.onFocusCapture(event);
-      }}
-      onChangeCapture={automatic.onChangeCapture}
-      onPointerOver={automatic.onPointerOver}
-      onPointerOut={automatic.onPointerOut}
-    >
-      <a
-        className="skip-link"
-        href="#expression"
-        onClick={(event) => {
-          event.preventDefault();
-          navigate('basic');
+    <CommandContext.Provider value={{ bus: commandBus, keyboard: keyboardManager }}>
+      <div
+        className={preferences.maximum ? 'app maximum' : 'app'}
+        onFocusCapture={(event) => {
+          const context = (event.target as HTMLElement).closest<HTMLElement>(
+            '[data-keyboard-context]',
+          )?.dataset.keyboardContext;
+          if (context === 'vectors' || context === 'complex') setVectorContext(context);
+          if ((event.target as HTMLElement).matches('input, textarea, select'))
+            lastField.current = event.target as HTMLElement;
+          automatic.onFocusCapture(event);
         }}
+        onChangeCapture={automatic.onChangeCapture}
+        onPointerOver={automatic.onPointerOver}
+        onPointerOut={automatic.onPointerOut}
       >
-        Saltar a la calculadora
-      </a>
-      <header className="header">
         <a
+          className="skip-link"
           href="#expression"
           onClick={(event) => {
             event.preventDefault();
             navigate('basic');
           }}
-          className="brand"
-          aria-label="MathVoice, ir a la calculadora"
         >
-          <span className="brand-icon" aria-hidden="true">
-            ∑
-          </span>
-          <span>
-            Math<span className="brand-light">Voice</span>
-          </span>
+          Saltar a la calculadora
         </a>
-        <nav aria-label="Navegación principal">
+        <header className="header">
           <a
             href="#expression"
-            aria-current={view === 'work' && !help ? 'page' : undefined}
             onClick={(event) => {
               event.preventDefault();
               navigate('basic');
             }}
+            className="brand"
+            aria-label="MathVoice, ir a la calculadora"
           >
-            Calculadora
+            <span className="brand-icon" aria-hidden="true">
+              ∑
+            </span>
+            <span>
+              Math<span className="brand-light">Voice</span>
+            </span>
           </a>
-          <a
-            href="#tool-choice"
-            onClick={(event) => {
-              event.preventDefault();
-              navigate('tools');
-            }}
-          >
-            Herramientas
-          </a>
-          <a
-            href="#history-title"
-            aria-current={view === 'history' && !help ? 'page' : undefined}
-            onClick={(event) => {
-              event.preventDefault();
-              navigate('history');
-            }}
-          >
-            Historial
-          </a>
-          <a
-            href="#settings-title"
-            aria-current={view === 'settings' && !help ? 'page' : undefined}
-            onClick={(event) => {
-              event.preventDefault();
-              navigate('settings');
-            }}
-          >
-            Configuración
-          </a>
-          <button ref={helpButton} onClick={openHelp}>
-            Ayuda <kbd>F1</kbd>
-          </button>
-        </nav>
-      </header>
-      <main>
-        <h1>Calculadora accesible</h1>
-        <div className="voice-bar">
-          <button onClick={whereAmI}>¿Dónde estoy?</button>
-          <span>
-            {!speech.available
-              ? 'Síntesis de voz no disponible en este navegador'
-              : preferences.guided
-                ? 'Guía por voz activada'
-                : 'Guía por voz desactivada'}
-          </span>
-          <button
-            className={preferences.guided ? '' : 'primary'}
-            disabled={!speech.available}
-            onClick={() => {
-              automatic.cancel();
-              if (preferences.guided) {
-                changePreferences({ ...preferences, guided: false });
-                speech.detener();
-              } else start(true);
-            }}
-          >
-            {preferences.guided ? 'Desactivar voz automática' : 'Activar voz automática'}
-          </button>
-          <button
-            onClick={() => {
-              clearTimeout(typingTimer.current);
-              automatic.cancel();
-              speech.detener();
-            }}
-          >
-            Detener voz <kbd>Esc</kbd>
-          </button>
-        </div>
-        {!preferences.welcomed && (
-          <section className="welcome" aria-labelledby="welcome-title">
-            <div>
-              <h2 id="welcome-title">Bienvenido a MathVoice.</h2>
-              <p>
-                Activá la voz una vez. Después, cada control se lee al pasar el puntero o recorrerlo
-                con Tab. Si usás NVDA, JAWS o VoiceOver, elegí Usar mi lector de pantalla para
-                evitar dos voces.
-              </p>
-            </div>
-            <div className="actions">
-              <button className="primary" disabled={!speech.available} onClick={() => start(true)}>
-                Activar guía por voz
-              </button>
-              <button onClick={() => start(false)}>Usar mi lector de pantalla</button>
-            </div>
-          </section>
-        )}
-        {help && (
-          <section className="panel help" aria-labelledby="help-title">
-            <h2 id="help-title" tabIndex={-1}>
-              Ayuda accesible
-            </h2>
-            <p>{welcome}</p>
-            <ul>
-              <li>Enter en el campo: calcular.</li>
-              <li>Ctrl + Enter: escuchar expresión.</li>
-              <li>
-                Alt + Shift + C: volver a escribir una operación. Alt + Shift + T: elegir
-                herramienta.
-              </li>
-              <li>Alt + Shift + R: ir al resultado.</li>
-              <li>Alt + Shift + H: ir al historial.</li>
-              <li>Alt + Shift + G: abrir gráficos. Alt + Shift + M: abrir matrices.</li>
-              <li>Alt + Shift + D, I o L: derivada, integral o límite.</li>
-              <li>Alt + Shift + V: iniciar o cancelar dictado.</li>
-              <li>F1: abrir ayuda. Escape: detener voz.</li>
-            </ul>
-            <p>
-              Usá punto para decimales y coma entre argumentos. Por ejemplo: log(8,2). Las funciones
-              inversas respetan el modo angular. El historial conserva el modo original de cada
-              cálculo.
-            </p>
-            <button
-              onClick={() => {
-                setHelp(false);
-                requestAnimationFrame(() =>
-                  (helpOrigin.current?.isConnected
-                    ? helpOrigin.current
-                    : helpButton.current
-                  )?.focus(),
-                );
+          <nav aria-label="Navegación principal">
+            <a
+              href="#keyboard-title"
+              aria-current={view === 'keyboard' && !help ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                openKeyboard();
               }}
             >
-              Cerrar ayuda
+              Teclado y atajos
+            </a>
+            <a
+              href="#expression"
+              aria-current={view === 'work' && !help ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate('basic');
+              }}
+            >
+              Calculadora
+            </a>
+            <a
+              href="#tool-choice"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate('tools');
+              }}
+            >
+              Herramientas
+            </a>
+            <a
+              href="#history-title"
+              aria-current={view === 'history' && !help ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate('history');
+              }}
+            >
+              Historial
+            </a>
+            <a
+              href="#settings-title"
+              aria-current={view === 'settings' && !help ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate('settings');
+              }}
+            >
+              Configuración
+            </a>
+            <button ref={helpButton} onClick={openHelp}>
+              Ayuda <kbd>F1</kbd>
             </button>
-          </section>
-        )}
-        {storageWarning && <p className="warning">{storageWarning}</p>}
-        <ToolChooser choice={choice} choose={setChoice} open={openTool} />
-        <div
-          id="calculation-error"
-          role={preferences.guided ? undefined : 'alert'}
-          aria-atomic="true"
-          className={error ? 'error' : 'sr-only'}
-        >
-          {error}
-        </div>
-        <div className="workspace" hidden={view !== 'work' || help}>
-          <div className="workspace-heading">
-            <h2 id="workspace-title" tabIndex={-1}>
-              Herramienta actual: {toolName(activeTool)}
-            </h2>
-            <p className="hint">
-              Completá el formulario. El resultado está a continuación. Alt + Shift + R te lleva al
-              resultado; Alt + Shift + T, al menú de herramientas.
-            </p>
-            <button onClick={() => navigate('result')}>Ir al resultado</button>
+          </nav>
+        </header>
+        <main>
+          <h1>
+            {view === 'keyboard' && !help ? 'Referencia de teclado' : 'Calculadora accesible'}
+          </h1>
+          <div className="actions">
+            <button onClick={() => executeCommand(commandById.get('palette')!)}>
+              Paleta de comandos
+            </button>
+            <button
+              aria-pressed={keyboard.mode === 'math'}
+              onClick={() => executeCommand(commandById.get('mode')!)}
+            >
+              {keyboard.mode === 'math'
+                ? 'Modo matemático activado. Cambiar a escritura'
+                : 'Activar modo teclado matemático'}
+            </button>
           </div>
-          <div hidden={activeTool !== 'basic' && activeTool !== 'scientific'}>
-            <section className="calculator panel" aria-labelledby="calculator-title">
-              <p className="eyebrow">TU ESPACIO MATEMÁTICO</p>
-              <h2 id="calculator-title">Escribir o dictar una operación</h2>
-              <p className="intro">Usá los botones o escribí la operación.</p>
-              {view === 'work' &&
-                !help &&
-                (activeTool === 'basic' || activeTool === 'scientific') && (
-                  <Dictation
-                    language={preferences.language}
-                    announce={announce}
-                    onListeningChange={setListening}
-                    confirm={(value, angle) => {
-                      setExpression(value);
-                      if (angle) changePreferences({ ...preferences, angle });
-                      void calculate(value, angle ?? preferences.angle);
-                    }}
-                  />
-                )}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void calculate();
+          <div className="voice-bar">
+            <button onClick={whereAmI}>¿Dónde estoy?</button>
+            <span>
+              {!speech.available
+                ? 'Síntesis de voz no disponible en este navegador'
+                : preferences.guided
+                  ? 'Guía por voz activada'
+                  : 'Guía por voz desactivada'}
+            </span>
+            <button
+              className={preferences.guided ? '' : 'primary'}
+              disabled={!speech.available}
+              onClick={() => {
+                automatic.cancel();
+                if (preferences.guided) {
+                  changePreferences({ ...preferences, guided: false });
+                  speech.detener();
+                } else if (!preferences.welcomed) start(true);
+                else {
+                  changePreferences({ ...preferences, guided: true });
+                  speech.hablar('Voz automática activada. Se conserva la sección actual.');
+                }
+              }}
+            >
+              {preferences.guided ? 'Desactivar voz automática' : 'Activar voz automática'}
+            </button>
+            <button
+              onClick={() => {
+                clearTimeout(typingTimer.current);
+                automatic.cancel();
+                speech.detener();
+              }}
+            >
+              Detener voz <kbd>Esc</kbd>
+            </button>
+          </div>
+          {!preferences.welcomed && (
+            <section className="welcome" aria-labelledby="welcome-title">
+              <div>
+                <h2 id="welcome-title">Bienvenido a MathVoice.</h2>
+                <p>
+                  Activá la voz una vez. Después, cada control se lee al pasar el puntero o
+                  recorrerlo con Tab. Si usás NVDA, JAWS o VoiceOver, elegí Usar mi lector de
+                  pantalla para evitar dos voces.
+                </p>
+              </div>
+              <div className="actions">
+                <button
+                  className="primary"
+                  disabled={!speech.available}
+                  onClick={() => start(true)}
+                >
+                  Activar guía por voz
+                </button>
+                <button onClick={() => start(false)}>Usar mi lector de pantalla</button>
+              </div>
+            </section>
+          )}
+          {help && (
+            <section className="panel help" aria-labelledby="help-title">
+              <h2 id="help-title" tabIndex={-1}>
+                Ayuda accesible
+              </h2>
+              <p>{welcome}</p>
+              <ul>
+                <li>Enter en el campo: calcular.</li>
+                <li>Ctrl + Enter: escuchar expresión.</li>
+                <li>
+                  Alt + Shift + C: volver a escribir una operación. Elegir herramienta está en el
+                  menú y en la paleta de comandos (Alt + Shift + P).
+                </li>
+                <li>Alt + Shift + R: ir al resultado.</li>
+                <li>Alt + Shift + H: ir al historial.</li>
+                <li>Alt + Shift + G: abrir gráficos. Alt + Shift + M: abrir matrices.</li>
+                <li>Alt + Shift + D o L: derivada o límite. Buscá integral en la paleta.</li>
+                <li>Alt + Shift + V: iniciar o cancelar dictado.</li>
+                <li>F1: abrir ayuda. Escape: detener voz.</li>
+              </ul>
+              <p>
+                Usá punto para decimales y coma entre argumentos. Por ejemplo: log(8,2). Las
+                funciones inversas respetan el modo angular. El historial conserva el modo original
+                de cada cálculo.
+              </p>
+              <button
+                onClick={() => {
+                  setHelp(false);
+                  requestAnimationFrame(() =>
+                    (helpOrigin.current?.isConnected
+                      ? helpOrigin.current
+                      : helpButton.current
+                    )?.focus(),
+                  );
                 }}
               >
-                <label className="expression-label" htmlFor="expression">
-                  Expresión matemática
-                </label>
-                <input
-                  ref={input}
-                  id="expression"
-                  className="expression"
-                  value={expression}
-                  maxLength={10000}
-                  autoComplete="off"
-                  spellCheck={false}
-                  aria-describedby={error ? 'expression-hint calculation-error' : 'expression-hint'}
-                  aria-invalid={!!error}
-                  placeholder="Ej.: sqrt(25) + sin(pi/2)"
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setExpression(value);
-                    justCalculated.current = false;
-                    setError('');
-                    clearTimeout(typingTimer.current);
-                    if (preferences.guided && preferences.readTyping)
-                      typingTimer.current = setTimeout(
-                        () => speech.hablarAutomatico(mathSpeech(value)),
-                        900,
-                      );
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey && e.key === 'Enter') e.preventDefault();
-                    if (
-                      preferences.guided &&
-                      preferences.readKeys &&
-                      e.key.length === 1 &&
-                      !e.ctrlKey &&
-                      !e.altKey
-                    )
-                      speech.hablarAutomatico(mathSpeech(e.key));
-                  }}
-                />
-                <p className="hint" id="expression-hint">
-                  Enter para calcular · Punto para decimales · Paréntesis para agrupar
-                </p>
-                <div className="actions main-actions">
-                  <button type="submit" className="primary" aria-disabled={busy}>
-                    {busy ? 'Calculando…' : 'Calcular'} <span aria-hidden="true">↵</span>
-                  </button>
-                  <button type="button" disabled={!speech.available} onClick={readExpression}>
-                    Escuchar expresión
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clear();
-                      input.current?.focus();
-                    }}
-                  >
-                    Limpiar
-                  </button>
-                </div>
-                <label className="angle-label">
-                  Modo angular
-                  <select
-                    value={preferences.angle}
-                    onChange={(e) => {
-                      const angle = e.target.value as AngleMode;
-                      changePreferences({ ...preferences, angle });
-                      announce(`Modo angular: ${angleNames[angle]}.`);
-                    }}
-                  >
-                    <option value="rad">Radianes</option>
-                    <option value="deg">Grados</option>
-                    <option value="grad">Gradianes</option>
-                  </select>
-                </label>
-              </form>
+                Cerrar ayuda
+              </button>
             </section>
+          )}
+          {storageWarning && <p className="warning">{storageWarning}</p>}
+          <ToolChooser choice={choice} choose={setChoice} open={openTool} />
+          <div
+            id="calculation-error"
+            role={preferences.guided ? undefined : 'alert'}
+            aria-atomic="true"
+            className={error ? 'error' : 'sr-only'}
+          >
+            {error}
           </div>
-          <div hidden={activeTool !== 'scientific'}>
-            <Tools insert={insert} />
-          </div>
-          <div hidden={activeTool !== 'advanced'}>
-            <AdvancedCalculator
-              ref={advanced}
+          <div className="workspace" data-keyboard-workspace hidden={view !== 'work' || help}>
+            <div className="workspace-heading">
+              <h2 id="workspace-title" tabIndex={-1}>
+                Herramienta actual: {toolName(activeTool)}
+              </h2>
+              <p className="hint">
+                Completá el formulario. El resultado está a continuación. Alt + Shift + R te lleva
+                al resultado. El menú de herramientas también está en la navegación principal.
+              </p>
+              <button onClick={() => navigate('result')}>Ir al resultado</button>
+              {keyboard.mode === 'math' && (
+                <div
+                  id="math-keyboard-area"
+                  className="math-keyboard-area"
+                  role="group"
+                  tabIndex={0}
+                  aria-label="Área del teclado matemático"
+                  aria-describedby="math-keyboard-help"
+                >
+                  Teclado matemático:{' '}
+                  {activeTool === 'vectors' && vectorContext === 'complex'
+                    ? 'Complejos'
+                    : toolName(activeTool)}
+                  .
+                  <p id="math-keyboard-help">
+                    Presioná un atajo o abrí la paleta con Alt más Shift más P. F2 vuelve a
+                    escritura. Tab sale de esta área. Dentro de los campos podés escribir
+                    normalmente.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div hidden={activeTool !== 'basic' && activeTool !== 'scientific'}>
+              <section className="calculator panel" aria-labelledby="calculator-title">
+                <p className="eyebrow">TU ESPACIO MATEMÁTICO</p>
+                <h2 id="calculator-title">Escribir o dictar una operación</h2>
+                <p className="intro">Usá los botones o escribí la operación.</p>
+                {view === 'work' &&
+                  !help &&
+                  (activeTool === 'basic' || activeTool === 'scientific') && (
+                    <Dictation
+                      language={preferences.language}
+                      announce={announce}
+                      onListeningChange={setListening}
+                      confirm={(value, angle) => {
+                        setExpression(value);
+                        if (angle) changePreferences({ ...preferences, angle });
+                        void calculate(value, angle ?? preferences.angle);
+                      }}
+                    />
+                  )}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void calculate();
+                  }}
+                >
+                  <label className="expression-label" htmlFor="expression">
+                    Expresión matemática
+                  </label>
+                  <input
+                    ref={input}
+                    id="expression"
+                    data-preserve-reading
+                    className="expression"
+                    value={expression}
+                    maxLength={10000}
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-describedby={
+                      error ? 'expression-hint calculation-error' : 'expression-hint'
+                    }
+                    aria-invalid={!!error}
+                    placeholder="Ej.: sqrt(25) + sin(pi/2)"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setExpression(value);
+                      justCalculated.current = false;
+                      setError('');
+                      clearTimeout(typingTimer.current);
+                      if (preferences.guided && preferences.readTyping)
+                        typingTimer.current = setTimeout(
+                          () => speech.hablarAutomatico(mathSpeech(value)),
+                          900,
+                        );
+                    }}
+                    onKeyDown={(e) => {
+                      if (keyboardManager.preservesReaderKeys(e.nativeEvent)) return;
+                      if (
+                        preferences.guided &&
+                        preferences.readKeys &&
+                        e.key.length === 1 &&
+                        !e.ctrlKey &&
+                        !e.altKey
+                      )
+                        speech.hablarAutomatico(mathSpeech(e.key));
+                    }}
+                  />
+                  <p className="hint" id="expression-hint">
+                    Enter para calcular · Punto para decimales · Paréntesis para agrupar
+                  </p>
+                  <div className="actions main-actions">
+                    <button type="submit" className="primary" aria-disabled={busy}>
+                      {busy ? 'Calculando…' : 'Calcular'} <span aria-hidden="true">↵</span>
+                    </button>
+                    <button type="button" disabled={!speech.available} onClick={readExpression}>
+                      Escuchar expresión
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clear();
+                        input.current?.focus();
+                      }}
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                  <label className="angle-label">
+                    Modo angular
+                    <select
+                      value={preferences.angle}
+                      onChange={(e) => {
+                        const angle = e.target.value as AngleMode;
+                        changePreferences({ ...preferences, angle });
+                        announce(`Modo angular: ${angleNames[angle]}.`);
+                      }}
+                    >
+                      <option value="rad">Radianes</option>
+                      <option value="deg">Grados</option>
+                      <option value="grad">Gradianes</option>
+                    </select>
+                  </label>
+                </form>
+              </section>
+            </div>
+            <div hidden={activeTool !== 'scientific'}>
+              <Tools insert={insert} />
+            </div>
+            <div hidden={activeTool !== 'advanced'}>
+              <AdvancedCalculator
+                ref={advanced}
+                busy={busy}
+                calculate={(value) => void calculate(value)}
+              />
+            </div>
+            <FeatureHub
+              active={view === 'work' && !help ? activeTool : null}
+              visited={visited}
+              graphRequest={graphRequest}
               busy={busy}
+              variables={variables}
+              angle={preferences.angle}
+              announce={announce}
               calculate={(value) => {
-                setExpression(value);
                 void calculate(value);
               }}
+              insert={insert}
+              removeVariable={(name) => {
+                const next = { ...variables };
+                delete next[name];
+                setVariables(next);
+                if (!variableService.save(next)) reportStorageFailure();
+                announce(`Variable ${name} eliminada.`);
+              }}
             />
-          </div>
-          <FeatureHub
-            active={view === 'work' && !help ? activeTool : null}
-            visited={visited}
-            graphRequest={graphRequest}
-            busy={busy}
-            variables={variables}
-            angle={preferences.angle}
-            announce={announce}
-            calculate={(value) => {
-              setExpression(value);
-              void calculate(value);
-            }}
-            insert={insert}
-            removeVariable={(name) => {
-              const next = { ...variables };
-              delete next[name];
-              setVariables(next);
-              if (!variableService.save(next)) setStorageWarning(storage.warning);
-              announce(`Variable ${name} eliminada.`);
-            }}
-          />
-          <section className="result panel" aria-labelledby="result-title">
-            <p className="eyebrow">ÚLTIMO CÁLCULO</p>
-            <h2 id="result-title" tabIndex={-1}>
-              Resultado
-            </h2>
-            {result ? (
-              <>
-                <p className="result-expression">{result.expression}</p>
-                <p
-                  className={`result-value ${result.table || result.matrix ? 'sr-only' : ['Álgebra', 'Cálculo'].includes(result.kind) ? 'symbolic-value' : ''}`}
-                  aria-label={`Resultado: ${result.value}`}
-                  data-speech={`Resultado: ${resultSpeech(result)}`}
-                >
-                  {result.value}
-                </p>
-                {result.matrix && (
-                  <div className="result-table">
+            <section className="result panel" aria-labelledby="result-title">
+              <p className="eyebrow">ÚLTIMO CÁLCULO</p>
+              <h2 id="result-title" tabIndex={-1}>
+                Resultado
+              </h2>
+              {result ? (
+                <>
+                  <p className="result-expression">{result.expression}</p>
+                  <p
+                    className={`result-value ${result.table || result.matrix ? 'sr-only' : ['Álgebra', 'Cálculo'].includes(result.kind) ? 'symbolic-value' : ''}`}
+                    aria-label={`Resultado: ${result.value}`}
+                    data-speech={`Resultado: ${resultSpeech(result)}`}
+                  >
+                    {result.value}
+                  </p>
+                  {result.matrix && (
+                    <div className="result-table">
+                      <table className="data-table">
+                        <caption>Matriz o vector resultado</caption>
+                        <tbody>
+                          {result.matrix.map((row, i) => (
+                            <tr key={i}>
+                              {row.map((value, j) => (
+                                <td
+                                  key={j}
+                                  data-speech={`Fila ${i + 1}, columna ${j + 1}, ${mathSpeech(value)}`}
+                                >
+                                  {value}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {result.table && (
                     <table className="data-table">
-                      <caption>Matriz o vector resultado</caption>
+                      <caption>Detalle del resultado</caption>
                       <tbody>
-                        {result.matrix.map((row, i) => (
-                          <tr key={i}>
-                            {row.map((value, j) => (
-                              <td
-                                key={j}
-                                data-speech={`Fila ${i + 1}, columna ${j + 1}, ${mathSpeech(value)}`}
-                              >
-                                {value}
-                              </td>
-                            ))}
+                        {result.table.map((row) => (
+                          <tr key={row.label}>
+                            <th scope="row">{row.label}</th>
+                            <td data-speech={`${row.label}: ${mathSpeech(row.value)}`}>
+                              {row.value}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                  </div>
-                )}
-                {result.table && (
-                  <table className="data-table">
-                    <caption>Detalle del resultado</caption>
-                    <tbody>
-                      {result.table.map((row) => (
-                        <tr key={row.label}>
-                          <th scope="row">{row.label}</th>
-                          <td data-speech={`${row.label}: ${mathSpeech(row.value)}`}>
-                            {row.value}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-                {result.unit && <p>Unidad: {result.unit}</p>}
-                {result.decimal && (
-                  <p>
-                    Aproximación decimal: <strong>{result.decimal}</strong>
+                  )}
+                  {result.unit && <p>Unidad: {result.unit}</p>}
+                  {result.decimal && (
+                    <p>
+                      Aproximación decimal: <strong>{result.decimal}</strong>
+                    </p>
+                  )}
+                  <p className="hint">
+                    {result.kind} · {angleNames[result.angleMode]}
+                    <br />
+                    {historySaved
+                      ? 'Guardado en tu historial local.'
+                      : 'Disponible en esta sesión. No se pudo guardar el historial; se perderán los cambios al cerrar.'}
                   </p>
-                )}
-                <p className="hint">
-                  {result.kind} · {angleNames[result.angleMode]}
-                  <br />
-                  Guardado en tu historial local.
-                </p>
-                <div className="actions">
-                  <button
-                    onClick={() => {
-                      const origin = calculationOrigin.current;
-                      openTool(origin.tool);
-                      requestAnimationFrame(() => {
-                        if (origin.field?.isConnected) origin.field.focus();
-                      });
-                    }}
-                  >
-                    Volver a editar el cálculo
-                  </button>
-                  <button
-                    disabled={!speech.available}
-                    onClick={() => {
-                      automatic.cancel();
-                      speech.hablar(`Resultado: ${resultSpeech(result)}`);
-                    }}
-                  >
-                    Escuchar resultado
-                  </button>
-                  <button onClick={() => void copy(result.value)}>Copiar resultado</button>
-                  <button
-                    onClick={() =>
-                      downloadHistory(
-                        [{ ...result, id: crypto.randomUUID(), date: new Date().toISOString() }],
-                        'txt',
-                      )
-                    }
-                  >
-                    Guardar resultado TXT
-                  </button>
-                  {!result.table &&
-                    !result.matrix &&
-                    !result.assigned &&
-                    result.kind !== 'Complejos' &&
-                    !/[=C]|Infinity/.test(result.value) && (
-                      <button
-                        onClick={() => {
-                          setGraphRequest({ id: Date.now(), expression: result.value });
-                          openTool('graphs');
-                          announce(
-                            'Resultado cargado en Gráficos. Podés editar la función y pulsar Graficar funciones.',
-                          );
-                        }}
-                      >
-                        Graficar resultado
-                      </button>
-                    )}
-                  <button
-                    onClick={() => {
-                      setExplanation(!explanation);
-                      if (preferences.guided && !explanation) speech.hablar(result.explanation);
-                    }}
-                    aria-expanded={explanation}
-                  >
-                    Explicar resultado
-                  </button>
-                </div>
-                <CalculationSteps
-                  steps={result.steps}
-                  speak={(text) => {
-                    automatic.cancel();
-                    speech.hablar(text);
-                  }}
-                />
-                {explanation && (
-                  <div className="explanation">
-                    <h3>Método de cálculo</h3>
-                    <p>{result.explanation}</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="result-empty">
-                <span aria-hidden="true">=</span>
-                <p>Todo empieza con una expresión.</p>
-                <p className="hint">
-                  El resultado aparecerá acá.
-                  <br />
-                  Podés escucharlo y volver a usarlo.
-                </p>
-              </div>
-            )}
-          </section>
-          <div hidden={activeTool !== 'basic' && activeTool !== 'scientific'}>
-            <details className="panel" id="keypad-panel">
-              <summary>Teclado de botones y memoria</summary>
-              <p className="hint">
-                Abrí este teclado si preferís calcular con botones. Si escribís con tu teclado
-                físico, podés dejarlo cerrado.
-              </p>
-              <Keypad
-                insert={keypadInsert}
-                erase={erase}
-                clear={clear}
-                sign={() => {
-                  setExpression(toggleSign(expression));
-                  justCalculated.current = false;
-                }}
-                calculate={() => void calculate()}
-                busy={busy}
-                memory={memory}
-                onMemory={(action) => void memoryAction(action)}
-              />
-            </details>
-            <details className="panel">
-              <summary>Ejemplos de operaciones</summary>
-              <div className="examples">
-                <span>Probá un ejemplo</span>
-                <div className="actions">
-                  {['1/3 + 1/6', 'sqrt(144)', '2^10'].map((example) => (
+                  <div className="actions">
                     <button
-                      key={example}
                       onClick={() => {
-                        justCalculated.current = false;
-                        setExpression(example);
-                        input.current?.focus();
+                        const origin = calculationOrigin.current[calculationKey];
+                        if (!origin) return;
+                        openTool(origin.tool);
+                        requestAnimationFrame(() => {
+                          if (origin.field?.isConnected) origin.field.focus();
+                        });
                       }}
                     >
-                      {example}
+                      Volver a editar el cálculo
                     </button>
-                  ))}
+                    <button
+                      disabled={!speech.available}
+                      onClick={() => {
+                        automatic.cancel();
+                        speech.hablar(`Resultado: ${resultSpeech(result)}`);
+                      }}
+                    >
+                      Escuchar resultado
+                    </button>
+                    <button onClick={() => void copy(result.value)}>Copiar resultado</button>
+                    <button
+                      onClick={() =>
+                        downloadHistory(
+                          [{ ...result, id: crypto.randomUUID(), date: new Date().toISOString() }],
+                          'txt',
+                        )
+                      }
+                    >
+                      Guardar resultado TXT
+                    </button>
+                    {!result.table &&
+                      !result.matrix &&
+                      !result.assigned &&
+                      result.kind !== 'Complejos' &&
+                      !/[=C]|Infinity/.test(result.value) && (
+                        <button
+                          onClick={() => {
+                            setGraphRequest({ id: Date.now(), expression: result.value });
+                            openTool('graphs');
+                            announce(
+                              'Resultado cargado en Gráficos. Podés editar la función y pulsar Graficar funciones.',
+                            );
+                          }}
+                        >
+                          Graficar resultado
+                        </button>
+                      )}
+                    <button
+                      onClick={() => {
+                        updateCalculation({ explanation: !explanation });
+                        if (preferences.guided && !explanation) speech.hablar(result.explanation);
+                      }}
+                      aria-expanded={explanation}
+                    >
+                      Explicar resultado
+                    </button>
+                  </div>
+                  <CalculationSteps
+                    steps={result.steps}
+                    speak={(text) => {
+                      automatic.cancel();
+                      speech.hablar(text);
+                    }}
+                  />
+                  {explanation && (
+                    <div className="explanation">
+                      <h3>Método de cálculo</h3>
+                      <p>{result.explanation}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="result-empty">
+                  <span aria-hidden="true">=</span>
+                  <p>Todo empieza con una expresión.</p>
+                  <p className="hint">
+                    El resultado aparecerá acá.
+                    <br />
+                    Podés escucharlo y volver a usarlo.
+                  </p>
                 </div>
-              </div>
-            </details>
+              )}
+            </section>
+            <div hidden={activeTool !== 'basic' && activeTool !== 'scientific'}>
+              <details className="panel" id="keypad-panel">
+                <summary>Teclado de botones y memoria</summary>
+                <p className="hint">
+                  Abrí este teclado si preferís calcular con botones. Si escribís con tu teclado
+                  físico, podés dejarlo cerrado.
+                </p>
+                <Keypad
+                  insert={keypadInsert}
+                  erase={erase}
+                  clear={clear}
+                  sign={() => {
+                    setExpression(toggleSign(expression));
+                    justCalculated.current = false;
+                  }}
+                  calculate={() => void calculate()}
+                  busy={busy}
+                  memory={memory}
+                  onMemory={(action) => void memoryAction(action)}
+                />
+              </details>
+              <details className="panel">
+                <summary>Ejemplos de operaciones</summary>
+                <div className="examples">
+                  <span>Probá un ejemplo</span>
+                  <div className="actions">
+                    {['1/3 + 1/6', 'sqrt(144)', '2^10'].map((example) => (
+                      <button
+                        key={example}
+                        onClick={() => {
+                          justCalculated.current = false;
+                          setExpression(example);
+                          input.current?.focus();
+                        }}
+                      >
+                        {example}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </details>
+            </div>
           </div>
-        </div>
-        <div
-          role="status"
-          aria-live={preferences.guided ? 'off' : 'polite'}
-          aria-atomic="true"
-          className="sr-only"
-        >
-          {status}
-        </div>
-        <div hidden={view !== 'settings' || help}>
-          <Settings preferences={preferences} change={changePreferences} />
-        </div>
-        <div hidden={view !== 'history' || help}>
-          <History
-            entries={entries}
-            edit={edit}
-            recalculate={(entry) => {
-              edit(entry);
-              void calculate(entry.expression, entry.angleMode, entry.variables ?? variables);
-            }}
-            remove={(id) => {
-              saveHistory(entries.filter((e) => e.id !== id));
-              announce('Cálculo eliminado.');
-            }}
-            clear={() => {
-              saveHistory([]);
-              announce('Historial vacío.');
-            }}
-            speak={(text) => {
-              automatic.cancel();
-              speech.hablar(text);
-            }}
-            copy={(text) => void copy(text)}
-          />
-        </div>
-      </main>
-      <footer>
-        <span>MathVoice · Calculadora parlante</span>
-        <span>Cálculos locales. Sin cuenta.</span>
-        <OfflineStatus />
-      </footer>
-    </div>
+          <div
+            role="status"
+            aria-live={preferences.guided ? 'off' : 'polite'}
+            aria-atomic="true"
+            className="sr-only"
+          >
+            <span key={announcementId}>{status}</span>
+          </div>
+          {view === 'keyboard' &&
+            !help &&
+            (practice ? (
+              <section className="panel" aria-labelledby="practice-title">
+                <h2 id="practice-title">
+                  {practice.mode === 'identify' ? 'Identificar tecla' : 'Practicar teclado'}
+                </h2>
+                <p>
+                  Los atajos se describen sin ejecutar acciones ni modificar datos. Tab y los atajos
+                  del navegador siguen disponibles. Escape termina la práctica.
+                </p>
+                <div
+                  id="practice-area"
+                  className="math-keyboard-area"
+                  role="group"
+                  tabIndex={0}
+                  data-keyboard-workspace
+                  aria-label="Área de práctica de teclado"
+                >
+                  Categoría: {practice.category || 'Todas'}. Presioná una tecla.
+                </div>
+                <button onClick={exitPractice}>Terminar práctica</button>
+              </section>
+            ) : (
+              <KeyboardPanel
+                settings={keyboard}
+                change={changeKeyboard}
+                execute={executeCommand}
+                announce={announce}
+                read={explicitRead}
+                cancelAutomatic={cancelAutomatic}
+                practice={(mode, category) => {
+                  stopAll();
+                  keyboardManager.cancelSequence();
+                  setPractice({ mode, category });
+                  announce(
+                    'Práctica activada. Las teclas se describen sin ejecutarse. Escape sale.',
+                  );
+                }}
+              />
+            ))}
+          {palette && (
+            <CommandPalette
+              settings={keyboard}
+              execute={executeCommand}
+              close={closeCommandDialog}
+              announce={announce}
+            />
+          )}
+          {functionPrompt && (
+            <FunctionPrompt
+              key={functionPrompt.id}
+              command={functionPrompt}
+              close={closeCommandDialog}
+              insert={(value) => {
+                setFunctionPrompt(null);
+                editHistory.record(expression);
+                openTool('basic', 'expression');
+                insert(value);
+                announce(
+                  `${functionPrompt.name} insertada. Revisá la expresión y presioná Enter para calcular.`,
+                );
+              }}
+            />
+          )}
+          <div hidden={view !== 'settings' || help}>
+            <Settings
+              preferences={preferences}
+              change={changePreferences}
+              cancelAutomatic={cancelAutomatic}
+            />
+          </div>
+          <div hidden={view !== 'history' || help}>
+            <History
+              entries={entries}
+              edit={edit}
+              recalculate={(entry) => {
+                edit(entry);
+                void calculate(entry.expression, entry.angleMode, entry.variables ?? variables);
+              }}
+              remove={(id) => {
+                saveHistory(entries.filter((e) => e.id !== id));
+                announce('Cálculo eliminado.');
+              }}
+              clear={() => {
+                saveHistory([]);
+                announce('Historial vacío.');
+              }}
+              speak={(text) => {
+                automatic.cancel();
+                speech.hablar(text);
+              }}
+              copy={(text) => void copy(text)}
+            />
+          </div>
+        </main>
+        <footer>
+          <span>MathVoice · Calculadora parlante</span>
+          <span>Cálculos locales. Sin cuenta.</span>
+          <OfflineStatus />
+        </footer>
+      </div>
+    </CommandContext.Provider>
   );
 }

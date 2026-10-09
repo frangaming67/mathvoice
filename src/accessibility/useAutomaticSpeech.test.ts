@@ -121,7 +121,7 @@ it('lee cambios de selector después de que se actualizó su valor', () => {
   vi.advanceTimersByTime(150);
   expect(speech.hablarAutomatico).toHaveBeenCalledWith('Modo angular: Grados');
 });
-it('Escape cancela la lectura pendiente al pasar el puntero', () => {
+it('el gestor puede cancelar la lectura pendiente al pasar el puntero', () => {
   const automatic = useAutomaticSpeech({ ...defaultPreferences, guided: true });
   const element = new Element();
   element.textContent = 'Resumen estadístico';
@@ -130,10 +130,10 @@ it('Escape cancela la lectura pendiente al pasar el puntero', () => {
     pointerType: 'mouse',
     relatedTarget: null,
   } as unknown as PointerEvent<HTMLDivElement>);
-  keyListeners.forEach((listener) => listener({ key: 'Escape' } as KeyboardEvent));
+  automatic.cancel();
   vi.advanceTimersByTime(200);
   expect(speech.hablarAutomatico).not.toHaveBeenCalled();
-  expect(speech.detener).toHaveBeenCalledOnce();
+  expect(keyListeners.size).toBe(0);
 });
 it('suspende foco, puntero y cambios durante el dictado', () => {
   const automatic = useAutomaticSpeech({ ...defaultPreferences, guided: true }, true);

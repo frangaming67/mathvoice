@@ -55,11 +55,12 @@ it('abre gráficos y matrices y coloca el foco en su resumen', () => {
     expect(details.summary.focus).toHaveBeenCalledOnce();
   }
 });
-it('solicita derivadas, integrales y límites sin interceptar atajos Ctrl del navegador', () => {
+it('solicita derivadas y límites sin interceptar atajos reservados del navegador', () => {
   press('d');
-  press('i');
+  expect(press('i').preventDefault).not.toHaveBeenCalled();
+  expect(press('t').preventDefault).not.toHaveBeenCalled();
   press('l');
-  expect(actions.symbolic.mock.calls).toEqual([['diff'], ['integrate'], ['limit']]);
+  expect(actions.symbolic.mock.calls).toEqual([['diff'], ['limit']]);
   const browser = press('l', { ctrlKey: true, altKey: false, shiftKey: false });
   expect(browser.preventDefault).not.toHaveBeenCalled();
 });

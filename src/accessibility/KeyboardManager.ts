@@ -26,7 +26,6 @@ export function handleKeyboard(
   const key = event.key.toLowerCase();
   const destinations = {
     c: 'basic',
-    t: 'tools',
     r: 'result',
     h: 'history',
     g: 'graphs',
@@ -38,7 +37,7 @@ export function handleKeyboard(
     actions.navigate(destinations[key as keyof typeof destinations]);
     return;
   }
-  const symbolic = { d: 'diff', i: 'integrate', l: 'limit' } as const;
+  const symbolic = { d: 'diff', l: 'limit' } as const;
   if (key in symbolic && actions.symbolic) {
     event.preventDefault();
     actions.symbolic(symbolic[key as keyof typeof symbolic]);

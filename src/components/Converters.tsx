@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { focusToolField, useToolCommands } from '../keyboard/CommandContext';
 import { unitCategories } from '../services/ConversionService';
 export function Converters({ calculate, busy }: { calculate: (e: string) => void; busy: boolean }) {
   const [category, setCategory] = useState('Longitud'),
@@ -12,8 +13,18 @@ export function Converters({ calculate, busy }: { calculate: (e: string) => void
     [a, setA] = useState('12'),
     [b, setB] = useState('10'),
     [width, setWidth] = useState('32');
+  const section = useRef<HTMLElement>(null);
+  useToolCommands('converters', (command) => {
+    if (command.type !== 'tool' || !command.operation || !unitCategories[command.operation]) return;
+    if (command.operation !== category) {
+      setCategory(command.operation);
+      setFrom(unitCategories[command.operation][0][0]);
+      setTo(unitCategories[command.operation][1][0]);
+    }
+    focusToolField(section.current);
+  });
   return (
-    <section aria-labelledby="conversions-title">
+    <section ref={section} aria-labelledby="conversions-title">
       <h2 id="conversions-title">Conversores</h2>
       <form
         onSubmit={(e) => {

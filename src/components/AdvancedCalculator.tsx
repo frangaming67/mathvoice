@@ -1,4 +1,6 @@
-import { useImperativeHandle, useRef, useState, type Ref } from 'react';
+import { useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react';
+import { focusToolField, useToolCommands } from '../keyboard/CommandContext';
+import { EditHistory } from '../keyboard/EditHistory';
 export interface AdvancedHandle {
   selectOperation: (operation: 'diff' | 'integrate' | 'limit') => void;
 }
@@ -31,15 +33,61 @@ export function AdvancedCalculator({
   const [variable, setVariable] = useState('x');
   const [order, setOrder] = useState('1');
   const [point, setPoint] = useState('0');
+  const [limitSide, setLimitSide] = useState('both');
   const [definite, setDefinite] = useState(false);
   const [lower, setLower] = useState('0');
   const [upper, setUpper] = useState('5');
   const operationSelect = useRef<HTMLSelectElement>(null);
+  const section = useRef<HTMLElement>(null);
+  const pendingCaret = useRef<number | null>(null);
+  const [editHistory] = useState(() => new EditHistory());
+  useLayoutEffect(() => {
+    if (pendingCaret.current === null) return;
+    section.current
+      ?.querySelector<HTMLInputElement | HTMLTextAreaElement>('[data-expression]')
+      ?.setSelectionRange(pendingCaret.current, pendingCaret.current);
+    pendingCaret.current = null;
+  }, [body]);
+  useToolCommands('advanced', (command) => {
+    if (command.type !== 'tool' || !command.operation) return;
+    if (['insert', 'erase', 'delete', 'undo', 'redo'].includes(command.operation)) {
+      if (command.operation === 'undo' || command.operation === 'redo') {
+        const value = editHistory[command.operation](body);
+        if (value !== undefined) setBody(value);
+      } else {
+        const field = section.current?.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+          '[data-expression]',
+        );
+        let start = field?.selectionStart ?? body.length;
+        let end = field?.selectionEnd ?? start;
+        const inserted = command.operation === 'insert' ? (command.variant ?? '') : '';
+        if (start === end) {
+          if (command.operation === 'erase') start = Math.max(0, start - 1);
+          if (command.operation === 'delete') end = Math.min(body.length, end + 1);
+        }
+        const next = body.slice(0, start) + inserted + body.slice(end);
+        if (next !== body) {
+          editHistory.record(body);
+          pendingCaret.current = start + inserted.length;
+          setBody(next);
+        } else {
+          pendingCaret.current = null;
+        }
+      }
+      return;
+    }
+    setOperation(command.operation);
+    if (command.operation === 'diff') setOrder(command.variant === 'higher' ? '2' : '1');
+    if (command.operation === 'integrate') setDefinite(command.variant === 'definite');
+    if (command.operation === 'limit') setLimitSide(command.variant ?? 'both');
+    focusToolField(section.current, '[data-expression]');
+  });
   useImperativeHandle(
     ref,
     () => ({
       selectOperation(next) {
         setOperation(next);
+        if (next === 'limit') setLimitSide('both');
         setBody(operations.find((op) => op[0] === next)![2]);
         operationSelect.current?.focus();
       },
@@ -47,7 +95,12 @@ export function AdvancedCalculator({
     [],
   );
   return (
-    <section className="panel advanced" id="advanced" aria-labelledby="advanced-title">
+    <section
+      ref={section}
+      className="panel advanced"
+      id="advanced"
+      aria-labelledby="advanced-title"
+    >
       <p className="eyebrow">ÁLGEBRA Y CÁLCULO</p>
       <h2 id="advanced-title">Álgebra y cálculo</h2>
       <p className="hint">
@@ -78,7 +131,7 @@ export function AdvancedCalculator({
           )
             args.push(variable);
           if (operation === 'diff') args.push(order);
-          if (operation === 'limit') args.push(point);
+          if (operation === 'limit') args.push(point, limitSide);
           if (operation === 'substitute') args.push(point);
           if (operation === 'integrate' && definite) args.push(lower, upper);
           if (operation === 'series') args.push(point, order);
@@ -111,7 +164,10 @@ export function AdvancedCalculator({
               value={body}
               maxLength={400}
               rows={4}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={(e) => {
+                editHistory.record(body);
+                setBody(e.target.value);
+              }}
               spellCheck={false}
             />
           ) : (
@@ -120,7 +176,10 @@ export function AdvancedCalculator({
               required
               value={body}
               maxLength={400}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={(e) => {
+                editHistory.record(body);
+                setBody(e.target.value);
+              }}
               spellCheck={false}
             />
           )}
@@ -158,6 +217,16 @@ export function AdvancedCalculator({
                 value={order}
                 onChange={(e) => setOrder(e.target.value)}
               />
+            </label>
+          )}
+          {operation === 'limit' && (
+            <label>
+              Sentido del límite
+              <select value={limitSide} onChange={(event) => setLimitSide(event.target.value)}>
+                <option value="both">Bilateral</option>
+                <option value="left">Por izquierda</option>
+                <option value="right">Por derecha</option>
+              </select>
             </label>
           )}
           {operation === 'limit' && (

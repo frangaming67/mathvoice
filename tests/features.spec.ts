@@ -19,7 +19,9 @@ test('atajos de herramientas, Taylor y graficar resultado', async ({ page }) => 
   await expect(
     page.getByRole('heading', { name: 'Herramienta actual: Matrices', exact: true }),
   ).toBeFocused();
-  await page.keyboard.press('Alt+Shift+i');
+  await page.keyboard.press('Alt+Shift+p');
+  await page.getByRole('combobox', { name: 'Buscar comando' }).fill('Abrir integrales');
+  await page.keyboard.press('Enter');
   await expect(page.getByLabel('Operación simbólica')).toHaveValue('integrate');
   await page.keyboard.press('Alt+Shift+l');
   await expect(page.getByLabel('Operación simbólica')).toHaveValue('limit');

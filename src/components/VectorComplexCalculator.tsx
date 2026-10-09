@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { focusToolField, useToolCommands } from '../keyboard/CommandContext';
 export function VectorComplexCalculator({
   calculate,
   busy,
@@ -12,8 +13,18 @@ export function VectorComplexCalculator({
   const [z, setZ] = useState('3+4*i');
   const [cop, setCop] = useState('abs');
   const [power, setPower] = useState('2');
+  const section = useRef<HTMLElement>(null);
+  useToolCommands('vectors', (command) => {
+    if (command.type !== 'tool' || !command.operation) return;
+    if (command.variant === 'complex') setCop(command.operation);
+    else setOp(command.operation);
+    focusToolField(
+      section.current,
+      `[data-keyboard-context="${command.variant === 'complex' ? 'complex' : 'vectors'}"] input`,
+    );
+  });
   return (
-    <section aria-labelledby="vectors-title">
+    <section ref={section} aria-labelledby="vectors-title">
       <h2 id="vectors-title">Vectores y complejos</h2>
       <div className="tool-columns">
         <form
@@ -22,7 +33,7 @@ export function VectorComplexCalculator({
             calculate(`${op}([${a}]${['norm', 'normalize'].includes(op) ? '' : `,[${b}]`})`);
           }}
         >
-          <fieldset>
+          <fieldset data-keyboard-context="vectors">
             <legend>Vectores</legend>
             <label>
               Operación vectorial
@@ -72,7 +83,7 @@ export function VectorComplexCalculator({
             );
           }}
         >
-          <fieldset>
+          <fieldset data-keyboard-context="complex">
             <legend>Números complejos</legend>
             <label>
               Número complejo

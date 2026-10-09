@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { focusToolField, useToolCommands, usePreserveReaderKeys } from '../keyboard/CommandContext';
 type MatrixCells = string[][];
 function MatrixEditor({
   name,
@@ -10,6 +11,7 @@ function MatrixEditor({
   change: (v: MatrixCells) => void;
 }) {
   const refs = useRef<(HTMLInputElement | null)[][]>([]);
+  const preservesReaderKeys = usePreserveReaderKeys();
   function resize(rows: number, columns: number) {
     change(
       Array.from({ length: rows }, (_, i) =>
@@ -39,7 +41,8 @@ function MatrixEditor({
         </label>
       </div>
       <p className="hint">
-        Usá las flechas para moverte entre celdas. Tab continúa al siguiente control.
+        Flechas: moverte entre celdas. Inicio y Fin: primera y última columna. Control más Inicio o
+        Fin: primera o última celda. Tab continúa al siguiente control.
       </p>
       <div className="matrix-scroll">
         <table className="matrix-editor">
@@ -67,6 +70,14 @@ function MatrixEditor({
                         )
                       }
                       onKeyDown={(e) => {
+                        if (preservesReaderKeys(e.nativeEvent) || e.altKey || e.shiftKey) return;
+                        if (e.key === 'Home' || e.key === 'End') {
+                          e.preventDefault();
+                          const row = e.ctrlKey ? (e.key === 'Home' ? 0 : value.length - 1) : i;
+                          refs.current[row]?.[e.key === 'Home' ? 0 : value[0].length - 1]?.focus();
+                          return;
+                        }
+                        if (e.ctrlKey) return;
                         const moves: Record<string, number[]> = {
                           ArrowLeft: [0, -1],
                           ArrowRight: [0, 1],
@@ -106,10 +117,19 @@ export function MatrixCalculator({
     ['0', '1'],
   ]);
   const [operation, setOperation] = useState('det');
+  const section = useRef<HTMLElement>(null);
+  useToolCommands('matrices', (command) => {
+    if (command.type !== 'tool') return;
+    if (command.operation && command.operation !== 'new') setOperation(command.operation);
+    focusToolField(
+      section.current,
+      command.operation === 'new' ? 'fieldset select' : 'table input',
+    );
+  });
   const second = ['add', 'subtract', 'multiply', 'lusolve'].includes(operation);
   const serialize = (cells: MatrixCells) => JSON.stringify(cells.map((row) => row.map(Number)));
   return (
-    <section aria-labelledby="matrix-title">
+    <section ref={section} aria-labelledby="matrix-title">
       <h2 id="matrix-title" tabIndex={-1}>
         Matrices
       </h2>

@@ -56,6 +56,28 @@ it('no confunde un polo con un límite bilateral confirmado', () => {
   expect(() => engine.evaluate('limit(1/x,x,0)')).toThrow('bilateral');
   expect(engine.evaluate('limit(1/x^2,x,0)').value).toBe('Infinity');
 });
+it.each([
+  ['limit(1/x,x,0,left)', '-Infinity'],
+  ['limit(1/x,x,0,right)', 'Infinity'],
+  ['limit(abs(x)/x,x,0,left)', '-1'],
+  ['limit(abs(x)/x,x,0,right)', '1'],
+  ['limit(1/(x-2),x,2,left)', '-Infinity'],
+  ['limit(sqrt(x),x,0,right)', '0'],
+  ['limit(ln(x),x,0,right)', '-Infinity'],
+])('límite lateral %s → %s', (expression, expected) => {
+  const result = engine.evaluate(expression);
+  expect(result.value).toBe(expected);
+  expect(result.explanation).toContain(expression.includes('left') ? 'izquierda' : 'derecha');
+});
+it.each([
+  'limit(sqrt(x),x,0,left)',
+  'limit(ln(x),x,0,left)',
+  'limit(sin(1/x),x,0,right)',
+  'limit(x,x,Infinity,left)',
+  'limit(x,x,0,invalid)',
+])('no afirma un límite lateral inválido: %s', (expression) => {
+  expect(() => engine.evaluate(expression)).toThrow();
+});
 it('resuelve sistemas lineales y rechaza sistemas no únicos y no lineales', () => {
   expect(engine.evaluate('system(x+y=10,x-y=4)').value).toBe('x = 7; y = 3');
   expect(() => engine.evaluate('system(x+y=10,2*x+2*y=20)')).toThrow();

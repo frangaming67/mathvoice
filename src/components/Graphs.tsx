@@ -5,6 +5,7 @@ import { sonification } from '../services/SonificationService';
 import { speech } from '../services/SpeechService';
 import type { AngleMode } from '../types';
 import { GraphFigure } from './GraphFigure';
+import { useToolCommands, usePreserveReaderKeys } from '../keyboard/CommandContext';
 export function Graphs({
   variables,
   angle,
@@ -18,6 +19,7 @@ export function Graphs({
   initialExpression?: string;
   active?: boolean;
 }) {
+  const preservesReaderKeys = usePreserveReaderKeys();
   const [expressions, setExpressions] = useState(initialExpression),
     [minX, setMinX] = useState('-5'),
     [maxX, setMaxX] = useState('5'),
@@ -31,12 +33,18 @@ export function Graphs({
     [step, setStep] = useState('0.1'),
     [audio, setAudio] = useState(false),
     [playing, setPlaying] = useState(false);
+  const [paused, setPaused] = useState(false),
+    [speed, setSpeed] = useState('1');
+  const audioIndex = useRef(0);
   const timer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const playback = useRef(0);
   const mounted = useRef(false);
   const explorer = useRef<HTMLButtonElement>(null);
   // Reset only the playback state when hidden; keep the graph and its draft.
-  if (!active && playing) setPlaying(false);
+  if (!active && (playing || paused)) {
+    setPlaying(false);
+    setPaused(false);
+  }
   useEffect(() => {
     if (active) return;
     playback.current++;
@@ -45,20 +53,10 @@ export function Graphs({
   }, [active]);
   useEffect(() => {
     mounted.current = true;
-    const stop = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        playback.current++;
-        clearInterval(timer.current);
-        sonification.stop();
-        setPlaying(false);
-      }
-    };
-    window.addEventListener('keydown', stop);
     return () => {
       mounted.current = false;
       clearInterval(timer.current);
       sonification.stop();
-      window.removeEventListener('keydown', stop);
     };
   }, []);
   const evaluate = useMemo(
@@ -76,6 +74,7 @@ export function Graphs({
     sonification.stop();
     setPlaying(false);
     setBusy(true);
+    setPaused(false);
     setError('');
     try {
       const next = await buildGraph({
@@ -109,6 +108,8 @@ export function Graphs({
     clearInterval(timer.current);
     playback.current++;
     setPlaying(false);
+    setPaused(false);
+    sonification.stop();
     const x = Number(
       Math.max(data.request.minX, Math.min(data.request.maxX, next)).toPrecision(14),
     );
@@ -129,22 +130,27 @@ export function Graphs({
         )?.type,
       );
   }
-  function play() {
+  function stopPlayback() {
+    playback.current++;
+    clearInterval(timer.current);
+    sonification.stop();
+    setPlaying(false);
+    setPaused(false);
+    audioIndex.current = 0;
+  }
+  function startPlayback(index = 0, rate = Number(speed)) {
     if (!data) return;
     clearInterval(timer.current);
     const run = ++playback.current;
-    if (playing) {
-      setPlaying(false);
-      sonification.stop();
-      return;
-    }
+    audioIndex.current = index;
+    setPlaying(true);
+    setPaused(false);
     void sonification
       .activate()
       .then(() => {
         if (!mounted.current || run !== playback.current) return;
-        setPlaying(true);
-        let i = 0;
         timer.current = setInterval(() => {
+          const i = audioIndex.current;
           const p = data.curves[selected].points[i];
           setPosition(p.x);
           if (p.y !== null)
@@ -158,15 +164,110 @@ export function Graphs({
                   Math.abs(e.x - p.x) < (data.request.maxX - data.request.minX) / 400,
               )?.type,
             );
-          i += 2;
-          if (i > 400) {
+          audioIndex.current = i + 2;
+          if (audioIndex.current > 400) {
             clearInterval(timer.current);
             setPlaying(false);
+            setPaused(false);
+            audioIndex.current = 0;
+            announce('Recorrido sonoro terminado.');
           }
-        }, 100);
+        }, 100 / rate);
       })
-      .catch(() => announce('El navegador no pudo habilitar el audio.'));
+      .catch(() => {
+        if (run !== playback.current) return;
+        stopPlayback();
+        announce('El navegador no pudo habilitar el audio.');
+      });
   }
+  function play() {
+    if (playing) stopPlayback();
+    else startPlayback();
+  }
+  function pauseOrResume() {
+    if (!playing) {
+      announce('Iniciá primero la sonificación.');
+      return;
+    }
+    if (paused) {
+      startPlayback(audioIndex.current);
+      announce('Sonificación continuada.');
+    } else {
+      playback.current++;
+      clearInterval(timer.current);
+      sonification.stop();
+      setPaused(true);
+      announce('Sonificación pausada.');
+    }
+  }
+  function graphCommand(operation: string) {
+    if (operation === 'stop') {
+      stopPlayback();
+      return;
+    }
+    if (!active) return;
+    if (!data) {
+      announce('Primero introducí una función y pulsá Graficar funciones.');
+      return;
+    }
+    if (operation === 'play') {
+      if (!playing) startPlayback();
+      else if (paused) pauseOrResume();
+      return;
+    }
+    if (operation === 'pause') {
+      pauseOrResume();
+      return;
+    }
+    if (['step-up', 'step-down'].includes(operation)) {
+      const steps = ['0.01', '0.1', '0.5', '1', '5'];
+      const next =
+        steps[
+          Math.max(
+            0,
+            Math.min(steps.length - 1, steps.indexOf(step) + (operation === 'step-up' ? 1 : -1)),
+          )
+        ];
+      setStep(next);
+      announce(`Paso en X: ${next}.`);
+      return;
+    }
+    if (['left', 'right', 'home', 'end'].includes(operation)) {
+      move(
+        operation === 'home'
+          ? data.request.minX
+          : operation === 'end'
+            ? data.request.maxX
+            : position + (operation === 'left' ? -Number(step) : Number(step)),
+      );
+      return;
+    }
+    const type = {
+      zero: 'cero',
+      min: 'mínimo local',
+      max: 'máximo local',
+      intersection: 'intersección',
+    }[operation];
+    const event = data.events
+      .filter(
+        (event) =>
+          event.type === type &&
+          (event.functionIndex === selected || event.otherFunctionIndex === selected),
+      )
+      .sort((a, b) => Math.abs(a.x - position) - Math.abs(b.x - position))[0];
+    if (!event) {
+      announce(
+        'No se detectó ese evento en la curva y el intervalo actuales. El muestreo puede omitir eventos.',
+      );
+      return;
+    }
+    stopPlayback();
+    setPosition(event.x);
+    announce(`${event.type} aproximado. Equis ${event.x}. Ye ${event.y}.`);
+  }
+  useToolCommands('graphs', (command) => {
+    if (command.type === 'graph') graphCommand(command.operation);
+  });
   return (
     <section aria-labelledby="graphs-title">
       <h2 id="graphs-title" tabIndex={-1}>
@@ -231,6 +332,7 @@ export function Graphs({
                   playback.current++;
                   sonification.stop();
                   setPlaying(false);
+                  setPaused(false);
                 }}
               >
                 {data.curves.map((curve, i) => (
@@ -251,12 +353,21 @@ export function Graphs({
           </div>
           <p id="graph-help">
             En Explorar gráfico, usá las flechas izquierda y derecha. Inicio y Fin van a los
-            extremos. Cada posición se calcula con el paso elegido, independientemente de la tabla.
+            extremos. Arriba y abajo cambian el paso. Espacio pausa o continúa el audio. Cada
+            posición se calcula con el paso elegido, independientemente de la tabla.
           </p>
           <button
             ref={explorer}
             aria-describedby="graph-help"
             onKeyDown={(e) => {
+              if (preservesReaderKeys(e.nativeEvent) || e.altKey || e.ctrlKey || e.shiftKey) return;
+              if (['ArrowUp', 'ArrowDown', ' '].includes(e.key)) {
+                e.preventDefault();
+                graphCommand(
+                  e.key === ' ' ? 'pause' : e.key === 'ArrowUp' ? 'step-up' : 'step-down',
+                );
+                return;
+              }
               if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
                 e.preventDefault();
                 move(
@@ -294,6 +405,27 @@ export function Graphs({
             <button onClick={play}>
               {playing ? 'Detener sonificación' : 'Sonificar recorrido'}
             </button>
+            <button disabled={!playing} onClick={pauseOrResume}>
+              {paused ? 'Continuar sonificación' : 'Pausar sonificación'}
+            </button>
+            <label>
+              Velocidad de sonificación
+              <select
+                value={speed}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setSpeed(next);
+                  if (playing && !paused) startPlayback(audioIndex.current, Number(next));
+                  announce(`Velocidad de sonificación: ${next}.`);
+                }}
+              >
+                {['0.5', '1', '1.5', '2'].map((value) => (
+                  <option key={value} value={value}>
+                    {value}×
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <p className="hint">
             Mayor altura produce un tono más alto. Los eventos usan señales suaves distintas: cero,
@@ -340,6 +472,7 @@ export function Graphs({
                       playback.current++;
                       sonification.stop();
                       setPlaying(false);
+                      setPaused(false);
                       setSelected(event.functionIndex);
                       setPosition(event.x);
                       explorer.current?.focus();

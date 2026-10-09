@@ -80,16 +80,8 @@ export function useAutomaticSpeech(preferences: Preferences, suspended = false) 
     timer.current = undefined;
   }, []);
   useEffect(() => {
-    const stop = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        clearTimeout(timer.current);
-        speech.detener();
-      }
-    };
-    window.addEventListener('keydown', stop);
     return () => {
       clearTimeout(timer.current);
-      window.removeEventListener('keydown', stop);
     };
   }, []);
   useEffect(() => {
@@ -97,6 +89,7 @@ export function useAutomaticSpeech(preferences: Preferences, suspended = false) 
   }, [preferences.guided, suspended]);
   function schedule(element: HTMLElement, delay: number) {
     cancel();
+    if (speech.readingList && element.closest('[data-preserve-reading]')) return;
     const text = describeElement(element);
     if (!text) return;
     if (

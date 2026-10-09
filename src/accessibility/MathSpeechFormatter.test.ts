@@ -1,6 +1,8 @@
 import { expect, it } from 'vitest';
 import { mathSpeech } from './MathSpeechFormatter';
 it('lee operaciones simbólicas y soluciones sin símbolos ambiguos', () => {
+  expect(mathSpeech('limit(1/x,x,0,left)')).toContain('Límite por izquierda');
+  expect(mathSpeech('limit(1/x,x,0,right)')).toContain('Límite por derecha');
   expect(mathSpeech('integrate(x^2,x)')).toBe('Integral de equis al cuadrado respecto de equis');
   expect(mathSpeech('limit(sin(x)/x,x,0)')).toContain('Límite cuando equis tiende a 0');
   expect(mathSpeech('x = 2; y = -3')).toBe('equis igual a 2. ye igual a menos 3');

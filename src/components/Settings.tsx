@@ -4,9 +4,11 @@ import { speech } from '../services/SpeechService';
 export function Settings({
   preferences: p,
   change,
+  cancelAutomatic,
 }: {
   preferences: Preferences;
   change: (p: Preferences) => void;
+  cancelAutomatic: () => void;
 }) {
   const [voices, setVoices] = useState(() => speech.voices());
   useEffect(() => speech.subscribe(() => setVoices(speech.voices())), []);
@@ -124,18 +126,36 @@ export function Settings({
               {label}
             </label>
           ))}
-          <div className="actions">
+          <div className="actions" data-preserve-reading>
             <button
               type="button"
               disabled={!speech.available}
-              onClick={() => speech.hablar('Esta es la voz de MathVoice. Dos más dos es cuatro.')}
+              onClick={() => {
+                cancelAutomatic();
+                speech.hablarLista(
+                  ['Esta es la voz de MathVoice. Dos más dos es cuatro.'],
+                  () => {},
+                );
+              }}
             >
               Probar voz
             </button>
-            <button type="button" onClick={() => speech.pausar()}>
+            <button
+              type="button"
+              onClick={() => {
+                cancelAutomatic();
+                speech.pausar();
+              }}
+            >
               Pausar voz
             </button>
-            <button type="button" onClick={() => speech.continuar()}>
+            <button
+              type="button"
+              onClick={() => {
+                cancelAutomatic();
+                speech.continuar();
+              }}
+            >
               Continuar voz
             </button>
           </div>
