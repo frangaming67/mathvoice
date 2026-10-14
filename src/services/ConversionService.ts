@@ -1,4 +1,7 @@
 import { math } from './mathRuntime';
+import { MathInputError } from './mathErrors';
+
+const fail = (message: string) => new MathInputError(message, 'dominio');
 export const unitCategories: Record<string, [string, string][]> = {
   Longitud: [
     ['m', 'Metros'],
@@ -56,6 +59,7 @@ export const unitCategories: Record<string, [string, string][]> = {
     ['J', 'Julios'],
     ['kJ', 'Kilojulios'],
     ['cal', 'Calorías'],
+    ['kcal', 'Kilocalorías'],
     ['kWh', 'Kilovatios hora'],
   ],
   Potencia: [
@@ -80,6 +84,7 @@ export const unitCategories: Record<string, [string, string][]> = {
   ],
 };
 const units = new Map(Object.values(unitCategories).flat());
+const temperatures = new Set(unitCategories.Temperatura.map(([unit]) => unit));
 export function convertUnits(value: unknown, from: unknown, to: unknown) {
   if (
     typeof value !== 'number' ||
@@ -89,11 +94,13 @@ export function convertUnits(value: unknown, from: unknown, to: unknown) {
     !units.has(from) ||
     !units.has(to)
   )
-    throw new Error('Elegí unidades válidas y un valor numérico finito.');
+    throw fail('Elegí unidades válidas y un valor numérico finito.');
+  if (temperatures.has(from) && math.unit(value, from).toNumber('K') < -1e-9)
+    throw fail('No existe una temperatura menor a -273,15 °C, el cero absoluto.');
   try {
     return { Valor: math.unit(value, from).toNumber(to), Unidad: units.get(to)! };
   } catch {
-    throw new Error('Las unidades elegidas no son compatibles.');
+    throw fail('Las unidades elegidas no son compatibles.');
   }
 }
 function parseInteger(text: unknown, base: unknown): bigint {
@@ -103,27 +110,27 @@ function parseInteger(text: unknown, base: unknown): bigint {
     ![2, 8, 10, 16].includes(base) ||
     text.length > 256
   )
-    throw new Error('Usá un número entero de hasta 256 dígitos y una base válida.');
+    throw fail('Usá un número entero de hasta 256 dígitos y una base válida.');
   const negative = text.startsWith('-');
   const digits = text.replace(/^[-+]/, '').toLowerCase();
-  if (!digits) throw new Error('Escribí un número entero.');
+  if (!digits) throw fail('Escribí un número entero.');
   let result = 0n;
   for (const char of digits) {
     const digit = parseInt(char, 16);
     if (!Number.isInteger(digit) || digit >= base)
-      throw new Error('El número contiene dígitos que no pertenecen a la base elegida.');
+      throw fail('El número contiene dígitos que no pertenecen a la base elegida.');
     result = result * BigInt(base) + BigInt(digit);
   }
   return negative ? -result : result;
 }
 export function convertBase(text: unknown, from: unknown, to: unknown) {
   if (typeof to !== 'number' || ![2, 8, 10, 16].includes(to))
-    throw new Error('Base de destino inválida.');
+    throw fail('Base de destino inválida.');
   return parseInteger(text, from).toString(to).toUpperCase();
 }
 export function bitOperation(op: unknown, a: unknown, b: unknown, width: unknown) {
   if (typeof width !== 'number' || ![8, 16, 32, 64].includes(width))
-    throw new Error('Elegí un ancho de 8, 16, 32 o 64 bits.');
+    throw fail('Elegí un ancho de 8, 16, 32 o 64 bits.');
   const x = BigInt.asUintN(width, parseInteger(a, 10)),
     y = parseInteger(b, 10);
   let value: bigint;
@@ -133,9 +140,9 @@ export function bitOperation(op: unknown, a: unknown, b: unknown, width: unknown
   else if (op === 'not') value = ~x;
   else if (op === 'left' || op === 'right') {
     if (y < 0n || y > BigInt(width))
-      throw new Error('El desplazamiento debe estar entre cero y el ancho de bits.');
+      throw fail('El desplazamiento debe estar entre cero y el ancho de bits.');
     value = op === 'left' ? x << y : x >> y;
-  } else throw new Error('Operación binaria desconocida.');
+  } else throw fail('Operación binaria desconocida.');
   const unsigned = BigInt.asUintN(width, value);
   return {
     Decimal: unsigned.toString(),

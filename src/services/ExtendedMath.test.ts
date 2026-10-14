@@ -8,7 +8,6 @@ it.each([
   ['dot([1,2,3],[4,5,6])', '32'],
   ['norm([3,4])', '5'],
   ['abs(3+4*i)', '5'],
-  ['sqrt(-1)', 'i'],
   ['combinations(5,2)', '10'],
   ['normalcdf(0,0,1)', '0.5'],
   ['binomialpdf(2,5,0.5)', '0.3125'],
@@ -62,7 +61,10 @@ it('constantes con unidades, fracciones mixtas y raíces completas', () => {
   expect(engine.evaluate('nthRoots(1,3)').matrix?.[0]).toHaveLength(3);
   expect(() => engine.evaluate('nthRoots(1,0)')).toThrow();
   expect(() => engine.evaluate('a=[1,2]')).toThrow('reales finitos');
-  expect(engine.evaluate('ln(-1)').kind).toBe('Complejos');
+  expect(engine.evaluate('ln(-1)', { angle: 'rad', numberMode: 'complejo' }).kind).toBe(
+    'Complejos',
+  );
+  expect(engine.evaluate('sqrt(-1)', { angle: 'rad', numberMode: 'complejo' }).value).toBe('i');
   expect(() => engine.evaluate('normalize([1e308,1e308])')).toThrow('rango numérico');
   expect(engine.evaluate('binomialpdf(11,10,0.5)').value).toBe('0');
   expect(engine.evaluate('binomialcdf(11,10,0.5)').value).toBe('1');

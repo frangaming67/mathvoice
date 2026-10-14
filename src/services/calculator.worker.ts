@@ -1,16 +1,15 @@
 import { MathEngine } from './MathEngine';
-import type { AngleMode } from '../types';
+import { serializeMathError } from './mathErrors';
+import type { WorkerRequest, WorkerResponse } from './CalculatorClient';
 const engine = new MathEngine();
-self.onmessage = (
-  event: MessageEvent<{ expression: string; angle: AngleMode; variables: Record<string, number> }>,
-) => {
+const reply = (message: WorkerResponse) => self.postMessage(message);
+self.onmessage = (event: MessageEvent<WorkerRequest>) => {
+  const { id, expression, options, variables } = event.data;
+  reply({ type: 'start', id });
   try {
-    self.postMessage({
-      result: engine.evaluate(event.data.expression, event.data.angle, event.data.variables),
-    });
+    reply({ type: 'result', id, result: engine.evaluate(expression, options, variables) });
   } catch (error) {
-    self.postMessage({
-      error: error instanceof Error ? error.message : 'No pude completar el cálculo.',
-    });
+    reply({ type: 'error', id, error: serializeMathError(error) });
   }
 };
+reply({ type: 'ready' });

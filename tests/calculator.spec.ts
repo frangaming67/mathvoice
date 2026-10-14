@@ -18,7 +18,7 @@ test('flujo por teclado, fracciones, historial persistente y errores', async ({ 
   await page.getByRole('link', { name: 'Calculadora', exact: true }).click();
   await input.fill('1/0');
   await input.press('Enter');
-  await expect(page.getByRole('alert')).toContainText('finito');
+  await expect(page.getByRole('alert')).toContainText('No se puede dividir por cero');
   await expect(input).toBeFocused();
   await input.press('F1');
   await expect(page.getByRole('heading', { name: 'Ayuda accesible' })).toBeFocused();

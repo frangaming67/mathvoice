@@ -179,7 +179,7 @@ test('dictado requiere confirmar; cancelar y permiso denegado no calculan', asyn
   await expect(page.getByRole('button', { name: 'Dictar expresión' })).toBeFocused();
   await page.getByRole('button', { name: 'Dictar expresión' }).click();
   await dialog.getByRole('button', { name: 'Confirmar y calcular' }).click();
-  await expect(page.getByLabel('Resultado: 61/20', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Resultado: 3.05', { exact: true })).toBeVisible();
   await page.evaluate(() => sessionStorage.setItem('denyMic', '1'));
   await page.getByRole('button', { name: 'Dictar expresión' }).click();
   await expect(page.getByRole('status')).toContainText('No se permitió usar el micrófono');
