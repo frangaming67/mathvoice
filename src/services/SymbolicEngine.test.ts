@@ -199,3 +199,94 @@ it('registra el análisis de signos y la inclusión de extremos', () => {
   expect(result.steps?.filter((step) => step.title.startsWith('Comprobar'))).toHaveLength(3);
   expect(result.steps?.at(-1)?.detail).toContain('Desde -2 incluido hasta 2 incluido');
 });
+
+// Regresiones de la revisión de octubre: resultados falsos del CAS que no deben volver.
+const near = (expression: string, x: number) => Number(evaluate(expression, { x, e: Math.E }));
+it('conserva la multiplicación implícita entre paréntesis en todo el CAS', () => {
+  const expanded = engine.evaluate('expand((x-2)(x+3))').value;
+  for (const x of [-2, 0.5, 3]) expect(near(expanded, x)).toBeCloseTo((x - 2) * (x + 3), 10);
+  expect(engine.evaluate('solve((x-1)(x+2)=0,x)').value).toBe('x = -2; x = 1');
+  expect(engine.evaluate('integrate((x+1)(x-1),x,0,1)').value).toBe('-2/3');
+  const derivative = engine.evaluate('diff((x+1)(x-1),x)').value;
+  for (const x of [-1, 2]) expect(near(derivative, x)).toBeCloseTo(2 * x, 10);
+});
+it.each([
+  ['integrate(sqrt(4-x^2),x,0,2)', Math.PI],
+  ['integrate(sqrt(1-x^2/16),x,0,4)', Math.PI],
+  ['integrate(1/(2+cos(x)),x,0,2*pi)', (2 * Math.PI) / Math.sqrt(3)],
+  ['integrate(1/(1+cos(x)^2),x,0,pi)', Math.PI / Math.SQRT2],
+  ['integrate(1/(x^2+2x+5),x,0,1)', (Math.atan(1) - Math.atan(0.5)) / 2],
+  ['integrate(e^(-x^2),x,0,1)', 0.746824132812427],
+  ['integrate(e^x,x,0,1)', Math.E - 1],
+  ['integrate(2^x,x,0,1)', 1 / Math.LN2],
+])('la integral definida %s coincide con la cuadratura numérica', (expression, expected) => {
+  const result = engine.evaluate(expression);
+  expect(Number(result.decimal ?? result.value)).toBeCloseTo(expected, 8);
+});
+it('avisa cuando reemplaza una primitiva inválida por el valor numérico', () => {
+  const result = engine.evaluate('integrate(sqrt(4-x^2),x,0,2)');
+  expect(result.approximate).toBe(true);
+  expect(result.warnings?.join(' ')).toContain('valor numérico');
+});
+it('no muestra factorizaciones que el motor no pudo verificar', () => {
+  for (const expression of ['factor(x^12-1)', 'factor(x^8-16)']) {
+    let value: string | undefined;
+    try {
+      value = engine.evaluate(expression).value;
+    } catch (error) {
+      expect((error as Error).message).toContain('No pude verificar');
+      continue;
+    }
+    const original = expression.slice(7, -1);
+    for (const x of [0.37, 1.3, -0.8]) expect(near(value, x)).toBeCloseTo(near(original, x), 9);
+  }
+});
+it.each([
+  ['limit(sqrt(x^2+x)-x,x,Infinity)', '0.5'],
+  ['limit(x-sqrt(x^2-x),x,Infinity)', '0.5'],
+  ['limit(sqrt(x^2+1)-x,x,Infinity)', '0'],
+  ['limit(e^x,x,-Infinity)', '0'],
+  ['limit(sin(x)/x,x,0)', '1'],
+])('el límite %s vale %s', (expression, expected) =>
+  expect(engine.evaluate(expression).value).toBe(expected),
+);
+it('explica rápido los límites que no existen en lugar de colgarse', () => {
+  const start = performance.now();
+  expect(() => engine.evaluate('limit(abs(x)/x,x,0)')).toThrow(/no existe.*-1.*1/);
+  expect(() => engine.evaluate('limit(1/x,x,0)')).toThrow(/no existe/);
+  expect(performance.now() - start).toBeLessThan(2000);
+});
+it('encuentra todas las raíces de un polinomio, ordenadas y sin mezclar formatos', () => {
+  const cubic = engine.evaluate('solve(x^3+x+1=0,x)').value;
+  expect(cubic.split('; ')).toHaveLength(3);
+  expect(cubic).toContain('x = -0.6823278038');
+  const roots = engine.evaluate('solve(x^3-2=0,x)').value.split('; ');
+  expect(roots).toHaveLength(3);
+  expect(roots.filter((root) => root.includes('i')).every((root) => !root.includes('^'))).toBe(
+    true,
+  );
+});
+it('da las soluciones principales de ecuaciones trigonométricas según el modo angular', () => {
+  const degrees = engine.evaluate('solve(sin(x)=0.5,x)', 'deg');
+  expect(degrees.value).toBe('x = 30; x = 150');
+  expect(degrees.warnings?.join(' ')).toContain('360');
+  expect(engine.evaluate('solve(ln(x)=2,x)').value.split('; ')).toHaveLength(1);
+});
+it.each([
+  ['series(sin(x),x,0,5)', 'x - x^3/6 + x^5/120'],
+  ['series(tan(x),x,0,5)', 'x + x^3/3 + 2*x^5/15'],
+  ['series(e^x,x,0,4)', '1 + x + x^2/2 + x^3/6 + x^4/24'],
+  ['series(1/(1-x),x,0,4)', '1 + x + x^2 + x^3 + x^4'],
+])('Taylor de %s queda simplificado: %s', (expression, expected) =>
+  expect(engine.evaluate(expression).value).toBe(expected),
+);
+it('traduce los errores internos del motor simbólico', () => {
+  expect(() => engine.evaluate('diff(1/0,x)')).toThrow(/divide por cero/);
+  expect(() => engine.evaluate('diff(1/0,x)')).not.toThrow(/not allowed|Division/);
+});
+it('simplifica cocientes de grado alto sin agotar el tiempo del Worker', () => {
+  const start = performance.now();
+  const result = engine.evaluate('simplify((x^30-1)/(x-1))').value;
+  expect(performance.now() - start).toBeLessThan(1500);
+  expect(near(result, 1.1)).toBeCloseTo((1.1 ** 30 - 1) / 0.1, 6);
+});

@@ -1,7 +1,8 @@
 import type { MathNode, OperatorNode, FunctionNode, ParenthesisNode } from 'mathjs';
+import { SymbolicError } from './casVerify';
 type Interval = [number, number];
 const domainError = () =>
-  new Error(
+  new SymbolicError(
     'No pude confirmar un dominio real continuo en todo el intervalo. Puede haber una singularidad o una función fuera del análisis admitido; dividí el intervalo o revisá la expresión.',
   );
 function bounded(values: number[]): Interval {
@@ -52,6 +53,17 @@ export function continuousInterval(
       return bounded([a[0] / b[0], a[0] / b[1], a[1] / b[0], a[1] / b[1]]);
     }
     if (op === '^' && b[0] === b[1]) return power(a, b[0], analytic);
+    // Base positiva y exponente variable (e^x, 2^x, x^x en x > 0): a^b = exp(b·ln a).
+    if (op === '^' && a[0] > 0) {
+      const logarithm = [Math.log(a[0]), Math.log(a[1])];
+      const exponent = bounded([
+        b[0] * logarithm[0],
+        b[0] * logarithm[1],
+        b[1] * logarithm[0],
+        b[1] * logarithm[1],
+      ]);
+      return bounded(exponent.map(Math.exp));
+    }
     throw domainError();
   }
   if (node.type === 'FunctionNode') {
