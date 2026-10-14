@@ -960,6 +960,7 @@ export function Calculator() {
                   (activeTool === 'basic' || activeTool === 'scientific') && (
                     <Dictation
                       language={preferences.language}
+                      guided={preferences.guided}
                       announce={announce}
                       onListeningChange={setListening}
                       confirm={(value, angle) => {

@@ -185,3 +185,74 @@ test('dictado requiere confirmar; cancelar y permiso denegado no calculan', asyn
   await expect(page.getByRole('status')).toContainText('No se permitió usar el micrófono');
   await expect(dialog).not.toBeVisible();
 });
+
+test('dictado marca palabras no entendidas y no calcula hasta corregirlas', async ({ page }) => {
+  await page.addInitScript(() => {
+    class Recognition {
+      onresult?: (event: { results: { transcript: string }[][] }) => void;
+      onend?: () => void;
+      start() {
+        this.onresult?.({ results: [[{ transcript: 'derivada de seno de pepito' }]] });
+      }
+      stop() {
+        this.onend?.();
+      }
+      abort() {}
+    }
+    Object.defineProperty(window, 'SpeechRecognition', { value: Recognition });
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Dictar expresión' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Revisar dictado' });
+  await expect(dialog).toContainText('No entendí «pepito»');
+  const field = dialog.getByRole('textbox');
+  await expect(field).toHaveAttribute('aria-invalid', 'true');
+  await expect(dialog.getByRole('button', { name: 'Confirmar y calcular' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  await field.press('Enter');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('status')).toContainText('Corregilas');
+  await expect(field).toBeFocused();
+  await field.fill('diff(sin(x),x)');
+  await expect(field).not.toHaveAttribute('aria-invalid', 'true');
+  await dialog.getByRole('button', { name: 'Confirmar y calcular' }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByLabel('Resultado: cos(x)', { exact: true })).toBeVisible();
+});
+
+test('Escape cancela la escucha y descarta un reconocimiento tardío', async ({ page }) => {
+  await page.addInitScript(() => {
+    type Late = { onresult: ((event: unknown) => void) | null };
+    const state = window as unknown as { __late?: Late; __aborted?: boolean };
+    class Recognition {
+      onresult: ((event: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      start() {
+        state.__late = this;
+      }
+      stop() {}
+      abort() {
+        state.__aborted = true;
+      }
+    }
+    Object.defineProperty(window, 'SpeechRecognition', { value: Recognition });
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Dictar expresión' }).click();
+  await expect(page.getByRole('button', { name: 'Cancelar dictado' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Dictar expresión' })).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('Dictado cancelado');
+  const aborted = await page.evaluate(() => {
+    const state = window as unknown as {
+      __late?: { onresult: ((event: unknown) => void) | null };
+      __aborted?: boolean;
+    };
+    state.__late?.onresult?.({ results: [[{ transcript: 'dos más dos' }]] });
+    return state.__aborted;
+  });
+  expect(aborted).toBe(true);
+  await expect(page.getByRole('dialog', { name: 'Revisar dictado' })).not.toBeVisible();
+});

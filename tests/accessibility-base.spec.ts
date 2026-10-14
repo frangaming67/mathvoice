@@ -270,7 +270,7 @@ test('lector externo evita síntesis automática incluso al revisar y confirmar 
     ).__recognition.onresult({ results: [[{ transcript: 'dos más tres' }]] });
   });
   await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page.getByRole('status')).toContainText('Entendí:');
+  await expect(page.getByRole('dialog').getByRole('status')).toContainText('Entendí:');
   await page.getByRole('button', { name: 'Confirmar y calcular' }).click();
   await expect(page.getByLabel('Resultado: 5', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '¿Dónde estoy?' }).hover();
