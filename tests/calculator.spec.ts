@@ -21,7 +21,7 @@ test('flujo por teclado, fracciones, historial persistente y errores', async ({ 
   await expect(page.getByRole('alert')).toContainText('No se puede dividir por cero');
   await expect(input).toBeFocused();
   await input.press('F1');
-  await expect(page.getByRole('heading', { name: 'Ayuda accesible' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Ayuda', exact: true, level: 1 })).toBeFocused();
   await page.getByRole('button', { name: 'Cerrar ayuda' }).click();
   await expect(input).toBeFocused();
 });
@@ -76,11 +76,31 @@ test('accesibilidad automática, temas y reflow a 320 px', async ({ page }) => {
 
 test('Tab, Shift+Tab y atajos de lectura conservan el foco y no calculan', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Saltar a la calculadora' })).toBeAttached();
-  await page.keyboard.press('Tab');
-  await expect(page.getByRole('link', { name: 'Saltar a la calculadora' })).toBeFocused();
-  await page.keyboard.press('Enter');
   const input = page.getByLabel('Expresión matemática', { exact: true });
+  await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
+  await expect(input).toBeFocused();
+  // En las visitas siguientes el foco arranca en el campo.
+  await page.reload();
+  await expect(input).toBeFocused();
+  await expect(page).toHaveTitle('Calculadora — MathVoice');
+  // Desde el principio de la página: saltar al contenido y llegar al campo en 10 paradas.
+  await page.evaluate(() => {
+    // Punto de partida de Tab al principio del documento.
+    document.body.tabIndex = -1;
+    document.body.focus();
+    document.body.removeAttribute('tabindex');
+  });
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Saltar al contenido' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(input).toBeFocused();
+  await page.evaluate(() => {
+    // Punto de partida de Tab al principio del documento.
+    document.body.tabIndex = -1;
+    document.body.focus();
+    document.body.removeAttribute('tabindex');
+  });
+  for (let stop = 0; stop < 10; stop++) await page.keyboard.press('Tab');
   await expect(input).toBeFocused();
   await input.fill('2+2');
   await input.press('Control+Enter');

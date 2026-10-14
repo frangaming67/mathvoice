@@ -113,7 +113,7 @@ for (const guided of [false, true]) {
     page,
   }) => {
     if (guided)
-      await page.getByRole('button', { name: 'Activar voz automática', exact: true }).click();
+      await page.getByRole('button', { name: 'Guía por voz', exact: true, pressed: false }).click();
     await page.evaluate(() => {
       const original = Storage.prototype.setItem;
       Storage.prototype.setItem = function (key, value) {
@@ -186,7 +186,7 @@ test('repetir orientación actualiza la región viva sin activar voz propia', as
 });
 
 test('probar y pausar voz no se interrumpen por el foco de sus controles', async ({ page }) => {
-  await page.getByRole('button', { name: 'Activar voz automática', exact: true }).click();
+  await page.getByRole('button', { name: 'Guía por voz', exact: true, pressed: false }).click();
   await page.getByRole('link', { name: 'Configuración', exact: true }).click();
   await page.getByRole('button', { name: 'Probar voz', exact: true }).focus();
   await page.keyboard.press('Enter');

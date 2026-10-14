@@ -2,9 +2,10 @@ import type { Page } from '@playwright/test';
 
 export async function openTool(page: Page, label: string) {
   await page
-    .getByRole('combobox', { name: 'Elegir herramienta', exact: true })
-    .selectOption({ label });
-  await page.getByRole('button', { name: 'Abrir herramienta', exact: true }).click();
+    .getByRole('navigation', { name: 'Secciones' })
+    .getByRole('link', { name: 'Herramientas', exact: true })
+    .click();
+  await page.getByRole('button', { name: label, exact: true }).click();
 }
 
 export async function openKeypad(page: Page) {

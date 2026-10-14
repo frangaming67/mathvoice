@@ -22,7 +22,8 @@ test('procedimiento leído, accesible, exportable y conservado en el historial',
     });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Activar voz automática', exact: true }).click();
+  // Primera visita: la bienvenida pregunta cómo escuchar.
+  await page.getByRole('button', { name: 'Activar guía por voz', exact: true }).click();
   const expression = page.getByLabel('Expresión matemática', { exact: true });
   await expression.fill('solve(x^2-5*x+6=0,x)');
   await expression.press('Enter');

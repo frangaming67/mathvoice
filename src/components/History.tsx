@@ -31,9 +31,8 @@ export function History({
     <section id="history" className="panel" aria-labelledby="history-title">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">EN ESTE DISPOSITIVO</p>
           <h2 id="history-title" tabIndex={-1}>
-            Historial <span className="count">{entries.length}</span>
+            Cálculos guardados en este dispositivo: <span className="count">{entries.length}</span>
           </h2>
         </div>
         <button ref={clearButton} disabled={!entries.length} onClick={() => setConfirm(true)}>

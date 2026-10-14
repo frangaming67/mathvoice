@@ -17,7 +17,7 @@ test('atajos de herramientas, Taylor y graficar resultado', async ({ page }) => 
   await expect(page.getByLabel('Funciones de x, una por línea (hasta 4)')).toHaveValue('3*x^2');
   await page.keyboard.press('Alt+Shift+m');
   await expect(
-    page.getByRole('heading', { name: 'Herramienta actual: Matrices', exact: true }),
+    page.getByRole('heading', { name: 'Matrices', exact: true, level: 1 }),
   ).toBeFocused();
   await page.keyboard.press('Alt+Shift+p');
   await page.getByRole('combobox', { name: 'Buscar comando' }).fill('Abrir integrales');

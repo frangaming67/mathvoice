@@ -38,6 +38,7 @@ export function KeyboardPanel({
     [candidate, setCandidate] = useState(''),
     [error, setError] = useState('');
   const [readingIndex, setReadingIndex] = useState(0);
+  const [selectedId, setSelectedId] = useState('');
   useEffect(() => () => speech.detener(), []);
   const remap = useRef<HTMLDialogElement>(null),
     restore = useRef<HTMLDialogElement>(null);
@@ -49,6 +50,7 @@ export function KeyboardPanel({
       normalizeSearch(`${command.name} ${command.description}`).includes(normalizeSearch(query)) &&
       normalizeSearch(shortcutFor(command, settings)).includes(normalizeSearch(keyQuery)),
   );
+  const selected = results.find((command) => command.id === selectedId) ?? results[0];
   useEffect(() => {
     const timer = setTimeout(
       () => announce(`${results.length} funciones en la referencia de teclado.`, false),
@@ -66,7 +68,7 @@ export function KeyboardPanel({
   return (
     <section className="panel keyboard-reference" aria-labelledby="keyboard-title">
       <h2 id="keyboard-title" tabIndex={-1}>
-        Teclado y atajos
+        Modo de teclado y práctica
       </h2>
       <p>
         Modo actual: {settings.mode === 'math' ? 'teclado matemático' : 'escritura'}. F2 cambia de
@@ -230,64 +232,95 @@ export function KeyboardPanel({
         })}
       </ul>
       {!settings.favorites.length && (
-        <p>Abrí una función de la referencia y elegí Agregar a favoritos.</p>
+        <p>Elegí una función en Acciones sobre una función y agregala a favoritos.</p>
       )}
+      <h3>Acciones sobre una función</h3>
+      <p id="selected-command-help">
+        La lista muestra las funciones que coinciden con la búsqueda. Elegí una para abrirla,
+        escucharla, marcarla como favorita o cambiar su atajo.
+      </p>
+      <label>
+        Función elegida
+        <select
+          value={selected?.id ?? ''}
+          disabled={!results.length}
+          aria-describedby="selected-command-help"
+          onChange={(event) => setSelectedId(event.target.value)}
+        >
+          {results.map((command) => (
+            <option key={command.id} value={command.id}>
+              {command.name} · {shortcutFor(command, settings) || 'Sin atajo'}
+            </option>
+          ))}
+        </select>
+      </label>
+      {selected && (
+        <div className="actions">
+          <button onClick={() => execute(selected)}>Abrir {selected.name}</button>
+          <button onClick={() => read(description(selected))}>Escuchar {selected.name}</button>
+          <button
+            aria-pressed={settings.favorites.includes(selected.id)}
+            onClick={() => {
+              change({
+                ...settings,
+                favorites: settings.favorites.includes(selected.id)
+                  ? settings.favorites.filter((id) => id !== selected.id)
+                  : [...settings.favorites, selected.id],
+              });
+              announce('Favoritos actualizados.');
+            }}
+          >
+            {settings.favorites.includes(selected.id)
+              ? 'Quitar de favoritos'
+              : 'Agregar a favoritos'}
+            : {selected.name}
+          </button>
+          {selected.customizable && (
+            <button
+              onClick={() => {
+                setEditing(selected);
+                setCandidate(shortcutFor(selected, settings));
+                setError('');
+                remap.current?.showModal();
+              }}
+            >
+              Cambiar atajo de {selected.name}
+            </button>
+          )}
+        </div>
+      )}
+      <h3>Referencia de atajos</h3>
+      <p>
+        Cada categoría es una tabla: recorrela con los comandos de tabla de tu lector. No suma
+        paradas de Tab.
+      </p>
       {categories
         .filter((name) => results.some((command) => command.category === name))
         .map((name) => (
-          <section key={name} aria-label={name}>
-            <h3>{name}</h3>
-            {results
-              .filter((command) => command.category === name)
-              .map((command) => (
-                <details key={command.id}>
-                  <summary>
-                    {command.name} · {shortcutFor(command, settings) || 'Sin atajo'}
-                  </summary>
-                  <p>{description(command)}</p>
-                  <p>
-                    {enabled.has(command.id)
-                      ? 'Atajo habilitado en este perfil.'
-                      : 'Atajo desactivado en este perfil; podés abrir la función con su botón o agregarla a favoritos.'}
-                  </p>
-                  <div className="actions">
-                    <button onClick={() => execute(command)}>Abrir {command.name}</button>
-                    <button onClick={() => read(description(command))}>
-                      Escuchar {command.name}
-                    </button>
-                    <button
-                      aria-pressed={settings.favorites.includes(command.id)}
-                      onClick={() => {
-                        change({
-                          ...settings,
-                          favorites: settings.favorites.includes(command.id)
-                            ? settings.favorites.filter((id) => id !== command.id)
-                            : [...settings.favorites, command.id],
-                        });
-                        announce('Favoritos actualizados.');
-                      }}
-                    >
-                      {settings.favorites.includes(command.id)
-                        ? 'Quitar de favoritos'
-                        : 'Agregar a favoritos'}
-                      : {command.name}
-                    </button>
-                    {command.customizable && (
-                      <button
-                        onClick={() => {
-                          setEditing(command);
-                          setCandidate(shortcutFor(command, settings));
-                          setError('');
-                          remap.current?.showModal();
-                        }}
-                      >
-                        Cambiar atajo de {command.name}
-                      </button>
-                    )}
-                  </div>
-                </details>
-              ))}
-          </section>
+          <table key={name} className="shortcut-table">
+            <caption>{name}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Función</th>
+                <th scope="col">Atajo</th>
+                <th scope="col">Dónde funciona</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results
+                .filter((command) => command.category === name)
+                .map((command) => (
+                  <tr key={command.id}>
+                    <th scope="row">{command.name}</th>
+                    <td>{shortcutFor(command, settings) || 'Sin atajo'}</td>
+                    <td>
+                      {command.global ? 'En toda la aplicación' : 'Modo matemático'}
+                      {enabled.has(command.id) ? '' : '. Desactivado en tu perfil'}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
         ))}
       <h3>Guardar, importar y restaurar</h3>
       <p>

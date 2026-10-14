@@ -21,7 +21,7 @@ import { OfflineStatus } from '../../components/OfflineStatus';
 import { toggleSign } from '../../parser/toggleSign';
 import { downloadHistory } from '../../services/ExportService';
 import { CalculationSteps } from '../../components/CalculationSteps';
-import { ToolChooser } from '../../components/ToolChooser';
+import { ToolsPage } from '../../components/ToolsPage';
 import { toolName, type ToolId } from '../../components/toolCatalog';
 import { KeyboardCommandManager } from '../../keyboard/KeyboardCommandManager';
 import { keyboardSettingsService, type KeyboardSettings } from '../../keyboard/KeyboardSettings';
@@ -84,8 +84,20 @@ export function Calculator() {
   const [storageWarning, setStorageWarning] = useState(storage.warning);
   const pendingStorageWarning = useRef('');
   const [help, setHelp] = useState(false);
-  const [view, setView] = useState<'work' | 'history' | 'settings' | 'keyboard'>('work');
+  const [view, setView] = useState<'work' | 'tools' | 'history' | 'settings' | 'keyboard'>('work');
   const [activeTool, setActiveTool] = useState<ToolId>('basic');
+  // Cada vista dice dónde estás: es el h1 y el título de la pestaña.
+  const viewTitle = help
+    ? 'Ayuda'
+    : view === 'tools'
+      ? 'Herramientas'
+      : view === 'history'
+        ? 'Historial'
+        : view === 'settings'
+          ? 'Configuración'
+          : view === 'keyboard'
+            ? 'Teclado y atajos'
+            : toolName(activeTool);
   // Basic and scientific are two views of the same expression form.
   const calculationKey = activeTool === 'scientific' ? 'basic' : activeTool;
   const { result, error, explanation } = calculations[calculationKey] ?? emptyCalculation;
@@ -96,7 +108,6 @@ export function Calculator() {
     }));
   }
   const setError = (error: string) => updateCalculation({ error });
-  const [choice, setChoice] = useState<ToolId>('basic');
   const [visited, setVisited] = useState<ToolId[]>(['basic']);
   const focusFrame = useRef<number | undefined>(undefined);
   const helpOrigin = useRef<HTMLElement | null>(null);
@@ -119,7 +130,9 @@ export function Calculator() {
   const automatic = useAutomaticSpeech(preferences, listening || !!practice);
   const cancelAutomatic = automatic.cancel;
   const input = useRef<HTMLInputElement>(null);
-  const helpButton = useRef<HTMLButtonElement>(null);
+  const helpButton = useRef<HTMLAnchorElement>(null);
+  const welcomeDialog = useRef<HTMLDialogElement>(null);
+  const welcomeSpoken = useRef(false);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const computing = useRef(false);
   const currentEntries = useRef(entries);
@@ -131,7 +144,7 @@ export function Calculator() {
     if (practice && view === 'keyboard' && !help) document.getElementById('practice-area')?.focus();
   }, [practice, view, help]);
   const openTool = useCallback(
-    (tool: ToolId, target = 'workspace-title') => {
+    (tool: ToolId, target = 'view-title') => {
       keyboardManager.cancelSequence();
       commandBus.cancelPending();
       cancelAutomatic();
@@ -139,7 +152,6 @@ export function Calculator() {
       setHelp(false);
       setView('work');
       setActiveTool(tool);
-      setChoice(tool);
       setVisited((previous) => (previous.includes(tool) ? previous : [...previous, tool]));
       focusTarget(target);
     },
@@ -157,17 +169,19 @@ export function Calculator() {
       setHelp(false);
       if (target === 'history' || target === 'settings') {
         setView(target);
-        focusTarget(`${target}-title`);
-      } else if (target === 'tools') focusTarget('tool-choice');
-      else if (target === 'result') {
+        focusTarget('view-title');
+      } else if (target === 'tools') {
+        setView('tools');
+        focusTarget(`tool-item-${activeTool}`);
+      } else if (target === 'result') {
         setView('work');
         focusTarget('result-title');
       } else if (target === 'dictation') {
         openTool('basic', 'dictation-button');
         requestAnimationFrame(() => document.getElementById('dictation-button')?.click());
-      } else openTool(target, target === 'basic' ? 'expression' : 'workspace-title');
+      } else openTool(target, target === 'basic' ? 'expression' : 'view-title');
     },
-    [cancelAutomatic, focusTarget, openTool, keyboardManager, commandBus],
+    [cancelAutomatic, focusTarget, openTool, keyboardManager, commandBus, activeTool],
   );
 
   useEffect(() => {
@@ -178,6 +192,16 @@ export function Calculator() {
     document.documentElement.style.setProperty('--ui-scale', String(preferences.scale));
     document.documentElement.dataset.enlarged = String(preferences.scale > 1);
   }, [preferences]);
+  useEffect(() => {
+    document.title = `${viewTitle} — MathVoice`;
+  }, [viewTitle]);
+  // Primera visita: diálogo de bienvenida con el foco adentro. Después, directo al campo.
+  const firstVisit = useRef(!preferences.welcomed);
+  useEffect(() => {
+    const dialog = welcomeDialog.current;
+    if (!firstVisit.current) focusTarget('expression');
+    else if (dialog && !dialog.open) dialog.showModal();
+  }, [focusTarget]);
   useEffect(
     () => () => {
       clearTimeout(typingTimer.current);
@@ -225,8 +249,31 @@ export function Calculator() {
     if (help) return;
     helpOrigin.current = document.activeElement as HTMLElement;
     setHelp(true);
-    focusTarget('help-title');
+    focusTarget('view-title');
   }, [focusTarget, help]);
+  function closeHelp() {
+    setHelp(false);
+    requestAnimationFrame(() =>
+      (helpOrigin.current?.isConnected && helpOrigin.current.getClientRects().length
+        ? helpOrigin.current
+        : helpButton.current
+      )?.focus(),
+    );
+  }
+  // El contenido de la vista: el campo en la calculadora, el título en las demás.
+  function skipToContent() {
+    if (!help && view === 'work' && ['basic', 'scientific'].includes(activeTool))
+      input.current?.focus();
+    else document.getElementById('view-title')?.focus();
+  }
+  // La síntesis necesita un gesto: la primera tecla en la bienvenida explica las opciones.
+  function welcomeKey() {
+    if (welcomeSpoken.current || !speech.available) return;
+    welcomeSpoken.current = true;
+    speech.hablar(
+      'Bienvenido a MathVoice. Enter activa la guía por voz. Tab pasa a Usar mi lector de pantalla.',
+    );
+  }
   function changePreferences(next: Preferences) {
     cancelAutomatic();
     clearTimeout(typingTimer.current);
@@ -252,6 +299,7 @@ export function Calculator() {
       readHover: true,
     });
     const warning = saved ? '' : ` ${storage.warning}`;
+    welcomeDialog.current?.close();
     openTool('basic', 'expression');
     requestAnimationFrame(() => {
       automatic.cancel();
@@ -420,15 +468,7 @@ export function Calculator() {
     announce('Cálculo listo para editar.');
   }
   function whereAmI() {
-    const section = help
-      ? 'Ayuda'
-      : view === 'history'
-        ? 'Historial'
-        : view === 'keyboard'
-          ? 'Teclado y atajos'
-          : view === 'settings'
-            ? 'Configuración'
-            : toolName(activeTool);
+    const section = viewTitle;
     const field = lastField.current;
     const currentField = field?.getClientRects().length
       ? describeElement(field)
@@ -473,7 +513,7 @@ export function Calculator() {
     setFunctionPrompt(null);
     requestAnimationFrame(() => {
       if (dialogOrigin.current?.getClientRects().length) dialogOrigin.current.focus();
-      else document.getElementById('workspace-title')?.focus();
+      else document.getElementById('view-title')?.focus();
     });
   }
   function exitPractice() {
@@ -532,7 +572,7 @@ export function Calculator() {
               ? 'math-keyboard-area'
               : ['basic', 'scientific'].includes(activeTool)
                 ? 'expression'
-                : 'workspace-title',
+                : 'view-title',
           );
           break;
         }
@@ -713,45 +753,27 @@ export function Calculator() {
       >
         <a
           className="skip-link"
-          href="#expression"
+          href="#main-content"
           onClick={(event) => {
             event.preventDefault();
-            navigate('basic');
+            skipToContent();
           }}
         >
-          Saltar a la calculadora
+          Saltar al contenido
         </a>
         <header className="header">
-          <a
-            href="#expression"
-            onClick={(event) => {
-              event.preventDefault();
-              navigate('basic');
-            }}
-            className="brand"
-            aria-label="MathVoice, ir a la calculadora"
-          >
+          <p className="brand">
             <span className="brand-icon" aria-hidden="true">
               ∑
             </span>
             <span>
               Math<span className="brand-light">Voice</span>
             </span>
-          </a>
-          <nav aria-label="Navegación principal">
-            <a
-              href="#keyboard-title"
-              aria-current={view === 'keyboard' && !help ? 'page' : undefined}
-              onClick={(event) => {
-                event.preventDefault();
-                openKeyboard();
-              }}
-            >
-              Teclado y atajos
-            </a>
+          </p>
+          <nav aria-label="Secciones">
             <a
               href="#expression"
-              aria-current={view === 'work' && !help ? 'page' : undefined}
+              aria-current={!help && view === 'work' && activeTool === 'basic' ? 'page' : undefined}
               onClick={(event) => {
                 event.preventDefault();
                 navigate('basic');
@@ -760,7 +782,12 @@ export function Calculator() {
               Calculadora
             </a>
             <a
-              href="#tool-choice"
+              href="#view-title"
+              aria-current={
+                !help && (view === 'tools' || (view === 'work' && activeTool !== 'basic'))
+                  ? 'page'
+                  : undefined
+              }
               onClick={(event) => {
                 event.preventDefault();
                 navigate('tools');
@@ -769,8 +796,8 @@ export function Calculator() {
               Herramientas
             </a>
             <a
-              href="#history-title"
-              aria-current={view === 'history' && !help ? 'page' : undefined}
+              href="#view-title"
+              aria-current={!help && view === 'history' ? 'page' : undefined}
               onClick={(event) => {
                 event.preventDefault();
                 navigate('history');
@@ -779,8 +806,8 @@ export function Calculator() {
               Historial
             </a>
             <a
-              href="#settings-title"
-              aria-current={view === 'settings' && !help ? 'page' : undefined}
+              href="#view-title"
+              aria-current={!help && view === 'settings' ? 'page' : undefined}
               onClick={(event) => {
                 event.preventDefault();
                 navigate('settings');
@@ -788,54 +815,41 @@ export function Calculator() {
             >
               Configuración
             </a>
-            <button ref={helpButton} onClick={openHelp}>
-              Ayuda <kbd>F1</kbd>
-            </button>
-          </nav>
-        </header>
-        <main>
-          <h1>
-            {view === 'keyboard' && !help ? 'Referencia de teclado' : 'Calculadora accesible'}
-          </h1>
-          <div className="actions">
-            <button onClick={() => executeCommand(commandById.get('palette')!)}>
-              Paleta de comandos
-            </button>
-            <button
-              aria-pressed={keyboard.mode === 'math'}
-              onClick={() => executeCommand(commandById.get('mode')!)}
+            <a
+              ref={helpButton}
+              href="#view-title"
+              aria-current={help || view === 'keyboard' ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                openHelp();
+              }}
             >
-              {keyboard.mode === 'math'
-                ? 'Modo matemático activado. Cambiar a escritura'
-                : 'Activar modo teclado matemático'}
-            </button>
-          </div>
-          <div className="voice-bar">
-            <button onClick={whereAmI}>¿Dónde estoy?</button>
-            <span>
-              {!speech.available
-                ? 'Síntesis de voz no disponible en este navegador'
-                : preferences.guided
-                  ? 'Guía por voz activada'
-                  : 'Guía por voz desactivada'}
-            </span>
+              Ayuda <kbd>F1</kbd>
+            </a>
+          </nav>
+          <div className="voice-bar" role="group" aria-label="Voz y orientación">
             <button
-              className={preferences.guided ? '' : 'primary'}
+              aria-pressed={preferences.guided}
               disabled={!speech.available}
+              title={
+                speech.available ? undefined : 'Síntesis de voz no disponible en este navegador'
+              }
               onClick={() => {
                 automatic.cancel();
                 if (preferences.guided) {
                   changePreferences({ ...preferences, guided: false });
                   speech.detener();
+                  announce('Guía por voz desactivada.', false);
                 } else if (!preferences.welcomed) start(true);
                 else {
                   changePreferences({ ...preferences, guided: true });
-                  speech.hablar('Voz automática activada. Se conserva la sección actual.');
+                  speech.hablar('Guía por voz activada. Se conserva la sección actual.');
                 }
               }}
             >
-              {preferences.guided ? 'Desactivar voz automática' : 'Activar voz automática'}
+              Guía por voz
             </button>
+            <button onClick={whereAmI}>¿Dónde estoy?</button>
             <button
               onClick={() => {
                 clearTimeout(typingTimer.current);
@@ -846,70 +860,161 @@ export function Calculator() {
               Detener voz <kbd>Esc</kbd>
             </button>
           </div>
-          {!preferences.welcomed && (
-            <section className="welcome" aria-labelledby="welcome-title">
-              <div>
-                <h2 id="welcome-title">Bienvenido a MathVoice.</h2>
-                <p>
-                  Activá la voz una vez. Después, cada control se lee al pasar el puntero o
-                  recorrerlo con Tab. Si usás NVDA, JAWS o VoiceOver, elegí Usar mi lector de
-                  pantalla para evitar dos voces.
-                </p>
-              </div>
-              <div className="actions">
-                <button
-                  className="primary"
-                  disabled={!speech.available}
-                  onClick={() => start(true)}
-                >
-                  Activar guía por voz
-                </button>
-                <button onClick={() => start(false)}>Usar mi lector de pantalla</button>
-              </div>
-            </section>
+        </header>
+        <dialog
+          ref={welcomeDialog}
+          className="welcome"
+          aria-labelledby="welcome-title"
+          aria-describedby="welcome-text"
+          onKeyDown={welcomeKey}
+          onCancel={(event) => {
+            event.preventDefault();
+            start(false);
+          }}
+        >
+          <h2 id="welcome-title">Bienvenido a MathVoice</h2>
+          <p id="welcome-text">
+            Elegí cómo querés escuchar la calculadora. Con la guía por voz, MathVoice lee cada
+            control y cada resultado. Si usás NVDA, JAWS o VoiceOver, elegí usar tu lector para no
+            escuchar dos voces.
+          </p>
+          <div className="actions">
+            <button className="primary" disabled={!speech.available} onClick={() => start(true)}>
+              Activar guía por voz
+            </button>
+            <button onClick={() => start(false)}>Usar mi lector de pantalla</button>
+          </div>
+        </dialog>
+        <main id="main-content" aria-labelledby="view-title">
+          {!help && view === 'work' && activeTool !== 'basic' && (
+            <nav aria-label="Ubicación" className="breadcrumb">
+              <a
+                href="#view-title"
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigate('tools');
+                }}
+              >
+                Herramientas
+              </a>
+              <span aria-hidden="true"> › </span>
+              <span aria-current="page">{toolName(activeTool)}</span>
+            </nav>
           )}
+          {!help && view === 'keyboard' && (
+            <nav aria-label="Ubicación" className="breadcrumb">
+              <a
+                href="#view-title"
+                onClick={(event) => {
+                  event.preventDefault();
+                  openHelp();
+                }}
+              >
+                Ayuda
+              </a>
+              <span aria-hidden="true"> › </span>
+              <span aria-current="page">Teclado y atajos</span>
+            </nav>
+          )}
+          <h1 id="view-title" tabIndex={-1}>
+            {viewTitle}
+          </h1>
           {help && (
-            <section className="panel help" aria-labelledby="help-title">
-              <h2 id="help-title" tabIndex={-1}>
-                Ayuda accesible
-              </h2>
+            <div
+              className="panel help"
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') closeHelp();
+              }}
+            >
+              <h2>Cómo usar MathVoice</h2>
               <p>{welcome}</p>
-              <ul>
-                <li>Enter en el campo: calcular.</li>
-                <li>Ctrl + Enter: escuchar expresión.</li>
+              <ol>
                 <li>
-                  Alt + Shift + C: volver a escribir una operación. Elegir herramienta está en el
-                  menú y en la paleta de comandos (Alt + Shift + P).
+                  Escribí una operación en el campo Expresión matemática, o usá Dictar expresión.
                 </li>
-                <li>Alt + Shift + R: ir al resultado.</li>
-                <li>Alt + Shift + H: ir al historial.</li>
-                <li>Alt + Shift + G: abrir gráficos. Alt + Shift + M: abrir matrices.</li>
-                <li>Alt + Shift + D o L: derivada o límite. Buscá integral en la paleta.</li>
-                <li>Alt + Shift + V: iniciar o cancelar dictado.</li>
-                <li>F1: abrir ayuda. Escape: detener voz.</li>
-              </ul>
+                <li>
+                  Presioná Enter para calcular. El resultado se anuncia y queda en la sección
+                  Resultado, donde podés escucharlo, copiarlo o explicarlo.
+                </li>
+                <li>
+                  Abrí Herramientas para álgebra, matrices, gráficos, estadística y más. Tus datos
+                  se conservan al cambiar de herramienta.
+                </li>
+                <li>
+                  El historial guarda tus cálculos en este dispositivo para escucharlos, editarlos o
+                  exportarlos.
+                </li>
+              </ol>
               <p>
                 Usá punto para decimales y coma entre argumentos. Por ejemplo: log(8,2). Las
                 funciones inversas respetan el modo angular. El historial conserva el modo original
                 de cada cálculo.
               </p>
-              <button
-                onClick={() => {
-                  setHelp(false);
-                  requestAnimationFrame(() =>
-                    (helpOrigin.current?.isConnected
-                      ? helpOrigin.current
-                      : helpButton.current
-                    )?.focus(),
-                  );
-                }}
-              >
-                Cerrar ayuda
-              </button>
-            </section>
+              <h2>Atajos esenciales</h2>
+              <table className="shortcut-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Atajo</th>
+                    <th scope="col">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['F1', 'Abrir esta ayuda'],
+                    ['Enter', 'Calcular la expresión'],
+                    ['Control + Enter', 'Escuchar la expresión'],
+                    ['Escape', 'Detener la voz'],
+                    ['Alt + Shift + C', 'Ir a la calculadora'],
+                    ['Alt + Shift + R', 'Ir al resultado'],
+                    ['Alt + Shift + H', 'Ir al historial'],
+                    ['Alt + Shift + G', 'Abrir gráficos'],
+                    ['Alt + Shift + M', 'Abrir matrices'],
+                    ['Alt + Shift + D', 'Abrir derivadas'],
+                    ['Alt + Shift + L', 'Abrir límites'],
+                    ['Alt + Shift + V', 'Iniciar o cancelar el dictado'],
+                    ['Alt + Shift + E', '¿Dónde estoy?'],
+                    ['Alt + Shift + P', 'Paleta de comandos'],
+                    ['Alt + Shift + K', 'Teclado y atajos'],
+                    ['F2', 'Cambiar entre escritura y teclado matemático'],
+                  ].map(([keys, action]) => (
+                    <tr key={keys}>
+                      <th scope="row">{keys}</th>
+                      <td>{action}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <h2>Herramientas de teclado</h2>
+              <p>
+                La paleta busca cualquier función por nombre. El teclado matemático asigna una tecla
+                a cada operación; con un lector de pantalla puede hacer falta pasarle las teclas a
+                la página. En Teclado y atajos están la referencia completa, la práctica y la
+                personalización.
+              </p>
+              <div className="actions">
+                <button onClick={() => executeCommand(commandById.get('palette')!)}>
+                  Paleta de comandos
+                </button>
+                <button
+                  aria-pressed={keyboard.mode === 'math'}
+                  onClick={() => executeCommand(commandById.get('mode')!)}
+                >
+                  {keyboard.mode === 'math'
+                    ? 'Modo matemático activado. Cambiar a escritura'
+                    : 'Activar modo teclado matemático'}
+                </button>
+                <button onClick={openKeyboard}>Teclado y atajos</button>
+              </div>
+              <button onClick={closeHelp}>Cerrar ayuda</button>
+            </div>
           )}
           {storageWarning && <p className="warning">{storageWarning}</p>}
-          <ToolChooser choice={choice} choose={setChoice} open={openTool} />
+          {!help && view === 'tools' && (
+            <ToolsPage
+              current={activeTool}
+              open={(tool) => openTool(tool, tool === 'basic' ? 'expression' : 'view-title')}
+            />
+          )}
           <div
             id="calculation-error"
             role={preferences.guided ? undefined : 'alert'}
@@ -919,57 +1024,28 @@ export function Calculator() {
             {error}
           </div>
           <div className="workspace" data-keyboard-workspace hidden={view !== 'work' || help}>
-            <div className="workspace-heading">
-              <h2 id="workspace-title" tabIndex={-1}>
-                Herramienta actual: {toolName(activeTool)}
-              </h2>
-              <p className="hint">
-                Completá el formulario. El resultado está a continuación. Alt + Shift + R te lleva
-                al resultado. El menú de herramientas también está en la navegación principal.
-              </p>
-              <button onClick={() => navigate('result')}>Ir al resultado</button>
-              {keyboard.mode === 'math' && (
-                <div
-                  id="math-keyboard-area"
-                  className="math-keyboard-area"
-                  role="group"
-                  tabIndex={0}
-                  aria-label="Área del teclado matemático"
-                  aria-describedby="math-keyboard-help"
-                >
-                  Teclado matemático:{' '}
-                  {activeTool === 'vectors' && vectorContext === 'complex'
-                    ? 'Complejos'
-                    : toolName(activeTool)}
-                  .
-                  <p id="math-keyboard-help">
-                    Presioná un atajo o abrí la paleta con Alt más Shift más P. F2 vuelve a
-                    escritura. Tab sale de esta área. Dentro de los campos podés escribir
-                    normalmente.
-                  </p>
-                </div>
-              )}
-            </div>
+            {keyboard.mode === 'math' && (
+              <div
+                id="math-keyboard-area"
+                className="math-keyboard-area"
+                role="group"
+                tabIndex={0}
+                aria-label="Área del teclado matemático"
+                aria-describedby="math-keyboard-help"
+              >
+                Teclado matemático:{' '}
+                {activeTool === 'vectors' && vectorContext === 'complex'
+                  ? 'Complejos'
+                  : toolName(activeTool)}
+                .
+                <p id="math-keyboard-help">
+                  Presioná un atajo o abrí la paleta con Alt más Shift más P. F2 vuelve a escritura.
+                  Tab sale de esta área. Dentro de los campos podés escribir normalmente.
+                </p>
+              </div>
+            )}
             <div hidden={activeTool !== 'basic' && activeTool !== 'scientific'}>
-              <section className="calculator panel" aria-labelledby="calculator-title">
-                <p className="eyebrow">TU ESPACIO MATEMÁTICO</p>
-                <h2 id="calculator-title">Escribir o dictar una operación</h2>
-                <p className="intro">Usá los botones o escribí la operación.</p>
-                {view === 'work' &&
-                  !help &&
-                  (activeTool === 'basic' || activeTool === 'scientific') && (
-                    <Dictation
-                      language={preferences.language}
-                      guided={preferences.guided}
-                      announce={announce}
-                      onListeningChange={setListening}
-                      confirm={(value, angle) => {
-                        setExpression(value);
-                        if (angle) changePreferences({ ...preferences, angle });
-                        void calculate(value, angle ?? preferences.angle);
-                      }}
-                    />
-                  )}
+              <section className="calculator panel" aria-label="Escribir una operación">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1053,6 +1129,21 @@ export function Calculator() {
                     </select>
                   </label>
                 </form>
+                {view === 'work' &&
+                  !help &&
+                  (activeTool === 'basic' || activeTool === 'scientific') && (
+                    <Dictation
+                      language={preferences.language}
+                      guided={preferences.guided}
+                      announce={announce}
+                      onListeningChange={setListening}
+                      confirm={(value, angle) => {
+                        setExpression(value);
+                        if (angle) changePreferences({ ...preferences, angle });
+                        void calculate(value, angle ?? preferences.angle);
+                      }}
+                    />
+                  )}
               </section>
             </div>
             <div hidden={activeTool !== 'scientific'}>
@@ -1086,7 +1177,6 @@ export function Calculator() {
               }}
             />
             <section className="result panel" aria-labelledby="result-title">
-              <p className="eyebrow">ÚLTIMO CÁLCULO</p>
               <h2 id="result-title" tabIndex={-1}>
                 Resultado
               </h2>

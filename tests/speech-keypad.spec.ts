@@ -47,7 +47,8 @@ test('hover anuncia, no repite al moverse dentro, foco anuncia y Escape cancela 
 }) => {
   await mockSpeech(page);
   await page.goto('/');
-  await page.getByRole('button', { name: 'Activar voz automática', exact: true }).click();
+  // Primera visita: la bienvenida pregunta cómo escuchar.
+  await page.getByRole('button', { name: 'Activar guía por voz', exact: true }).click();
   await openKeypad(page);
   const seven = page.getByRole('button', { name: 'Siete', exact: true });
   await seven.hover();
@@ -62,7 +63,7 @@ test('hover anuncia, no repite al moverse dentro, foco anuncia y Escape cancela 
   await page.keyboard.press('Escape');
   await page.waitForTimeout(250);
   expect(await spoken(page)).not.toContain('Nueve');
-  await page.getByRole('button', { name: 'Desactivar voz automática' }).click();
+  await page.getByRole('button', { name: 'Guía por voz', exact: true, pressed: true }).click();
   const before = (await spoken(page)).length;
   await page.getByRole('button', { name: 'Cuatro', exact: true }).hover();
   await page.waitForTimeout(250);

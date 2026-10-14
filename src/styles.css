@@ -168,6 +168,7 @@ p {
   border-bottom: 1px solid var(--border);
 }
 .brand {
+  margin: 0;
   display: flex;
   gap: 12px;
   align-items: center;
@@ -209,32 +210,55 @@ kbd {
 }
 .voice-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 18px 0;
+  gap: 10px;
   font-size: 0.8rem;
-  color: var(--muted);
 }
 .voice-bar button {
   font-size: 0.8rem;
 }
-.welcome {
-  background: var(--soft);
-  border: 1px solid var(--border);
-  padding: 24px;
+/* Interruptores: el estado se ve además de anunciarse con aria-pressed. */
+button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+/* Sin contenido generado: entraría en el nombre accesible. */
+button[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 2px var(--accent-text);
+}
+select {
+  max-width: 100%;
+}
+dialog.welcome {
+  max-width: min(36rem, calc(100vw - 32px));
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--accent);
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 24px;
+  padding: 28px;
+}
+dialog.welcome::backdrop {
+  background: rgb(0 0 0 / 55%);
 }
 .welcome h2 {
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.6rem;
 }
 .welcome p {
-  margin: 0;
+  margin-bottom: 1.2rem;
+}
+.breadcrumb {
+  margin-top: 18px;
+  font-size: 0.85rem;
+}
+.breadcrumb a {
+  display: inline-block;
+  padding: 12px 0;
+}
+main > h1 {
+  margin: 18px 0 20px;
+  font-size: 1.6rem;
 }
 .actions {
   display: flex;
@@ -650,17 +674,59 @@ footer {
   font-weight: 750;
   text-decoration-thickness: 3px;
 }
-.tool-chooser {
+.tools-page {
+  max-width: 960px;
+  margin-inline: auto;
+}
+.tools-page h2 {
+  font-size: 1.15rem;
+  margin: 1.5rem 0 0.6rem;
+}
+.tool-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 12px;
+}
+.tool-list li {
   background: var(--surface);
-  padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 12px;
-  margin-bottom: 1.5rem;
+  padding: 12px 14px;
 }
-.tool-chooser select {
-  flex: 1 1 16rem;
-  width: auto;
-  margin: 0;
+.tool-item {
+  width: 100%;
+  text-align: left;
+  font-size: 1rem;
+}
+.tool-item[aria-current='true'] {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+.tool-list .hint {
+  margin: 0.5rem 0 0;
+}
+.shortcut-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  overflow-wrap: anywhere;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+.shortcut-table caption {
+  text-align: left;
+  font-weight: 700;
+  padding: 0.5rem 0;
+}
+.shortcut-table th,
+.shortcut-table td {
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
 }
 .workspace {
   display: block;

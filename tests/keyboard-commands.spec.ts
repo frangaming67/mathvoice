@@ -26,10 +26,10 @@ test('la lectura de atajos sigue el elemento actual y los controles no la interr
     });
   });
   await page.reload();
-  await page.getByRole('link', { name: 'Teclado y atajos', exact: true }).focus();
+  await page.getByRole('link', { name: /^Ayuda/ }).focus();
   await page.keyboard.press('Alt+Shift+k');
   await expect(page.getByRole('heading', { name: 'Teclado y atajos', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Activar voz automática', exact: true }).click();
+  await page.getByRole('button', { name: 'Guía por voz', exact: true, pressed: false }).click();
   await page.getByRole('button', { name: 'Escuchar atajos', exact: true }).click();
   const snapshot = () =>
     page.evaluate(() => {
@@ -200,7 +200,9 @@ test('paleta y captura de atajos respetan modificadores del lector y del navegad
   await page.keyboard.press('Escape');
   await page.keyboard.press('Alt+Shift+k');
   await page.getByLabel('Buscar función', { exact: true }).fill('Raíz cuadrada');
-  await page.locator('summary').filter({ hasText: 'Raíz cuadrada' }).click();
+  await page
+    .getByRole('combobox', { name: 'Función elegida', exact: true })
+    .selectOption({ label: 'Raíz cuadrada · R' });
   await page.getByRole('button', { name: 'Cambiar atajo de Raíz cuadrada', exact: true }).click();
   const capture = page.getByRole('button', { name: 'Presioná aquí la nueva combinación' });
   await capture.focus();
@@ -243,7 +245,9 @@ test('secuencia de herramienta y teclas de matriz conservan celdas y foco', asyn
   await page.keyboard.press('g');
   await expect(page.getByRole('status')).toContainText('Comando Ir a');
   await page.keyboard.press('m');
-  await expect(page.getByRole('heading', { name: 'Herramienta actual: Matrices' })).toBeFocused();
+  await expect(
+    page.getByRole('heading', { name: 'Matrices', exact: true, level: 1 }),
+  ).toBeFocused();
   const cells = page.locator('.matrix-editor input');
   await cells.first().fill('9');
   await cells.first().press('Control+End');
@@ -269,7 +273,7 @@ test('modificadores del lector conservan celdas y coordenadas aunque el foco cam
   await openTool(page, 'Matrices');
   const cells = page.locator('.matrix-editor input');
   for (const modifier of ['Insert', 'CapsLock']) {
-    await page.getByRole('heading', { name: 'Herramienta actual: Matrices' }).focus();
+    await page.getByRole('heading', { name: 'Matrices', exact: true, level: 1 }).focus();
     await page.keyboard.down(modifier);
     await cells.first().focus();
     await page.keyboard.press('ArrowRight');
@@ -305,11 +309,12 @@ test('práctica e identificación describen sin cambiar expresión ni ejecutar f
   await expect(page.getByRole('status')).toContainText('Derivada');
   await expect(expression).toHaveValue('12+3');
   await page.keyboard.press('F2');
-  await expect(
-    page.getByRole('button', { name: 'Activar modo teclado matemático', exact: true }),
-  ).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('#keyboard-title')).toBeFocused();
+  // F2 durante la práctica se describe, no cambia de modo.
+  await expect(
+    page.getByRole('button', { name: 'Activar modo matemático', exact: true }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Identificar tecla', exact: true }).click();
   await page.keyboard.press('Shift+d');
   await expect(page.getByRole('status')).toContainText('Derivada de orden superior');
@@ -322,7 +327,9 @@ test('personalización rechaza conflicto, persiste, exporta e importa sin acepta
 }) => {
   await page.keyboard.press('Alt+Shift+k');
   await page.getByLabel('Buscar función', { exact: true }).fill('raíz cuadrada');
-  await page.getByText('Raíz cuadrada · R', { exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Función elegida', exact: true })
+    .selectOption({ label: 'Raíz cuadrada · R' });
   await page.getByRole('button', { name: 'Cambiar atajo de Raíz cuadrada', exact: true }).click();
   await page.getByLabel('Nueva combinación', { exact: true }).fill('D');
   await page.getByRole('button', { name: 'Guardar atajo', exact: true }).click();
@@ -348,8 +355,9 @@ test('personalización rechaza conflicto, persiste, exporta e importa sin acepta
   await expect(page.getByRole('status')).toContainText('No se importó');
   expect(await page.evaluate(() => localStorage.getItem('mathvoice.v1.keyboard'))).toBe(saved);
   await page.reload();
-  await page.keyboard.press('Tab');
-  await page.getByRole('button', { name: 'Activar modo teclado matemático', exact: true }).click();
+  await expect(page.getByLabel('Expresión matemática', { exact: true })).toBeFocused();
+  await page.keyboard.press('F2');
+  await expect(page.getByRole('group', { name: 'Área del teclado matemático' })).toBeFocused();
   await page.keyboard.press(';');
   await page.keyboard.press('q');
   await expect(page.getByRole('dialog', { name: 'Raíz cuadrada', exact: true })).toBeVisible();
@@ -409,8 +417,11 @@ test('paleta y referencia pasan axe, reflow y búsqueda inversa', async ({ page 
   await page.keyboard.press('Alt+Shift+k');
   await page.getByLabel('Buscar tecla', { exact: true }).fill('Shift+D');
   await expect(
-    page.getByText('Derivada de orden superior · Shift+D', { exact: true }),
+    page.getByRole('row', { name: /^Derivada de orden superior Shift\+D/ }),
   ).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Función elegida', exact: true })).toHaveValue(
+    /.+/,
+  );
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
     true,
