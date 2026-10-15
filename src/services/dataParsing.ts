@@ -65,8 +65,7 @@ function readNumber(raw: string, decimal: DecimalSeparator | 'auto'): NumberRead
 }
 
 export type NumberParse =
-  | { ok: true; value: number; canonical: string }
-  | { ok: false; message: string };
+  { ok: true; value: number; canonical: string } | { ok: false; message: string };
 
 /**
  * Lee un número escrito en un campo: acepta punto o coma decimal, separador de miles junto
@@ -87,7 +86,10 @@ export function parseNumber(input: string): NumberParse {
   }
   const read = readNumber(text, 'auto');
   if (!read || read === 'thousands')
-    return { ok: false, message: `«${text}» no es un número. Usá cifras, con punto o coma decimal.` };
+    return {
+      ok: false,
+      message: `«${text}» no es un número. Usá cifras, con punto o coma decimal.`,
+    };
   return { ok: true, value: read.value, canonical: read.canonical };
 }
 
@@ -164,7 +166,13 @@ function tokenize(text: string): Token[] {
       const read = readNumber(raw, raw.includes(',') ? 'coma' : 'punto');
       if (!read || read === 'thousands')
         throw new CellError(`«${raw}» no es un número`, i, i + raw.length);
-      tokens.push({ type: 'number', text: read.canonical, value: read.value, start: i, end: i + raw.length });
+      tokens.push({
+        type: 'number',
+        text: read.canonical,
+        value: read.value,
+        start: i,
+        end: i + raw.length,
+      });
       i += raw.length;
       continue;
     }
@@ -174,13 +182,22 @@ function tokenize(text: string): Token[] {
       const key = source.toLowerCase();
       const end = i + source.length;
       if (FUNCTIONS[key])
-        tokens.push({ type: 'function', text: FUNCTIONS[key].name, source, arity: FUNCTIONS[key].arity, start: i, end });
-      else if (CONSTANTS[key]) tokens.push({ type: 'constant', text: CONSTANTS[key], start: i, end });
+        tokens.push({
+          type: 'function',
+          text: FUNCTIONS[key].name,
+          source,
+          arity: FUNCTIONS[key].arity,
+          start: i,
+          end,
+        });
+      else if (CONSTANTS[key])
+        tokens.push({ type: 'constant', text: CONSTANTS[key], start: i, end });
       else throw new CellError(`no reconozco «${source}»`, i, end);
       i = end;
       continue;
     }
-    if (OPERATORS[char]) tokens.push({ type: 'operator', text: OPERATORS[char], start: i, end: i + 1 });
+    if (OPERATORS[char])
+      tokens.push({ type: 'operator', text: OPERATORS[char], start: i, end: i + 1 });
     else if (char === '(') {
       calls.push(tokens[tokens.length - 1]?.type === 'function');
       tokens.push({ type: '(', text: '(', start: i, end: i + 1 });
@@ -280,14 +297,23 @@ function validateTokens(tokens: Token[], length: number) {
     if (token.type === ',') return fail('sobra una coma', token);
     const previous = tokens[position - 1];
     return fail(
-      previous ? `falta un valor entre «${previous.text}» y «${token.text}»` : `falta un valor antes de «${token.text}»`,
+      previous
+        ? `falta un valor entre «${previous.text}» y «${token.text}»`
+        : `falta un valor antes de «${token.text}»`,
       token,
     );
   }
   expression();
   const rest = peek();
   if (rest)
-    fail(rest.type === ')' ? 'sobra un paréntesis de cierre' : rest.type === ',' ? 'sobra una coma' : `«${rest.text}» no corresponde ahí`, rest);
+    fail(
+      rest.type === ')'
+        ? 'sobra un paréntesis de cierre'
+        : rest.type === ','
+          ? 'sobra una coma'
+          : `«${rest.text}» no corresponde ahí`,
+      rest,
+    );
 }
 
 const wordLike = (token: Token) => ['number', 'constant', 'function'].includes(token.type);
@@ -303,14 +329,19 @@ export function parseCell(input: string): CellParse {
     const tokens = tokenize(text);
     validateTokens(tokens, text.length);
     const expression = tokens
-      .map((token, i) => (i && wordLike(tokens[i - 1]) && wordLike(token) ? ` ${token.text}` : token.text))
+      .map((token, i) =>
+        i && wordLike(tokens[i - 1]) && wordLike(token) ? ` ${token.text}` : token.text,
+      )
       .join('');
     const single = tokens.length === 1 && tokens[0].type === 'number' ? tokens[0].value : undefined;
     const negative =
-      tokens.length === 2 && tokens[0].text === '-' && tokens[1].type === 'number' ? -tokens[1].value : undefined;
+      tokens.length === 2 && tokens[0].text === '-' && tokens[1].type === 'number'
+        ? -tokens[1].value
+        : undefined;
     return { ok: true, expression, value: single ?? negative };
   } catch (error) {
-    if (error instanceof CellError) return { ok: false, message: error.message, start: error.start, end: error.end };
+    if (error instanceof CellError)
+      return { ok: false, message: error.message, start: error.start, end: error.end };
     throw error;
   }
 }
@@ -349,7 +380,7 @@ function splitTopLevel(text: string, separator: RegExp): Piece[] {
   const pieces: Piece[] = [];
   let depth = 0;
   let start = 0;
-  for (let i = 0; i < text.length; ) {
+  for (let i = 0; i < text.length;) {
     if (text[i] === '(') depth++;
     else if (text[i] === ')') depth = Math.max(0, depth - 1);
     else if (depth === 0) {
@@ -377,7 +408,8 @@ const STRONG = /\s*[;\t\r\n]\s*|\s*,\s+|\s+/y;
 const COMMAS = /\s*,\s*|\s+/y;
 const SPACES = /\s+,?\s*|,\s+/y;
 
-type Read = { ok: true; item: ListItem } | { ok: false; message: string; start: number; end: number };
+type Read =
+  { ok: true; item: ListItem } | { ok: false; message: string; start: number; end: number };
 function readItem(piece: Piece, decimal: DecimalSeparator, position: number, noun: Noun): Read {
   const fail = (detail: string): Read => ({
     ok: false,
@@ -393,7 +425,11 @@ function readItem(piece: Piece, decimal: DecimalSeparator, position: number, nou
   if (number)
     return {
       ok: true,
-      item: { text: writtenNumber(number.value, decimal), expression: number.canonical, value: number.value },
+      item: {
+        text: writtenNumber(number.value, decimal),
+        expression: number.canonical,
+        value: number.value,
+      },
     };
   if (!/[a-zA-Zπ(/*^×÷]/.test(piece.text))
     return fail(
@@ -431,7 +467,10 @@ const rewrite = (reading: ListReading) =>
     ? reading.items.map((i) => i.text).join('; ')
     : reading.items.map((i) => i.text).join(', ');
 
-function readFlat(text: string, noun: Noun): Attempt | { ambiguous: [Attempt & { ok: true }, Attempt & { ok: true }] } {
+function readFlat(
+  text: string,
+  noun: Noun,
+): Attempt | { ambiguous: [Attempt & { ok: true }, Attempt & { ok: true }] } {
   if (/[;\t\r\n]/.test(text)) return readPieces(splitTopLevel(text, STRONG), 'coma', noun);
   const byCommas = readPieces(splitTopLevel(text, COMMAS), 'punto', noun);
   const bySpaces = readPieces(splitTopLevel(text, SPACES), 'coma', noun);
@@ -439,7 +478,9 @@ function readFlat(text: string, noun: Noun): Attempt | { ambiguous: [Attempt & {
   if (!byCommas.ok) return bySpaces;
   const same =
     byCommas.reading.items.length === bySpaces.reading.items.length &&
-    byCommas.reading.items.every((item, i) => item.expression === bySpaces.reading.items[i].expression);
+    byCommas.reading.items.every(
+      (item, i) => item.expression === bySpaces.reading.items[i].expression,
+    );
   if (same) return byCommas;
   if (/\s/.test(text.trim()) && !/,\s|\s,/.test(text)) return bySpaces;
   return { ambiguous: [bySpaces, byCommas] };
@@ -459,10 +500,7 @@ const looksLikeData = (text: string) => /\d/.test(text) || /^(pi|π|e)$/i.test(t
  * tabulaciones y saltos de línea. Si hay punto y coma, tabulaciones o saltos de línea, la
  * coma es decimal. Si la lectura es dudosa, devuelve las opciones en vez de adivinar.
  */
-export function parseList(
-  input: string,
-  options: { max?: number; noun?: Noun } = {},
-): ListParse {
+export function parseList(input: string, options: { max?: number; noun?: Noun } = {}): ListParse {
   const { max = 500, noun = DATA_NOUN } = options;
   const text = normalize(input);
   if (!text.trim()) return { status: 'error', message: `Escribí al menos un ${noun.singular}.` };
@@ -476,15 +514,26 @@ export function parseList(
     };
   const limit = (reading: ListReading): ListParse =>
     reading.items.length > max
-      ? { status: 'error', message: `Hay ${count(reading.items.length, noun)}; el máximo es ${max}.` }
+      ? {
+          status: 'error',
+          message: `Hay ${count(reading.items.length, noun)}; el máximo es ${max}.`,
+        }
       : { status: 'ok', reading };
 
   const table = tableShape(text);
   if (table) {
     const header = table[0].every((cell) => !looksLikeData(cell)) ? table[0].join(' ') : undefined;
     const body = header ? table.slice(1) : table;
-    const first = readPieces(body.map((row) => ({ text: row[0], start: 0 })), 'coma', noun);
-    const all = readPieces(body.flat().map((cell) => ({ text: cell, start: 0 })), 'coma', noun);
+    const first = readPieces(
+      body.map((row) => ({ text: row[0], start: 0 })),
+      'coma',
+      noun,
+    );
+    const all = readPieces(
+      body.flat().map((cell) => ({ text: cell, start: 0 })),
+      'coma',
+      noun,
+    );
     if (!first.ok) return { status: 'error', message: first.message };
     if (!all.ok) return { status: 'error', message: all.message };
     for (const attempt of [first, all]) attempt.reading.skippedHeader = header;
@@ -493,8 +542,16 @@ export function parseList(
       status: 'ambiguous',
       question: `Pegaste una tabla de ${count(body.length, { singular: 'fila', plural: 'filas' })} y ${table[0].length} columnas. ¿Qué datos uso?`,
       options: [
-        { label: `Solo la primera columna: ${listLabel(first.reading, noun)}`, text: rewrite(first.reading), reading: first.reading },
-        { label: `Toda la tabla: ${listLabel(all.reading, noun)}`, text: rewrite(all.reading), reading: all.reading },
+        {
+          label: `Solo la primera columna: ${listLabel(first.reading, noun)}`,
+          text: rewrite(first.reading),
+          reading: first.reading,
+        },
+        {
+          label: `Toda la tabla: ${listLabel(all.reading, noun)}`,
+          text: rewrite(all.reading),
+          reading: all.reading,
+        },
       ],
     };
   }
@@ -518,12 +575,21 @@ export function parseList(
       status: 'ambiguous',
       question: 'No sé si la coma separa datos o es decimal. ¿Cómo lo leo?',
       options: [
-        { label: listLabel(decimalComma.reading, noun), text: rewrite(decimalComma.reading), reading: decimalComma.reading },
-        { label: `${listLabel(separators.reading, noun)}`, text: rewrite(separators.reading), reading: separators.reading },
+        {
+          label: listLabel(decimalComma.reading, noun),
+          text: rewrite(decimalComma.reading),
+          reading: decimalComma.reading,
+        },
+        {
+          label: `${listLabel(separators.reading, noun)}`,
+          text: rewrite(separators.reading),
+          reading: separators.reading,
+        },
       ],
     };
   }
-  if (!attempt.ok) return { status: 'error', message: attempt.message, start: attempt.start, end: attempt.end };
+  if (!attempt.ok)
+    return { status: 'error', message: attempt.message, start: attempt.start, end: attempt.end };
   if (header) attempt.reading.skippedHeader = header;
   return limit(attempt.reading);
 }
@@ -536,7 +602,9 @@ export function describeReading(
   const { noun = DATA_NOUN, speakExpression = (t: string) => t } = options;
   const n = reading.items.length;
   const verb = n === 1 ? 'Se leyó' : 'Se leyeron';
-  const header = reading.skippedHeader ? `Se omitió el encabezado «${reading.skippedHeader}». ` : '';
+  const header = reading.skippedHeader
+    ? `Se omitió el encabezado «${reading.skippedHeader}». `
+    : '';
   const spoken = reading.items.map((item) =>
     item.value !== undefined && /^-?[\d.]+(e-?\d+)?$/.test(item.expression)
       ? spokenNumber(item.expression)
@@ -619,12 +687,15 @@ export function parseMatrixText(
   const lines = /[\r\n]/.test(text);
   const rows = text.split(lines ? /\s*(?:\r\n|\r|\n)\s*/ : /\s*;\s*/).filter((row) => row.trim());
   if (text.includes('\t')) return finish(readRows(rows, /\s*\t\s*/y, 'coma'));
-  if (lines && rows.every((row) => row.includes(';'))) return finish(readRows(rows, /\s*;\s*/y, 'coma'));
+  if (lines && rows.every((row) => row.includes(';')))
+    return finish(readRows(rows, /\s*;\s*/y, 'coma'));
   const byCommas = readRows(rows, COMMAS, 'punto');
   const bySpaces = readRows(rows, SPACES, 'coma');
   if (!bySpaces.ok) return finish(byCommas);
   if (!byCommas.ok) return finish(bySpaces);
-  const same = byCommas.cells.flat().join('|') === bySpaces.cells.flat().join('|') && size(byCommas.cells) === size(bySpaces.cells);
+  const same =
+    byCommas.cells.flat().join('|') === bySpaces.cells.flat().join('|') &&
+    size(byCommas.cells) === size(bySpaces.cells);
   if (same || !/,/.test(text)) return finish(byCommas);
   // La coma separa columnas, salvo que las columnas ya vayan separadas por espacios.
   if (!/\s/.test(text.replace(/\s*(?:\r\n|\r|\n|;)\s*/g, ''))) return finish(byCommas);
@@ -634,7 +705,10 @@ export function parseMatrixText(
     question: 'No sé si la coma separa columnas o es decimal. ¿Cómo lo leo?',
     options: [
       { label: `Matriz de ${size(bySpaces.cells)}, con coma decimal`, cells: bySpaces.cells },
-      { label: `Matriz de ${size(byCommas.cells)}, con comas entre columnas`, cells: byCommas.cells },
+      {
+        label: `Matriz de ${size(byCommas.cells)}, con comas entre columnas`,
+        cells: byCommas.cells,
+      },
     ],
   };
 }
@@ -812,9 +886,15 @@ export function vectorProblem(
 ): { field: 'A' | 'B'; message: string } | null {
   if (operation === 'cross') {
     if (a !== 3)
-      return { field: 'A', message: `El producto cruz necesita vectores de 3 componentes. A tiene ${a}.` };
+      return {
+        field: 'A',
+        message: `El producto cruz necesita vectores de 3 componentes. A tiene ${a}.`,
+      };
     if (b !== undefined && b !== 3)
-      return { field: 'B', message: `El producto cruz necesita vectores de 3 componentes. B tiene ${b}.` };
+      return {
+        field: 'B',
+        message: `El producto cruz necesita vectores de 3 componentes. B tiene ${b}.`,
+      };
     return null;
   }
   if (BINARY_VECTOR.includes(operation) && b !== undefined && a !== b)
@@ -876,13 +956,21 @@ export type FieldsCheck =
   | { ok: false; index: number; message: string };
 
 /** Valida los campos de una operación de probabilidad; labels son las etiquetas visibles. */
-export function probabilityCheck(operation: string, labels: string[], texts: string[]): FieldsCheck {
+export function probabilityCheck(
+  operation: string,
+  labels: string[],
+  texts: string[],
+): FieldsCheck {
   const rules = PROBABILITY_RULES[operation] ?? [];
   const values: number[] = [];
   const expressions: string[] = [];
   for (const [index, rule] of rules.entries()) {
     const label = labels[index];
-    const fail = (message: string): FieldsCheck => ({ ok: false, index, message: `${label}: ${message}` });
+    const fail = (message: string): FieldsCheck => ({
+      ok: false,
+      index,
+      message: `${label}: ${message}`,
+    });
     const read = parseNumber(texts[index] ?? '');
     if (!read.ok) return fail(read.message);
     const v = read.value;
@@ -926,7 +1014,10 @@ const BASE_DIGITS: Record<number, string> = {
 };
 
 /** Problema de un entero escrito en base 2, 8, 10 o 16, con la posición del dígito culpable. */
-export function baseNumberProblem(text: string, base: number): { message: string; start?: number } | null {
+export function baseNumberProblem(
+  text: string,
+  base: number,
+): { message: string; start?: number } | null {
   const clean = text.trim();
   const digits = clean.replace(/^[-+]/, '');
   if (!digits) return { message: 'Escribí un número entero.' };
@@ -935,13 +1026,19 @@ export function baseNumberProblem(text: string, base: number): { message: string
   for (const [i, char] of [...digits].entries()) {
     const digit = parseInt(char, 16);
     if (!Number.isInteger(digit) || digit >= base)
-      return { message: `«${char}» no es un dígito de base ${base}. ${BASE_DIGITS[base] ?? ''}`.trim(), start: offset + i };
+      return {
+        message: `«${char}» no es un dígito de base ${base}. ${BASE_DIGITS[base] ?? ''}`.trim(),
+        start: offset + i,
+      };
   }
   return null;
 }
 
 /** Valida un entero en decimal para operaciones binarias. */
-export function decimalIntegerProblem(text: string, range?: { min: number; max: number }): string | null {
+export function decimalIntegerProblem(
+  text: string,
+  range?: { min: number; max: number },
+): string | null {
   const clean = text.trim();
   if (!/^[-+]?\d+$/.test(clean)) return 'Escribí un entero en decimal, sin comas ni puntos.';
   if (clean.replace(/^[-+]/, '').length > 256) return 'Usá hasta 256 dígitos.';

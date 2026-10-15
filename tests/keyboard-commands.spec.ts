@@ -386,9 +386,7 @@ test('comandos contextuales abren media, factorial, conversión y complejos sin 
   await expect(
     page.getByRole('combobox', { name: 'Análisis estadístico', exact: true }),
   ).toHaveValue('mean');
-  await expect(
-    page.getByRole('textbox', { name: 'Datos X', exact: true }),
-  ).toBeFocused();
+  await expect(page.getByRole('textbox', { name: 'Datos X', exact: true })).toBeFocused();
   await page.getByRole('button', { name: 'Calcular estadística', exact: true }).click();
   await expect(resultValue(page, '3')).toBeVisible();
   await openTool(page, 'Probabilidad');
