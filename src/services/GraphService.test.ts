@@ -67,3 +67,66 @@ it('rechaza funciones con argumentos ignorados y rangos que desbordan', () => {
   expect(() => sampleGraph({ ...request, minX: 0, maxX: 5e-324 })).toThrow('precisión');
   expect(() => sampleGraph({ ...request, minX: 1e16, maxX: 1e16 + 2 })).toThrow('precisión');
 });
+const only = (graph: ReturnType<typeof sampleGraph>, type: string) =>
+  graph.events.filter((event) => event.type === type);
+it('encuentra asíntotas de tan(x) sin extremos falsos, con cualquier rango Y', () => {
+  for (const window of [
+    { minY: -5, maxY: 10 },
+    { minY: -1000, maxY: 1000 },
+  ]) {
+    const graph = sampleGraph({ ...request, ...window, expressions: ['tan(x)'] });
+    const asymptotes = only(graph, 'asíntota vertical').map((event) => event.x);
+    expect(asymptotes).toHaveLength(4);
+    for (const [found, expected] of asymptotes.map((x, i) => [x, (i - 1.5) * Math.PI]))
+      expect(found).toBeCloseTo(expected, 6);
+    expect(only(graph, 'máximo local')).toHaveLength(0);
+    expect(only(graph, 'mínimo local')).toHaveLength(0);
+    expect(graph.curves[0].breaks.length).toBeGreaterThanOrEqual(4);
+  }
+});
+it('marca los saltos de floor(x) y de x%2 sin inventar máximos', () => {
+  const floor = sampleGraph({ ...request, expressions: ['floor(x)'] });
+  const jumps = only(floor, 'discontinuidad');
+  expect(jumps.length).toBeGreaterThanOrEqual(9);
+  expect(jumps.find((event) => Math.abs(event.x - 1) < 1e-6)).toMatchObject({
+    left: 0,
+    right: 1,
+  });
+  expect(only(floor, 'cero')).toHaveLength(0);
+  const saw = sampleGraph({ ...request, expressions: ['x%2'] });
+  expect(only(saw, 'discontinuidad').length).toBeGreaterThanOrEqual(4);
+  expect(only(saw, 'máximo local')).toHaveLength(0);
+});
+it('detecta los ceros donde la curva toca el eje y las raíces muy juntas', () => {
+  for (const [expression, at] of [
+    ['(x-0.123)^2', 0.123],
+    ['abs(x-0.05)', 0.05],
+  ] as const) {
+    const zeros = only(sampleGraph({ ...request, expressions: [expression] }), 'cero');
+    expect(zeros).toHaveLength(1);
+    expect(zeros[0].x).toBeCloseTo(at, 6);
+    expect(zeros[0].tangent).toBe(true);
+  }
+  const close = only(sampleGraph({ ...request, expressions: ['(x-0.123)^2-1e-9'] }), 'cero');
+  expect(close).toHaveLength(2);
+  expect(close[0].x).toBeCloseTo(0.123 - Math.sqrt(1e-9), 9);
+  expect(close[1].x).toBeCloseTo(0.123 + Math.sqrt(1e-9), 9);
+});
+it('distingue asíntotas de bordes del dominio', () => {
+  for (const [expression, at] of [
+    ['1/x', 0],
+    ['log(x)', 0],
+    ['1/(x-0.123456)', 0.123456],
+  ] as const) {
+    const asymptotes = only(
+      sampleGraph({ ...request, expressions: [expression] }),
+      'asíntota vertical',
+    );
+    expect(asymptotes).toHaveLength(1);
+    expect(asymptotes[0].x).toBeCloseTo(at, 6);
+    expect(asymptotes[0].y).toBeNull();
+  }
+  const root = sampleGraph({ ...request, expressions: ['sqrt(x)'] });
+  expect(only(root, 'asíntota vertical')).toHaveLength(0);
+  expect(root.curves[0].breaks).toContain(200);
+});

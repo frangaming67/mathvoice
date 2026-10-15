@@ -7,7 +7,9 @@ import {
 } from 'react';
 import { buildGraph } from '../services/GraphClient';
 import { graphEvaluator, type GraphData, type GraphEvent } from '../services/GraphService';
-import { sonification } from '../services/SonificationService';
+import { sonification, type SonificationSample } from '../services/SonificationService';
+import { describeCurve, describeGraph, describeIntersections } from '../services/graphSummary';
+import { tactileSvg } from '../services/tactileGraph';
 import { speech } from '../services/SpeechService';
 import { formatNumber } from '../accessibility/numberSpeech';
 import type { AngleMode, DecimalSeparator } from '../types';
@@ -103,9 +105,47 @@ export function Graphs({
   const eventName = (event: GraphEvent) =>
     event.type === 'intersección'
       ? `una intersección con la función ${(event.functionIndex === selected ? event.otherFunctionIndex! : event.functionIndex) + 1}`
-      : `un ${event.type}`;
+      : event.type === 'asíntota vertical'
+        ? 'una asíntota vertical'
+        : event.type === 'discontinuidad'
+          ? 'un salto'
+          : event.type === 'cero' && event.tangent
+            ? 'un cero donde la curva toca el eje'
+            : `un ${event.type}`;
+  // Descripción general: dominio, cortes, crecimiento, asíntotas y saltos de cada función.
+  const summary = useMemo(
+    () =>
+      data
+        ? {
+            curves: data.curves.map((_, index) => describeCurve(data, index, fmt).join(' ')),
+            intersections: data.curves.length > 1 ? describeIntersections(data, fmt) : '',
+          }
+        : null,
+    // fmt depende solo del separador decimal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, decimalSeparator],
+  );
+  const range = (d: GraphData) => ({
+    minX: d.request.minX,
+    maxX: d.request.maxX,
+    minY: d.request.minY,
+    maxY: d.request.maxY,
+  });
+  const crossesAxis = (a: number | null, b: number | null) =>
+    a !== null && b !== null && a !== 0 && b !== 0 && Math.sign(a) !== Math.sign(b);
+  function sound(sample: Omit<SonificationSample, 'minX' | 'maxX' | 'minY' | 'maxY'>) {
+    if (data) sonification.play({ ...sample, ...range(data) });
+  }
 
-  async function draw() {
+  async function draw(
+    window: { minX: string; maxX: string; minY: string; maxY: string } = {
+      minX,
+      maxX,
+      minY,
+      maxY,
+    },
+    keep?: number,
+  ) {
     if (busy) return;
     clearInterval(timer.current);
     playback.current++;
@@ -120,21 +160,30 @@ export function Graphs({
           .split('\n')
           .map((s) => s.trim())
           .filter(Boolean),
-        minX: +minX,
-        maxX: +maxX,
-        minY: +minY,
-        maxY: +maxY,
+        minX: +window.minX,
+        maxX: +window.maxX,
+        minY: +window.minY,
+        maxY: +window.maxY,
         variables,
         angle,
         decimalSeparator,
       });
       setData(next);
-      setPosition(next.request.minX);
+      const start =
+        keep === undefined
+          ? next.request.minX
+          : Math.max(next.request.minX, Math.min(next.request.maxX, keep));
+      setPosition(start);
       setPositionText(null);
-      setSelected(0);
-      announce(
-        `Gráfico listo. ${next.curves.length === 1 ? '1 función' : `${next.curves.length} funciones`}. Usá Explorar gráfico y las flechas izquierda y derecha.`,
-      );
+      if (keep === undefined) {
+        setSelected(0);
+        announce(
+          `Gráfico listo. ${next.curves.length === 1 ? '1 función' : `${next.curves.length} funciones`}. Usá Explorar gráfico y las flechas izquierda y derecha; D lo describe.`,
+        );
+      } else
+        announce(
+          `X de ${fmt(next.request.minX)} a ${fmt(next.request.maxX)}. Seguís en equis ${fmt(start)}.`,
+        );
     } catch (e) {
       const message = e instanceof Error ? e.message : 'No pude graficar.';
       setError(message);
@@ -150,17 +199,22 @@ export function Graphs({
     else announce(text);
   }
   /** Eventos de la curva entre la posición anterior y la nueva, en el sentido del recorrido. */
-  function crossed(from: number, to: number) {
-    if (!data || from === to) return '';
+  function passedEvents(from: number, to: number) {
+    if (!data || from === to) return [];
     const tolerance = (data.request.maxX - data.request.minX) * 1e-9;
     const right = to > from;
-    const passed = curveEvents
+    return curveEvents
       .filter((e) =>
         right
           ? e.x > from + tolerance && e.x <= to + tolerance
           : e.x < from - tolerance && e.x >= to - tolerance,
       )
       .sort((a, b) => (right ? a.x - b.x : b.x - a.x));
+  }
+  function crossed(from: number, to: number) {
+    if (!data) return '';
+    const tolerance = (data.request.maxX - data.request.minX) * 1e-9;
+    const passed = passedEvents(from, to);
     if (!passed.length) return '';
     const landing = passed.filter((e) => Math.abs(e.x - to) <= tolerance);
     const between = passed.filter((e) => !landing.includes(e));
@@ -191,17 +245,13 @@ export function Graphs({
     const p = { x, y: evaluate(x) };
     const note = crossed(from, x);
     tell(x, `${describePoint(p.x, p.y)}${note ? `. ${note}` : ''}`, source);
-    if (audio && p.y !== null)
-      sonification.tone(
-        p.y,
-        data.request.minY,
-        data.request.maxY,
-        data.events.find(
-          (e) =>
-            (e.functionIndex === selected || e.otherFunctionIndex === selected) &&
-            Math.abs(e.x - p.x) < (data.request.maxX - data.request.minX) / 400,
-        )?.type,
-      );
+    if (audio)
+      sound({
+        x,
+        y: p.y,
+        events: passedEvents(from, x).map((e) => e.type),
+        crossedAxis: crossesAxis(evaluate(from), p.y),
+      });
   }
   function stopPlayback() {
     playback.current++;
@@ -225,19 +275,16 @@ export function Graphs({
         if (!mounted.current || run !== playback.current) return;
         timer.current = setInterval(() => {
           const i = audioIndex.current;
-          const p = data.curves[selected].points[i];
+          const points = data.curves[selected].points;
+          const p = points[i],
+            before = points[Math.max(0, i - 2)];
           setPosition(p.x);
-          if (p.y !== null)
-            sonification.tone(
-              p.y,
-              data.request.minY,
-              data.request.maxY,
-              data.events.find(
-                (e) =>
-                  (e.functionIndex === selected || e.otherFunctionIndex === selected) &&
-                  Math.abs(e.x - p.x) < (data.request.maxX - data.request.minX) / 400,
-              )?.type,
-            );
+          sound({
+            x: p.x,
+            y: p.y,
+            events: i ? passedEvents(before.x, p.x).map((e) => e.type) : [],
+            crossedAxis: i > 0 && crossesAxis(before.y, p.y),
+          });
           audioIndex.current = i + 2;
           if (audioIndex.current > 400) {
             clearInterval(timer.current);
@@ -336,6 +383,60 @@ export function Graphs({
     }
     if (operation in EVENT_TYPES) jump(operation as EventOperation, 'command');
   }
+  function describe(all = false) {
+    if (!data || !summary) return;
+    announce(
+      all
+        ? describeGraph(data, fmt)
+        : `Función ${selected + 1}, ${data.curves[selected].expression}. ${summary.curves[selected]}`,
+    );
+  }
+  /** Rango Y a la medida de la curva: percentiles 2 a 98, para que una asíntota no lo arruine. */
+  function fitY() {
+    if (!data) return;
+    const values = data.curves
+      .flatMap((curve) => curve.points.filter((p) => p.y !== null).map((p) => p.y!))
+      .sort((a, b) => a - b);
+    if (!values.length) {
+      announce('No hay valores para ajustar el rango Y.');
+      return;
+    }
+    const low = values[Math.floor((values.length - 1) * 0.02)],
+      high = values[Math.ceil((values.length - 1) * 0.98)];
+    const pad = (high - low) * 0.1 || Math.max(1, Math.abs(low) * 0.1);
+    const nextMin = Number((low - pad).toPrecision(6)),
+      nextMax = Number((high + pad).toPrecision(6));
+    setMinY(String(nextMin));
+    setMaxY(String(nextMax));
+    // El muestreo no depende del rango Y: alcanza con cambiar la ventana, sin recalcular.
+    setData({ ...data, request: { ...data.request, minY: nextMin, maxY: nextMax } });
+    announce(`Rango Y ajustado a la curva: de ${fmt(nextMin)} a ${fmt(nextMax)}.`);
+  }
+  /** Acerca o aleja con centro en el punto que se está explorando, y se queda en él. */
+  function zoom(factor: number) {
+    if (!data) return;
+    const span = (data.request.maxX - data.request.minX) * factor;
+    const from = String(Number((position - span / 2).toPrecision(12))),
+      to = String(Number((position + span / 2).toPrecision(12)));
+    setMinX(from);
+    setMaxX(to);
+    void draw({ minX: from, maxX: to, minY, maxY }, position);
+  }
+  function downloadTactile() {
+    if (!data) return;
+    const blob = new Blob([tactileSvg(data, fmt, describeGraph(data, fmt))], {
+      type: 'image/svg+xml;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'mathvoice-grafico-relieve.svg';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    announce(
+      'Gráfico para relieve descargado: negro sobre blanco, con trazos gruesos. Imprimilo en papel microcapsulado.',
+    );
+  }
   useToolCommands('graphs', (command) => {
     if (command.type === 'graph') graphCommand(command.operation);
   });
@@ -359,6 +460,7 @@ export function Graphs({
       z: () => jump('zero', 'slider'),
       m: () => jump(e.shiftKey ? 'max' : 'min', 'slider'),
       i: () => jump('intersection', 'slider'),
+      d: () => describe(),
     };
     // Mayúsculas solo cambia M (máximo); con flechas u otras teclas se deja pasar.
     if (e.shiftKey && !['m', '+'].includes(key)) return;
@@ -411,7 +513,18 @@ export function Graphs({
       {error && <p className="error">{error}</p>}
       {data && (
         <>
-          <GraphFigure data={data} />
+          <GraphFigure data={data} describedBy="graph-summary" />
+          <div id="graph-summary" className="graph-summary">
+            {summary?.curves.map((text, index) => (
+              <p key={index}>
+                <strong>
+                  Función {index + 1}, {data.curves[index].expression}.
+                </strong>{' '}
+                {text}
+              </p>
+            ))}
+            {summary?.intersections && <p>{summary.intersections}</p>}
+          </div>
           <p className="hint">
             Rangos dibujados: X de {fmt(data.request.minX)} a {fmt(data.request.maxX)}; Y de{' '}
             {fmt(data.request.minY)} a {fmt(data.request.maxY)}. Las líneas se distinguen por sus
@@ -455,8 +568,8 @@ export function Graphs({
             En Explorar gráfico, las flechas recorren la función con el paso elegido; Re Pág y Av
             Pág avanzan diez pasos; Inicio y Fin van a los extremos. Si pasás por un cero, un
             extremo o una intersección, se avisa. Z va al cero siguiente, M al mínimo, Mayúsculas
-            más M al máximo, I a la intersección, más y menos cambian el paso, S suena el recorrido
-            y Espacio lo pausa.
+            más M al máximo, I a la intersección, D describe la función, más y menos cambian el
+            paso, S suena el recorrido y Espacio lo pausa.
           </p>
           <div
             ref={explorer}
@@ -531,28 +644,16 @@ export function Graphs({
             </label>
           </div>
           <p className="hint">
-            Mayor altura produce un tono más alto. Los eventos usan señales suaves distintas: cero,
-            tono medio; máximo, agudo; mínimo, grave; intersección, medio agudo. Escape detiene el
-            sonido. Los ceros, extremos e intersecciones se estiman por muestreo y pueden omitirse
-            entre puntos. Se refinan las posiciones detectadas con evaluaciones adicionales; esto no
-            demuestra que se hayan encontrado todos los eventos.
+            Más alto suena más agudo, por semitonos; con auriculares, el comienzo del intervalo
+            suena a la izquierda y el final a la derecha. Señales cortas, sumadas al tono: cero o
+            cruce del eje, un tic agudo; máximo, dos notas que suben; mínimo, dos que bajan;
+            intersección, dos tics iguales; salto, un golpe grave; asíntota, un zumbido grave. Donde
+            la función no está definida suena un soplido, y si sale del rango Y el tono tiembla.
+            Escape detiene el sonido. Los eventos se estiman por muestreo y se refinan; esto no
+            demuestra que estén todos.
           </p>
           <details>
             <summary>Puntos importantes y descripción textual</summary>
-            {data.curves.map((curve, index) => {
-              const finite = curve.points.filter((point) => point.y !== null);
-              const values = finite.map((point) => point.y!);
-              return (
-                <p key={index}>
-                  Función {index + 1}, {curve.expression}: {finite.length} de 401 muestras reales
-                  finitas.
-                  {values.length > 0 &&
-                    ` Valores Y muestreados entre ${fmt(Math.min(...values))} y ${fmt(Math.max(...values))}.`}
-                  {curve.breaks.length > 0 &&
-                    ' Hay puntos no definidos o posibles saltos; el trazado se interrumpe en esos lugares.'}
-                </p>
-              );
-            })}
             <p>
               {data.events.length
                 ? `${data.events.length} eventos aproximados encontrados.`
@@ -567,7 +668,12 @@ export function Graphs({
                   {event.otherFunctionIndex !== undefined
                     ? ` y función ${event.otherFunctionIndex + 1}`
                     : ''}
-                  : {event.type}, x ≈ {fmt(event.x)}, y ≈ {fmt(event.y)}.
+                  :{' '}
+                  {event.type === 'cero' && event.tangent
+                    ? 'cero, la curva toca el eje'
+                    : event.type}
+                  , x ≈ {fmt(event.x)}
+                  {event.y === null ? '' : `, y ≈ ${fmt(event.y)}`}.
                   <button
                     onClick={() => {
                       clearInterval(timer.current);
@@ -615,28 +721,11 @@ export function Graphs({
             </div>
           </details>
           <div className="actions">
-            <button
-              onClick={() => {
-                const middle = (+minX + +maxX) / 2,
-                  span = (+maxX - +minX) / 4;
-                setMinX(String(middle - span));
-                setMaxX(String(middle + span));
-                announce('Rango X reducido. Pulsá Graficar funciones para aplicar.');
-              }}
-            >
-              Acercar rango X
-            </button>
-            <button
-              onClick={() => {
-                const middle = (+minX + +maxX) / 2,
-                  span = +maxX - +minX;
-                setMinX(String(middle - span));
-                setMaxX(String(middle + span));
-                announce('Rango X ampliado. Pulsá Graficar funciones para aplicar.');
-              }}
-            >
-              Alejar rango X
-            </button>
+            <button onClick={() => describe(true)}>Describir gráfico</button>
+            <button onClick={fitY}>Ajustar Y a la curva</button>
+            <button onClick={() => zoom(0.5)}>Acercar alrededor del punto</button>
+            <button onClick={() => zoom(2)}>Alejar alrededor del punto</button>
+            <button onClick={downloadTactile}>Descargar para relieve (SVG)</button>
           </div>
         </>
       )}

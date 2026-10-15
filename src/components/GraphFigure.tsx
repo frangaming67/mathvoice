@@ -1,5 +1,5 @@
 import type { GraphData } from '../services/GraphService';
-export function GraphFigure({ data }: { data: GraphData }) {
+export function GraphFigure({ data, describedBy }: { data: GraphData; describedBy?: string }) {
   const { request: r } = data;
   const sx = (x: number) => ((x - r.minX) * 700) / (r.maxX - r.minX);
   const sy = (y: number) => 350 - ((y - r.minY) * 350) / (r.maxY - r.minY);
@@ -8,7 +8,8 @@ export function GraphFigure({ data }: { data: GraphData }) {
       className="graph-svg"
       viewBox="0 0 700 350"
       role="img"
-      aria-label={`Gráfico de ${data.curves.map((c) => c.expression).join(', ')}. Hay controles de exploración y tabla de valores debajo.`}
+      aria-label={`Gráfico de ${data.curves.map((c) => c.expression).join(', ')}`}
+      aria-describedby={describedBy}
     >
       <defs>
         <clipPath id="graph-clip">

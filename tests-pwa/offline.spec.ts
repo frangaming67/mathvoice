@@ -29,7 +29,7 @@ test('producción: recarga sin conexión, herramientas diferidas y cálculo simb
   await expect(resultValue(page, '3*x^2')).toBeVisible();
   await openTool(page, 'Gráficos');
   await page.getByRole('button', { name: 'Graficar funciones' }).click();
-  await expect(page.getByRole('button', { name: 'Explorar gráfico', exact: true })).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Explorar gráfico', exact: true })).toBeVisible();
   await context.setOffline(false);
 });
 

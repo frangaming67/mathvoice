@@ -18,15 +18,38 @@ export interface GraphPoint {
   x: number;
   y: number | null;
 }
+export type GraphEventType =
+  | 'cero'
+  | 'máximo local'
+  | 'mínimo local'
+  | 'intersección'
+  | 'discontinuidad'
+  | 'asíntota vertical';
 export interface GraphEvent {
-  type: 'cero' | 'máximo local' | 'mínimo local' | 'intersección';
+  type: GraphEventType;
   x: number;
-  y: number;
+  /** Sin valor en una asíntota o una discontinuidad. */
+  y: number | null;
   functionIndex: number;
   otherFunctionIndex?: number;
+  /** Cero en el que la curva toca el eje sin cruzarlo. */
+  tangent?: boolean;
+  /** Valores a cada lado de una discontinuidad. */
+  left?: number | null;
+  right?: number | null;
+}
+export interface GraphCurve {
+  expression: string;
+  points: GraphPoint[];
+  /** Índices donde el trazo se levanta: sin valor, salto o asíntota antes de esa muestra. */
+  breaks: number[];
+  /** Intervalos de x con valor dentro de la ventana. */
+  domain: { from: number; to: number }[];
+  /** f(0) si el eje y está en la ventana; null si no está definida ahí. */
+  yIntercept?: number | null;
 }
 export interface GraphData {
-  curves: { expression: string; points: GraphPoint[]; breaks: number[] }[];
+  curves: GraphCurve[];
   events: GraphEvent[];
   request: GraphRequest;
 }
@@ -161,6 +184,113 @@ function refineExtremum(
     y = evaluate(x);
   return y === null ? null : { x, y };
 }
+
+interface Gap {
+  type: 'discontinuidad' | 'asíntota vertical';
+  x: number;
+  left: number | null;
+  right: number | null;
+}
+/** ¿Crece |f| sin cota al acercarse a x desde el lado de `from`? (1/x, log(x), tan(x)). */
+function blowsUp(evaluate: Evaluator, x: number, from: number, scale: number) {
+  const width = Math.abs(from - x);
+  const near = evaluate(x + (from - x) * 1e-9);
+  const nearer = evaluate(x + (from - x) * 1e-12);
+  const far = evaluate(from);
+  if (near === null || nearer === null || far === null || width === 0) return false;
+  return (
+    Math.abs(nearer) > Math.abs(near) &&
+    Math.abs(near) > Math.abs(far) &&
+    (Math.abs(nearer) > 1e6 * Math.max(1, scale) || Math.abs(nearer) > 5 * Math.abs(far) + 1)
+  );
+}
+/**
+ * Clasifica el tramo entre dos muestras finitas sospechosas acercándose al salto por bisección:
+ * si al achicarlo la diferencia no baja, es una discontinuidad; si los valores crecen sin cota,
+ * una asíntota. Una curva empinada pero continua se achica y no devuelve nada. No depende del
+ * rango Y de la ventana.
+ */
+function classifyGap(
+  evaluate: Evaluator,
+  low: number,
+  fLow: number,
+  high: number,
+  fHigh: number,
+  scale: number,
+): Gap | null {
+  const initial = Math.abs(fHigh - fLow);
+  let a = low,
+    fa = fLow,
+    b = high,
+    fb = fHigh;
+  for (let i = 0; i < 64; i++) {
+    const m = a / 2 + b / 2;
+    if (m === a || m === b) break;
+    const fm = evaluate(m);
+    if (fm === null) {
+      // Un punto sin valor entre dos muestras finitas: asíntota si |f| crece a algún lado.
+      // Se sondea desde las muestras originales: el tramo ya es tan corto que no se distingue.
+      const pole = blowsUp(evaluate, m, low, scale) || blowsUp(evaluate, m, high, scale);
+      return pole
+        ? { type: 'asíntota vertical', x: m, left: null, right: null }
+        : { type: 'discontinuidad', x: m, left: fa, right: fb };
+    }
+    if (Math.abs(fm - fa) >= Math.abs(fb - fm)) {
+      b = m;
+      fb = fm;
+    } else {
+      a = m;
+      fa = fm;
+    }
+  }
+  const x = a / 2 + b / 2;
+  if (Math.max(Math.abs(fa), Math.abs(fb)) > 1e6 * Math.max(1, scale))
+    return { type: 'asíntota vertical', x, left: null, right: null };
+  if (Math.abs(fb - fa) > 0.5 * initial) return { type: 'discontinuidad', x, left: fa, right: fb };
+  return null;
+}
+/** Borde del dominio entre una muestra finita y una sin valor; asíntota si |f| crece hacia él. */
+function domainEdge(evaluate: Evaluator, finite: number, empty: number, scale: number): Gap | null {
+  const b = edge(evaluate, finite, empty);
+  return blowsUp(evaluate, b, finite, scale)
+    ? { type: 'asíntota vertical', x: b, left: null, right: null }
+    : null;
+}
+/** Dónde empieza o termina el dominio entre una muestra con valor y otra sin él. */
+function edge(evaluate: Evaluator, finite: number, empty: number) {
+  let a = finite,
+    b = empty;
+  for (let i = 0; i < 64; i++) {
+    const m = a / 2 + b / 2;
+    if (m === a || m === b) break;
+    if (evaluate(m) === null) b = m;
+    else a = m;
+  }
+  return Math.abs(a - b) <= Math.abs(finite - empty) * 1e-12 ? b : a;
+}
+/** Intervalos de x con valor dentro de la ventana, con los bordes afinados por bisección. */
+function domainOf(evaluate: Evaluator, points: GraphPoint[]) {
+  const domain: { from: number; to: number }[] = [];
+  let start: number | null = null;
+  for (let i = 0; i < points.length; i++) {
+    const defined = points[i].y !== null;
+    if (defined && start === null) start = i;
+    const last = i === points.length - 1;
+    if (start !== null && (!defined || last)) {
+      const end = defined ? i : i - 1;
+      domain.push({
+        from: start === 0 ? points[0].x : edge(evaluate, points[start].x, points[start - 1].x),
+        to:
+          end === points.length - 1
+            ? points[end].x
+            : edge(evaluate, points[end].x, points[end + 1].x),
+      });
+      start = null;
+    }
+  }
+  return domain;
+}
+
 export function sampleGraph(request: GraphRequest): GraphData {
   if (
     !request.expressions.length ||
@@ -197,54 +327,116 @@ export function sampleGraph(request: GraphRequest): GraphData {
       const x = request.minX + i * step;
       return { x, y: evaluate(x) };
     });
+    const finite = points.filter((p) => p.y !== null).map((p) => Math.abs(p.y!));
+    const scale = finite.length ? Math.max(...finite) : 1;
+    const gap = (i: number) =>
+      i > 0 && i < points.length && points[i].y !== null && points[i - 1].y !== null
+        ? Math.abs(points[i].y! - points[i - 1].y!)
+        : NaN;
+    // Corte entre la muestra i-1 y la i: ahí el trazo se levanta y no se buscan extremos.
     const breaks: number[] = [];
-    for (let i = 0; i < points.length; i++) {
-      const current = points[i],
-        previous = points[i - 1],
-        next = points[i + 1];
-      if (current.y === null) {
-        breaks.push(i);
+    const cut = (i: number, found: Gap | null) => {
+      if (!breaks.includes(i)) breaks.push(i);
+      if (found)
+        addEvent({
+          type: found.type,
+          x: found.x,
+          y: null,
+          functionIndex,
+          ...(found.type === 'discontinuidad' && { left: found.left, right: found.right }),
+        });
+    };
+    for (let i = 1; i < points.length; i++) {
+      const previous = points[i - 1],
+        current = points[i];
+      if (current.y === null && previous.y === null) {
+        if (!breaks.includes(i)) breaks.push(i);
         continue;
       }
-      if (previous && previous.y !== null) {
-        const mid = evaluate(previous.x / 2 + current.x / 2);
-        if (mid === null || Math.abs(current.y - previous.y) > (request.maxY - request.minY) * 2) {
-          breaks.push(i);
+      if (current.y === null || previous.y === null) {
+        const edge =
+          current.y === null
+            ? domainEdge(evaluate, previous.x, current.x, scale)
+            : domainEdge(evaluate, current.x, previous.x, scale);
+        cut(i, edge);
+        continue;
+      }
+      const d = gap(i);
+      const neighbors = [gap(i - 1), gap(i + 1)].filter((value) => !Number.isNaN(value));
+      const calm = neighbors.length ? Math.min(...neighbors) : 0;
+      if (d > 2 * calm + 1e-12 * scale) {
+        const found = classifyGap(evaluate, previous.x, previous.y, current.x, current.y, scale);
+        if (found) {
+          cut(i, found);
           continue;
-        }
-        if (Math.sign(previous.y) !== Math.sign(current.y) && previous.y !== 0 && current.y !== 0) {
-          const root = refineZero(evaluate, previous.x, current.x);
-          if (root) addEvent({ type: 'cero', x: root.x, y: root.y!, functionIndex });
         }
       }
-      if (current.y === 0 && previous?.y !== 0 && next?.y !== 0)
-        addEvent({ type: 'cero', x: current.x, y: 0, functionIndex });
-      if (previous?.y !== null && previous && next?.y !== null && next) {
-        if (
-          evaluate(current.x / 2 + next.x / 2) === null ||
-          Math.abs(next.y - current.y) > (request.maxY - request.minY) * 2
-        )
-          continue;
-        const minimum = current.y < previous.y && current.y < next.y;
-        const maximum = current.y > previous.y && current.y > next.y;
-        if (minimum || maximum) {
-          const refined = refineExtremum(evaluate, previous.x, next.x, minimum);
-          if (refined && refined.y !== null) {
-            const point = (minimum ? current.y <= refined.y : current.y >= refined.y)
-              ? current
-              : refined;
-            addEvent({
-              type: minimum ? 'mínimo local' : 'máximo local',
-              x: point.x,
-              y: point.y!,
-              functionIndex,
-            });
-            if (point.y === 0) addEvent({ type: 'cero', x: point.x, y: 0, functionIndex });
-          }
-        }
+      if (Math.sign(previous.y) !== Math.sign(current.y) && previous.y !== 0 && current.y !== 0) {
+        const root = refineZero(evaluate, previous.x, current.x);
+        if (root) addEvent({ type: 'cero', x: root.x, y: root.y, functionIndex });
       }
     }
-    return { expression: request.expressions[functionIndex], points, breaks };
+    const broken = (i: number) => breaks.includes(i);
+    for (let i = 0; i < points.length; i++) {
+      const current = points[i];
+      if (current.y === null) continue;
+      const before = points[i - 1]?.y ?? null,
+        after = points[i + 1]?.y ?? null;
+      // Cero justo sobre una muestra: aislado, en el borde del dominio (sqrt(x) en 0) o de la ventana.
+      if (current.y === 0 && before !== 0 && after !== 0)
+        addEvent({
+          type: 'cero',
+          x: current.x,
+          y: 0,
+          functionIndex,
+          ...(before !== null &&
+            after !== null &&
+            !broken(i) &&
+            !broken(i + 1) &&
+            Math.sign(before) === Math.sign(after) && { tangent: true }),
+        });
+      if (before === null || after === null || broken(i) || broken(i + 1)) continue;
+      const previous = points[i - 1] as { x: number; y: number },
+        next = points[i + 1] as { x: number; y: number };
+      const minimum = current.y < previous.y && current.y < next.y;
+      const maximum = current.y > previous.y && current.y > next.y;
+      if (!minimum && !maximum) continue;
+      const refined = refineExtremum(evaluate, previous.x, next.x, minimum);
+      if (!refined || refined.y === null) continue;
+      const point = (minimum ? current.y <= refined.y : current.y >= refined.y) ? current : refined;
+      // Un «extremo» que se dispara lejos de las muestras vecinas es un polo sin cambio de signo.
+      const spread = Math.abs(current.y - previous.y) + Math.abs(next.y - current.y);
+      if (
+        Math.abs(point.y! - current.y) > 10 * spread + 1e-12 * scale &&
+        (blowsUp(evaluate, point.x, previous.x, scale) || blowsUp(evaluate, point.x, next.x, scale))
+      ) {
+        cut(i, { type: 'asíntota vertical', x: point.x, left: null, right: null });
+        continue;
+      }
+      addEvent({
+        type: minimum ? 'mínimo local' : 'máximo local',
+        x: point.x,
+        y: point.y!,
+        functionIndex,
+      });
+      if (point.y !== 0 && Math.sign(point.y!) !== Math.sign(current.y) && current.y !== 0) {
+        // Cruza el eje entre muestras del mismo signo: dos raíces muy juntas.
+        for (const root of [
+          refineZero(evaluate, previous.x, point.x),
+          refineZero(evaluate, point.x, next.x),
+        ])
+          if (root) addEvent({ type: 'cero', x: root.x, y: root.y, functionIndex });
+      } else if (Math.abs(point.y!) <= 1e-9 * scale)
+        // La curva toca el eje sin cruzarlo: cero doble.
+        addEvent({ type: 'cero', x: point.x, y: 0, functionIndex, tangent: true });
+    }
+    return {
+      expression: request.expressions[functionIndex],
+      points,
+      breaks: breaks.sort((a, b) => a - b),
+      domain: domainOf(evaluate, points),
+      ...(request.minX <= 0 && 0 <= request.maxX && { yIntercept: evaluate(0) }),
+    };
   });
   for (let a = 0; a < curves.length; a++)
     for (let b = a + 1; b < curves.length; b++)

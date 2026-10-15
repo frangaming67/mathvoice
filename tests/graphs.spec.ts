@@ -77,3 +77,51 @@ test('durante el recorrido sonoro el deslizador no se mueve para no saturar al l
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Sonificar recorrido' })).toBeVisible();
 });
+
+test('describe el gráfico, ajusta Y, acerca en el punto y descarga para relieve', async ({
+  page,
+}) => {
+  const explorer = await graph(page, 'x^2');
+  await expect(page.locator('.graph-svg')).toHaveAttribute('aria-describedby', 'graph-summary');
+  const summary = page.locator('#graph-summary');
+  await expect(summary).toContainText('Función 1, x^2.');
+  await expect(summary).toContainText('Decrece desde x -5 hasta x 0 y crece desde x 0 hasta x 5.');
+  await expect(summary).toContainText('Toca el eje x sin cruzarlo en x 0.');
+  await explorer.focus();
+  await page.keyboard.press('d');
+  await expect(page.getByRole('status')).toContainText(
+    'Función 1, x^2. Definida en todo el intervalo',
+  );
+  await page.getByRole('button', { name: 'Ajustar Y a la curva', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Rango Y ajustado a la curva');
+  await expect(page.getByLabel('Y máximo', { exact: true })).not.toHaveValue('10');
+  // Acercar con centro en x = 3 y quedarse ahí.
+  await page.getByRole('combobox', { name: 'Paso en X', exact: true }).selectOption('1');
+  await explorer.focus();
+  await page.keyboard.press('End');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await page.getByRole('button', { name: 'Acercar alrededor del punto', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('X de 0.5 a 5.5. Seguís en equis 3.');
+  await expect(explorer).toHaveAttribute('aria-valuenow', '3');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Descargar para relieve (SVG)', exact: true }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe('mathvoice-grafico-relieve.svg');
+  const svg = Buffer.concat(await (await file.createReadStream()).toArray()).toString('utf8');
+  expect(svg).toContain('<title id="titulo">Gráfico de x^2</title>');
+  expect(svg).toContain('stroke-width="6"');
+});
+
+test('tan(x) muestra sus asíntotas y el explorador las avisa al cruzarlas', async ({ page }) => {
+  const explorer = await graph(page, 'tan(x)');
+  await expect(page.locator('#graph-summary')).toContainText('Asíntotas verticales en x -4.71239');
+  await page.getByRole('combobox', { name: 'Paso en X', exact: true }).selectOption('1');
+  await explorer.focus();
+  await page.keyboard.press('Home');
+  await page.keyboard.press('ArrowRight');
+  await expect(explorer).toHaveAttribute(
+    'aria-valuetext',
+    /Pasaste por una asíntota vertical en equis -4\.71239/,
+  );
+});
