@@ -1,4 +1,4 @@
-import { openTool } from './navigation';
+import { openTool, resultValue } from './navigation';
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
@@ -12,7 +12,7 @@ test('atajos de herramientas, Taylor y graficar resultado', async ({ page }) => 
   await expect(page.getByLabel('Operación simbólica')).toBeFocused();
   await expect(page.getByLabel('Operación simbólica')).toHaveValue('diff');
   await page.getByRole('button', { name: 'Calcular operación' }).click();
-  await expect(page.getByLabel('Resultado: 3*x^2', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '3*x^2')).toBeVisible();
   await page.getByRole('button', { name: 'Graficar resultado', exact: true }).click();
   await expect(page.getByLabel('Funciones de x, una por línea (hasta 4)')).toHaveValue('3*x^2');
   await page.keyboard.press('Alt+Shift+m');
@@ -64,7 +64,7 @@ test('matriz editable con flechas, inversa tabular y estadística', async ({ pag
     page.getByRole('spinbutton', { name: 'Matriz A, fila 2, columna 2, valor 4' }),
   ).toBeFocused();
   await page.getByRole('button', { name: 'Calcular matriz' }).click();
-  await expect(page.getByLabel('Resultado: -2', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '-2')).toBeVisible();
   await page.getByLabel('Operación matricial').selectOption('inv');
   await page.getByRole('button', { name: 'Calcular matriz' }).click();
   const result = page.getByRole('region', { name: 'Resultado', exact: true });
@@ -79,11 +79,11 @@ test('variables persistentes, conversión de temperatura y exportación', async 
   const input = page.getByLabel('Expresión matemática', { exact: true });
   await input.fill('radio=7');
   await input.press('Enter');
-  await expect(page.getByLabel('Resultado: 7', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '7')).toBeVisible();
   await page.reload();
   await input.fill('radio*2');
   await input.press('Enter');
-  await expect(page.getByLabel('Resultado: 14', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '14')).toBeVisible();
   await openTool(page, 'Conversores');
   await page.getByLabel('Categoría de unidades').selectOption('Temperatura');
   await page.getByLabel('Valor a convertir').fill('25');
@@ -174,12 +174,12 @@ test('dictado requiere confirmar; cancelar y permiso denegado no calculan', asyn
   await page.getByRole('button', { name: 'Dictar expresión' }).click();
   const dialog = page.getByRole('dialog', { name: 'Revisar dictado' });
   await expect(dialog.getByRole('textbox')).toHaveValue('2.05+1');
-  await expect(page.getByLabel('Resultado: 3.05', { exact: true })).toHaveCount(0);
+  await expect(resultValue(page, '3.05')).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Dictar expresión' })).toBeFocused();
   await page.getByRole('button', { name: 'Dictar expresión' }).click();
   await dialog.getByRole('button', { name: 'Confirmar y calcular' }).click();
-  await expect(page.getByLabel('Resultado: 3.05', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '3.05')).toBeVisible();
   await page.evaluate(() => sessionStorage.setItem('denyMic', '1'));
   await page.getByRole('button', { name: 'Dictar expresión' }).click();
   await expect(page.getByRole('status')).toContainText('No se permitió usar el micrófono');
@@ -219,7 +219,7 @@ test('dictado marca palabras no entendidas y no calcula hasta corregirlas', asyn
   await expect(field).not.toHaveAttribute('aria-invalid', 'true');
   await dialog.getByRole('button', { name: 'Confirmar y calcular' }).click();
   await expect(dialog).not.toBeVisible();
-  await expect(page.getByLabel('Resultado: cos(x)', { exact: true })).toBeVisible();
+  await expect(resultValue(page, 'cos(x)')).toBeVisible();
 });
 
 test('Escape cancela la escucha y descarta un reconocimiento tardío', async ({ page }) => {

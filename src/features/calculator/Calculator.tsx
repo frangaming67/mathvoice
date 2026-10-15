@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AngleMode, CalculationResult, HistoryEntry, Preferences } from '../../types';
 import { CalculatorClient } from '../../services/CalculatorClient';
 import { preferencesService } from '../../services/PreferencesService';
@@ -17,6 +17,8 @@ import { FeatureHub } from '../../components/FeatureHub';
 import { variableService } from '../../services/VariableService';
 import { resultSpeech } from '../../accessibility/resultSpeech';
 import { keySpeech } from '../../accessibility/symbolSpeech';
+import { toLatex, toMathML } from '../../accessibility/mathml';
+import { MathView } from '../../components/MathView';
 import { Dictation } from '../../components/Dictation';
 import { OfflineStatus } from '../../components/OfflineStatus';
 import { toggleSign } from '../../parser/toggleSign';
@@ -50,11 +52,14 @@ export function Calculator() {
   const [preferences, setPreferences] = useState(preferencesService.load);
   const [keyboard, setKeyboard] = useState(keyboardSettingsService.load);
   // Cómo se dicen los resultados: nivel de detalle y cifras habladas.
-  const speechOptions = {
-    verbosity: keyboard.verbosity,
-    spokenDigits: preferences.spokenDigits,
-    decimalSeparator: preferences.decimalSeparator,
-  };
+  const speechOptions = useMemo(
+    () => ({
+      verbosity: keyboard.verbosity,
+      spokenDigits: preferences.spokenDigits,
+      decimalSeparator: preferences.decimalSeparator,
+    }),
+    [keyboard.verbosity, preferences.spokenDigits, preferences.decimalSeparator],
+  );
   const [keyboardManager] = useState(() => new KeyboardCommandManager());
   const [commandBus] = useState(() => new CommandBus());
   const [editHistory] = useState(() => new EditHistory());
@@ -115,6 +120,17 @@ export function Calculator() {
     }));
   }
   const setError = (error: string) => updateCalculation({ error });
+  // Lo que se dice y se copia del resultado: se calcula una vez por resultado, no en cada tecla.
+  const resultView = useMemo(() => {
+    if (!result) return null;
+    const structured = !!(result.table || result.matrix);
+    return {
+      spoken: resultSpeech(result, speechOptions),
+      expressionSpoken: mathSpeech(result.expression, speechOptions),
+      latex: structured ? null : toLatex(result.value, speechOptions),
+      mathml: structured ? null : toMathML(result.value, speechOptions),
+    };
+  }, [result, speechOptions]);
   const [visited, setVisited] = useState<ToolId[]>(['basic']);
   const focusFrame = useRef<number | undefined>(undefined);
   const helpOrigin = useRef<HTMLElement | null>(null);
@@ -306,6 +322,7 @@ export function Calculator() {
       readHover: true,
     });
     const warning = saved ? '' : ` ${storage.warning}`;
+    firstVisit.current = false;
     welcomeDialog.current?.close();
     input.current?.focus();
     openTool('basic', 'expression');
@@ -460,10 +477,10 @@ export function Calculator() {
       setBusy(false);
     }
   }
-  async function copy(text: string) {
+  async function copy(text: string, done = 'Resultado copiado.') {
     try {
       await navigator.clipboard.writeText(text);
-      announce('Resultado copiado.');
+      announce(done);
     } catch {
       announce('No pude copiar automáticamente. Seleccioná el texto del resultado para copiarlo.');
     }
@@ -1192,15 +1209,32 @@ export function Calculator() {
               </h2>
               {result ? (
                 <>
-                  <p className="result-expression">{result.expression}</p>
-                  <p
+                  <MathView
+                    className="result-expression"
+                    text={result.expression}
+                    spoken={resultView!.expressionSpoken}
+                    srMath={preferences.srMath}
+                    decimalSeparator={preferences.decimalSeparator}
+                  />
+                  <div
                     className={`result-value ${result.table || result.matrix ? 'sr-only' : ['Álgebra', 'Cálculo'].includes(result.kind) ? 'symbolic-value' : ''}`}
-                    aria-label={`Resultado: ${result.value}`}
-                    data-speech={`Resultado: ${resultSpeech(result, speechOptions)}`}
+                    data-speech={`Resultado: ${resultView!.spoken}`}
                   >
-                    {result.approximate && <span aria-hidden="true">≈ </span>}
-                    {result.value}
-                  </p>
+                    {result.table || result.matrix ? (
+                      <code className="result-syntax" aria-hidden="true">
+                        {result.value}
+                      </code>
+                    ) : (
+                      <MathView
+                        text={result.value}
+                        spoken={resultView!.spoken}
+                        srMath={preferences.srMath}
+                        decimalSeparator={preferences.decimalSeparator}
+                        approximate={result.approximate}
+                        syntaxClassName="result-syntax"
+                      />
+                    )}
+                  </div>
                   {!!result.warnings?.length && (
                     <div className="result-warnings">
                       {result.warnings.map((warning) => (
@@ -1279,12 +1313,22 @@ export function Calculator() {
                       disabled={!speech.available}
                       onClick={() => {
                         automatic.cancel();
-                        speech.hablar(`Resultado: ${resultSpeech(result, speechOptions)}`);
+                        speech.hablar(`Resultado: ${resultView!.spoken}`);
                       }}
                     >
                       Escuchar resultado
                     </button>
                     <button onClick={() => void copy(result.value)}>Copiar resultado</button>
+                    {resultView?.latex && (
+                      <button onClick={() => void copy(resultView.latex!, 'LaTeX copiado.')}>
+                        Copiar como LaTeX
+                      </button>
+                    )}
+                    {resultView?.mathml && (
+                      <button onClick={() => void copy(resultView.mathml!, 'MathML copiado.')}>
+                        Copiar como MathML
+                      </button>
+                    )}
                     <button
                       onClick={() =>
                         downloadHistory(

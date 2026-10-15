@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { openTool } from './navigation';
+import { openTool, resultValue } from './navigation';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -80,7 +80,7 @@ test('modo matemático calcula, deshace y conserva escritura nativa dentro del c
   await expect(area).toBeFocused();
   await page.keyboard.type('2+3');
   await page.keyboard.press('Enter');
-  await expect(page.getByLabel('Resultado: 5', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '5')).toBeVisible();
   await expect(area).toBeFocused();
   await page.keyboard.press('Control+z');
   const expression = page.getByLabel('Expresión matemática', { exact: true });
@@ -130,9 +130,9 @@ test('atajo científico pide datos y no calcula hasta confirmar la expresión', 
   await page.getByRole('button', { name: 'Insertar en expresión', exact: true }).click();
   const expression = page.getByLabel('Expresión matemática', { exact: true });
   await expect(expression).toBeFocused();
-  await expect(page.getByLabel('Resultado: 5', { exact: true })).toHaveCount(0);
+  await expect(resultValue(page, '5')).toHaveCount(0);
   await expression.press('Enter');
-  await expect(page.getByLabel('Resultado: 5', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '5')).toBeVisible();
 });
 
 test('los comandos de límites conservan el lado pedido y distinguen el bilateral', async ({
@@ -153,7 +153,7 @@ test('los comandos de límites conservan el lado pedido y distinguen el bilatera
     await expect(body).toBeFocused();
     await body.fill('1/x');
     await body.press('Enter');
-    await expect(page.getByLabel(`Resultado: ${expected}`, { exact: true })).toBeVisible();
+    await expect(resultValue(page, String(expected))).toBeVisible();
   }
   await page
     .getByRole('combobox', { name: 'Sentido del límite', exact: true })
@@ -390,7 +390,7 @@ test('comandos contextuales abren media, factorial, conversión y complejos sin 
     page.getByRole('textbox', { name: 'Datos X, separados por comas', exact: true }),
   ).toBeFocused();
   await page.getByRole('button', { name: 'Calcular estadística', exact: true }).click();
-  await expect(page.getByLabel('Resultado: 3', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '3')).toBeVisible();
   await openTool(page, 'Probabilidad');
   await page.getByRole('group', { name: 'Área del teclado matemático', exact: true }).focus();
   await page.keyboard.press('f');

@@ -366,8 +366,31 @@ input.expression {
   margin: 24px 0;
 }
 .result-expression {
-  font-family: ui-monospace, monospace;
   overflow-wrap: anywhere;
+}
+/* MathML renderizado por el navegador; la sintaxis lineal queda debajo, más chica, para copiar. */
+/* Sin desplazamiento propio: sería una región desplazable sin acceso por teclado. */
+.math-render {
+  display: block;
+  max-width: 100%;
+  letter-spacing: normal;
+}
+.result-expression .math-render math {
+  font-size: 1.25rem;
+}
+.result-syntax,
+.result-expression code {
+  display: block;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  margin-top: 0.4rem;
+}
+.result-value .math-render + .result-syntax {
+  margin-top: 0.6rem;
 }
 .result-warnings {
   border-left: 4px solid var(--focus);

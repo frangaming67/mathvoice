@@ -115,6 +115,9 @@ function atomic(node: MathNode, ctx: Context): boolean {
     inner.type === 'SymbolNode'
   );
 }
+// Una fracción ya se ve agrupada: (1/3)·x³ no necesita paréntesis.
+const fraction = (node: MathNode) =>
+  node.type === 'OperatorNode' && (node as OperatorNode).op === '/';
 function group(node: MathNode, ctx: Context): string {
   return atomic(node, ctx) ? render(node, ctx) : fenced(render(stripParens(node), ctx));
 }
@@ -204,7 +207,9 @@ function render(node: MathNode, ctx: Context): string {
   switch (node.type) {
     case 'ParenthesisNode': {
       const content = (node as ParenthesisNode).content;
-      return atomic(content, ctx) ? render(content, ctx) : fenced(render(content, ctx));
+      return atomic(content, ctx) || fraction(content)
+        ? render(content, ctx)
+        : fenced(render(content, ctx));
     }
     case 'SymbolNode': {
       const name = (node as SymbolNode).name;
@@ -330,7 +335,9 @@ function latex(node: MathNode, ctx: Context): string {
   switch (node.type) {
     case 'ParenthesisNode': {
       const content = (node as ParenthesisNode).content;
-      return atomic(content, ctx) ? latex(content, ctx) : `\\left(${latex(content, ctx)}\\right)`;
+      return atomic(content, ctx) || fraction(content)
+        ? latex(content, ctx)
+        : `\\left(${latex(content, ctx)}\\right)`;
     }
     case 'SymbolNode': {
       const name = (node as SymbolNode).name;

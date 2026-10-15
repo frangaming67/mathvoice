@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { openKeypad, openTool } from './navigation';
+import { openKeypad, openTool, resultValue } from './navigation';
 async function mockSpeech(page: Page) {
   await page.addInitScript(() => {
     const spoken: string[] = [];
@@ -25,12 +25,12 @@ test('teclado completo, continuidad del resultado, borrar y memoria', async ({ p
   await openKeypad(page);
   for (const key of ['Dos', 'Sumar', 'Tres', 'Igual, calcular'])
     await page.getByRole('button', { name: key, exact: true }).click();
-  await expect(page.getByLabel('Resultado: 5', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '5')).toBeVisible();
   await page.getByRole('button', { name: 'Sumar resultado a memoria', exact: true }).click();
   await expect(page.locator('.memory-bar span')).toHaveText('M: 5');
   for (const key of ['Multiplicar', 'Dos', 'Igual, calcular'])
     await page.getByRole('button', { name: key, exact: true }).click();
-  await expect(page.getByLabel('Resultado: 10', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '10')).toBeVisible();
   await page.getByRole('button', { name: 'Borrar toda la expresión' }).click();
   await page.getByRole('button', { name: 'Recuperar memoria' }).click();
   await expect(page.getByLabel('Expresión matemática', { exact: true })).toHaveValue('(5)');
@@ -75,13 +75,13 @@ test('formulario simbólico deriva e integra con explicación', async ({ page })
   await openTool(page, 'Álgebra y cálculo');
   await page.getByRole('combobox', { name: 'Operación simbólica' }).selectOption('diff');
   await page.getByRole('button', { name: 'Calcular operación', exact: true }).click();
-  await expect(page.getByLabel('Resultado: 3*x^2', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '3*x^2')).toBeVisible();
   await page.getByRole('combobox', { name: 'Operación simbólica' }).selectOption('integrate');
   await page.getByRole('button', { name: 'Calcular operación', exact: true }).click();
-  await expect(page.getByLabel('Resultado: (1/3)*x^3 + C', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '(1/3)*x^3 + C')).toBeVisible();
   await page.getByRole('button', { name: 'Explicar resultado' }).click();
   await expect(page.getByText('C es una constante', { exact: false }).last()).toBeVisible();
   await page.getByRole('combobox', { name: 'Operación simbólica' }).selectOption('system');
   await page.getByRole('button', { name: 'Calcular operación', exact: true }).click();
-  await expect(page.getByLabel('Resultado: x = 7; y = 3', { exact: true })).toBeVisible();
+  await expect(resultValue(page, 'x = 7; y = 3')).toBeVisible();
 });

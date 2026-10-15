@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { openTool } from './navigation';
+import { openTool, resultValue } from './navigation';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -17,7 +17,7 @@ test('una herramienta visible, resultado antes del teclado y cambio explícito c
   await expect(page.getByRole('button', { name: 'Vaciar historial' })).toHaveCount(0);
   await expression.fill('7*8');
   await expression.press('Enter');
-  await expect(page.getByLabel('Resultado: 56', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '56')).toBeVisible();
   expect(
     await page
       .locator('.result')
@@ -87,7 +87,7 @@ test('historial, configuración y ayuda tienen foco y retorno predecibles', asyn
   const expression = page.getByLabel('Expresión matemática', { exact: true });
   await expression.fill('2+3');
   await expression.press('Enter');
-  await expect(page.getByLabel('Resultado: 5', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '5')).toBeVisible();
   await page.keyboard.press('Alt+Shift+h');
   await expect(
     page.getByRole('heading', { name: 'Historial', exact: true, level: 1 }),

@@ -1,4 +1,4 @@
-import { openTool } from '../tests/navigation';
+import { openTool, resultValue } from '../tests/navigation';
 import { expect, test } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 
@@ -19,14 +19,14 @@ test('producción: recarga sin conexión, herramientas diferidas y cálculo simb
   const input = page.getByLabel('Expresión matemática', { exact: true });
   await input.fill('2+2');
   await input.press('Enter');
-  await expect(page.getByLabel('Resultado: 4', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '4')).toBeVisible();
   await openTool(page, 'Matrices');
   await page.getByRole('button', { name: 'Calcular matriz' }).click();
-  await expect(page.getByLabel('Resultado: -2', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '-2')).toBeVisible();
   await page.getByRole('link', { name: 'Calculadora', exact: true }).click();
   await input.fill('diff(x^3,x)');
   await input.press('Enter');
-  await expect(page.getByLabel('Resultado: 3*x^2', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '3*x^2')).toBeVisible();
   await openTool(page, 'Gráficos');
   await page.getByRole('button', { name: 'Graficar funciones' }).click();
   await expect(page.getByRole('button', { name: 'Explorar gráfico', exact: true })).toBeVisible();
@@ -45,7 +45,7 @@ test('actualización requiere acción y conserva historial al recargar', async (
     const input = page.getByLabel('Expresión matemática', { exact: true });
     await input.fill('2+2');
     await input.press('Enter');
-    await expect(page.getByLabel('Resultado: 4', { exact: true })).toBeVisible();
+    await expect(resultValue(page, '4')).toBeVisible();
     await writeFile('dist/sw.js', `${original}\n// Prueba de actualización ${Date.now()}\n`);
     await page.evaluate(async () => (await navigator.serviceWorker.ready).update());
     const update = page.getByRole('button', { name: 'Aplicar actualización y recargar' });

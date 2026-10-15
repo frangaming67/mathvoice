@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openTool } from './navigation';
+import { openTool, resultValue } from './navigation';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -47,7 +47,7 @@ test('orientación anuncia sección, borrador, resultado, error y teclado sin mo
   const expression = page.getByLabel('Expresión matemática', { exact: true });
   await expression.fill('2+3');
   await expression.press('Enter');
-  await expect(page.getByLabel('Resultado: 5', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '5')).toBeVisible();
   await page.getByRole('button', { name: '¿Dónde estoy?' }).click();
   await expect(page.getByRole('status')).toContainText(
     'Calculadora. Modo escritura. Lector de pantalla externo',
@@ -85,7 +85,7 @@ test('Ctrl más Enter solicita lectura explícita sin calcular ni mover el foco'
     .poll(() => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken.at(-1)))
     .toBe('2 más 3');
   await expect(expression).toBeFocused();
-  await expect(page.getByLabel('Resultado: 5', { exact: true })).toHaveCount(0);
+  await expect(resultValue(page, '5')).toHaveCount(0);
 });
 
 test('la bienvenida conserva el aviso cuando no puede guardar preferencias', async ({ page }) => {
@@ -125,7 +125,7 @@ for (const guided of [false, true]) {
     const expression = page.getByLabel('Expresión matemática', { exact: true });
     await expression.fill('9*9');
     await expression.press('Enter');
-    await expect(page.getByLabel('Resultado: 81', { exact: true })).toBeVisible();
+    await expect(resultValue(page, '81')).toBeVisible();
     await expect(page.getByRole('status')).toContainText('se perderán al cerrar');
     await expect(page.getByRole('region', { name: 'Resultado', exact: true })).not.toContainText(
       'Guardado en tu historial local',
@@ -218,7 +218,7 @@ test('cancelar el vaciado explica la decisión y devuelve el foco sin perder his
 }) => {
   await page.getByLabel('Expresión matemática', { exact: true }).fill('2+3');
   await page.keyboard.press('Enter');
-  await expect(page.getByLabel('Resultado: 5', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '5')).toBeVisible();
   await page.keyboard.press('Alt+Shift+h');
   const clear = page.getByRole('button', { name: 'Vaciar historial', exact: true });
   await clear.focus();
@@ -240,19 +240,19 @@ test('cada herramienta recupera su resultado y su error sin contaminar las demá
   const expression = page.getByLabel('Expresión matemática', { exact: true });
   await expression.fill('6*7');
   await expression.press('Enter');
-  await expect(page.getByLabel('Resultado: 42', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '42')).toBeVisible();
   await openTool(page, 'Matrices');
   await page.getByRole('button', { name: 'Calcular matriz', exact: true }).click();
-  await expect(page.getByLabel('Resultado: -2', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '-2')).toBeVisible();
   await openTool(page, 'Calculadora');
   await expect(expression).toHaveValue('6*7');
-  await expect(page.getByLabel('Resultado: 42', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '42')).toBeVisible();
   await expression.fill('sin(');
   await expression.press('Enter');
   await expect(page.getByRole('alert')).not.toBeEmpty();
   await openTool(page, 'Matrices');
   await expect(page.getByRole('alert')).toBeEmpty();
-  await expect(page.getByLabel('Resultado: -2', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '-2')).toBeVisible();
   await page.getByRole('button', { name: '¿Dónde estoy?' }).click();
   await expect(page.getByRole('status')).toContainText('Sin errores');
   await openTool(page, 'Calculadora');
@@ -272,7 +272,7 @@ test('lector externo evita síntesis automática incluso al revisar y confirmar 
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.getByRole('dialog').getByRole('status')).toContainText('Entendí:');
   await page.getByRole('button', { name: 'Confirmar y calcular' }).click();
-  await expect(page.getByLabel('Resultado: 5', { exact: true })).toBeVisible();
+  await expect(resultValue(page, '5')).toBeVisible();
   await page.getByRole('button', { name: '¿Dónde estoy?' }).hover();
   await page.waitForTimeout(1000);
   expect(await page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken)).toEqual(
