@@ -24,8 +24,7 @@ export function Converters({ calculate, busy }: { calculate: (e: string) => void
     focusToolField(section.current);
   });
   return (
-    <section ref={section} aria-labelledby="conversions-title">
-      <h2 id="conversions-title">Conversores</h2>
+    <section ref={section}>
       <form
         onSubmit={(e) => {
           e.preventDefault();

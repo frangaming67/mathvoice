@@ -20,8 +20,7 @@ export function StatisticsCalculator({
     focusToolField(section.current, 'textarea');
   });
   return (
-    <section ref={section} aria-labelledby="stats-title">
-      <h2 id="stats-title">Estadística</h2>
+    <section ref={section}>
       <form
         onSubmit={(e) => {
           e.preventDefault();

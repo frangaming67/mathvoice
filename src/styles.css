@@ -278,13 +278,6 @@ main > h1 {
   margin-bottom: 24px;
   min-width: 0;
 }
-.eyebrow {
-  font-size: 0.65rem;
-  font-weight: 750;
-  letter-spacing: 0.15em;
-  color: var(--muted);
-  margin-bottom: 14px;
-}
 .calculator h2 {
   font-size: 2rem;
 }
@@ -375,6 +368,14 @@ input.expression {
 .result-expression {
   font-family: ui-monospace, monospace;
   overflow-wrap: anywhere;
+}
+.result-warnings {
+  border-left: 4px solid var(--focus);
+  padding: 0.5rem 0 0.5rem 0.9rem;
+  margin-bottom: 1rem;
+}
+.result-warnings p {
+  margin-bottom: 0.4rem;
 }
 .result-empty {
   padding-top: 16px;
@@ -554,7 +555,6 @@ footer {
 .maximum select {
   min-height: 56px;
 }
-.maximum .eyebrow,
 .maximum .examples {
   display: none;
 }

@@ -41,8 +41,7 @@ const scientific = [
 export function Tools({ insert }: { insert: (value: string) => void }) {
   return (
     <section aria-labelledby="tools-title" className="panel">
-      <p className="eyebrow">A TU RITMO</p>
-      <h2 id="tools-title">Más herramientas</h2>
+      <h2 id="tools-title">Insertar funciones y constantes</h2>
       <details>
         <summary>Básica</summary>
         <div className="tool-grid">

@@ -300,6 +300,7 @@ export function Calculator() {
     });
     const warning = saved ? '' : ` ${storage.warning}`;
     welcomeDialog.current?.close();
+    input.current?.focus();
     openTool('basic', 'expression');
     requestAnimationFrame(() => {
       automatic.cancel();
@@ -1188,8 +1189,16 @@ export function Calculator() {
                     aria-label={`Resultado: ${result.value}`}
                     data-speech={`Resultado: ${resultSpeech(result)}`}
                   >
+                    {result.approximate && <span aria-hidden="true">≈ </span>}
                     {result.value}
                   </p>
+                  {!!result.warnings?.length && (
+                    <div className="result-warnings">
+                      {result.warnings.map((warning) => (
+                        <p key={warning}>{warning}</p>
+                      ))}
+                    </div>
+                  )}
                   {result.matrix && (
                     <div className="result-table">
                       <table className="data-table">
@@ -1227,6 +1236,11 @@ export function Calculator() {
                     </table>
                   )}
                   {result.unit && <p>Unidad: {result.unit}</p>}
+                  {result.exact && (
+                    <p>
+                      Forma exacta: <strong>{result.exact}</strong>
+                    </p>
+                  )}
                   {result.decimal && (
                     <p>
                       Aproximación decimal: <strong>{result.decimal}</strong>
@@ -1272,23 +1286,19 @@ export function Calculator() {
                     >
                       Guardar resultado TXT
                     </button>
-                    {!result.table &&
-                      !result.matrix &&
-                      !result.assigned &&
-                      result.kind !== 'Complejos' &&
-                      !/[=C]|Infinity/.test(result.value) && (
-                        <button
-                          onClick={() => {
-                            setGraphRequest({ id: Date.now(), expression: result.value });
-                            openTool('graphs');
-                            announce(
-                              'Resultado cargado en Gráficos. Podés editar la función y pulsar Graficar funciones.',
-                            );
-                          }}
-                        >
-                          Graficar resultado
-                        </button>
-                      )}
+                    {result.graphable && !result.assigned && (
+                      <button
+                        onClick={() => {
+                          setGraphRequest({ id: Date.now(), expression: result.value });
+                          openTool('graphs');
+                          announce(
+                            'Resultado cargado en Gráficos. Podés editar la función y pulsar Graficar funciones.',
+                          );
+                        }}
+                      >
+                        Graficar resultado
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         updateCalculation({ explanation: !explanation });

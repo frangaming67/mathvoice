@@ -129,10 +129,7 @@ export function MatrixCalculator({
   const second = ['add', 'subtract', 'multiply', 'lusolve'].includes(operation);
   const serialize = (cells: MatrixCells) => JSON.stringify(cells.map((row) => row.map(Number)));
   return (
-    <section ref={section} aria-labelledby="matrix-title">
-      <h2 id="matrix-title" tabIndex={-1}>
-        Matrices
-      </h2>
+    <section ref={section}>
       <form
         onSubmit={(e) => {
           e.preventDefault();

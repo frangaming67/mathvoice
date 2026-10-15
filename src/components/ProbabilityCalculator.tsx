@@ -46,8 +46,7 @@ export function ProbabilityCalculator({
     focusToolField(section.current);
   });
   return (
-    <section ref={section} aria-labelledby="probability-title">
-      <h2 id="probability-title">Probabilidad y combinatoria</h2>
+    <section ref={section}>
       <form
         onSubmit={(e) => {
           e.preventDefault();

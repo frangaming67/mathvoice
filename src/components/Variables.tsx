@@ -13,8 +13,7 @@ export function Variables({
   const [name, setName] = useState('radio');
   const [value, setValue] = useState('7');
   return (
-    <section aria-labelledby="variables-title">
-      <h2 id="variables-title">Variables</h2>
+    <section>
       <form
         onSubmit={(e) => {
           e.preventDefault();

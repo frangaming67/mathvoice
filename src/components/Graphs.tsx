@@ -269,10 +269,7 @@ export function Graphs({
     if (command.type === 'graph') graphCommand(command.operation);
   });
   return (
-    <section aria-labelledby="graphs-title">
-      <h2 id="graphs-title" tabIndex={-1}>
-        Gráficos accesibles
-      </h2>
+    <section>
       <form
         onSubmit={(e) => {
           e.preventDefault();

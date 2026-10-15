@@ -24,8 +24,7 @@ export function VectorComplexCalculator({
     );
   });
   return (
-    <section ref={section} aria-labelledby="vectors-title">
-      <h2 id="vectors-title">Vectores y complejos</h2>
+    <section ref={section}>
       <div className="tool-columns">
         <form
           onSubmit={(e) => {
