@@ -1,4 +1,14 @@
 import type { Preferences } from '../types';
+/** Cómo escuchar los controles: en pantallas táctiles no hay puntero que pasar por encima. */
+export function pointerHint() {
+  const touch =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(hover: none)').matches;
+  return touch
+    ? 'Al tocar un campo, se lee su nombre.'
+    : 'Pasá el puntero sobre cualquier control para escucharlo.';
+}
 export class SpeechService {
   private last = '';
   private voice = '';
@@ -11,6 +21,7 @@ export class SpeechService {
   private paused = false;
   private pendingNext: (() => void) | undefined;
   private listActive = false;
+  private unlocked = false;
   get readingList() {
     return this.listActive;
   }
@@ -33,6 +44,18 @@ export class SpeechService {
     this.rate = p.rate;
     this.pitch = p.pitch;
     this.volume = p.volume;
+  }
+  /**
+   * Safari e iOS solo habilitan la síntesis si la primera speak() ocurre dentro de un gesto.
+   * Llamalo sincrónicamente en el onClick, antes de cualquier requestAnimationFrame o await.
+   */
+  unlock() {
+    if (!this.available || this.unlocked) return false;
+    this.unlocked = true;
+    const utterance = new SpeechSynthesisUtterance('');
+    utterance.volume = 0;
+    window.speechSynthesis.speak(utterance);
+    return true;
   }
   hablarAutomatico(text: string) {
     return this.automaticEnabled ? this.hablar(text) : false;

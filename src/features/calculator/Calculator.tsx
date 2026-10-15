@@ -10,7 +10,7 @@ import { CalculatorClient } from '../../services/CalculatorClient';
 import { preferencesService } from '../../services/PreferencesService';
 import { historyRemovalMessage, historyService } from '../../services/HistoryService';
 import { storage } from '../../services/StorageService';
-import { speech } from '../../services/SpeechService';
+import { pointerHint, speech } from '../../services/SpeechService';
 import { mathSpeech } from '../../accessibility/MathSpeechFormatter';
 import { handleKeyboard } from '../../accessibility/KeyboardManager';
 import { Settings } from '../../components/Settings';
@@ -407,13 +407,11 @@ export function Calculator() {
     welcomeDialog.current?.close();
     input.current?.focus();
     openTool('basic', 'expression');
+    // iOS solo habilita la voz si la primera locución ocurre dentro de este clic.
+    if (guided) speech.unlock();
     requestAnimationFrame(() => {
       automatic.cancel();
-      if (guided)
-        speech.hablarLista(
-          [`${welcome} Pasá el puntero sobre cualquier control para escucharlo.${warning}`],
-          () => {},
-        );
+      if (guided) speech.hablarLista([`${welcome} ${pointerHint()}${warning}`], () => {});
     });
   }
   function insert(value: string, focus = true) {
