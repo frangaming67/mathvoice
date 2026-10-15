@@ -105,7 +105,7 @@ it('incluye coordenadas, encabezado y valor hablado de una celda', () => {
   cell.cellIndex = 1;
   cell.textContent = '-1.5e-7';
   expect(describeElement(asElement(cell))).toBe(
-    'Fila 3. Resultado matricial. Columna 2: menos 1 coma 5 por diez elevado a menos 7',
+    'Fila 3. Resultado matricial. Columna 2: menos 1 coma 5 por diez a la menos 7',
   );
   const header = new Cell();
   header.textContent = 'Desviación';

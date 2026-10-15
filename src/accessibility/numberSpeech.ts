@@ -31,7 +31,9 @@ export function cleanNumber(value: number, scale = 1): number {
 function stripZeros(text: string): string {
   if (!text.includes('.')) return text;
   const [mantissa, exponent] = text.split(/e/i);
-  const trimmed = mantissa.includes('.') ? mantissa.replace(/0+$/, '').replace(/\.$/, '') : mantissa;
+  const trimmed = mantissa.includes('.')
+    ? mantissa.replace(/0+$/, '').replace(/\.$/, '')
+    : mantissa;
   return exponent === undefined ? trimmed : `${trimmed}e${exponent}`;
 }
 
@@ -109,11 +111,81 @@ export function speakNumber(value: number | string, options: NumberSpeechOptions
   return `${prefix}${sign}${body}`;
 }
 
+const FRACTION_NAMES: Record<number, [string, string]> = {
+  2: ['medio', 'medios'],
+  3: ['tercio', 'tercios'],
+  4: ['cuarto', 'cuartos'],
+  5: ['quinto', 'quintos'],
+  6: ['sexto', 'sextos'],
+  7: ['séptimo', 'séptimos'],
+  8: ['octavo', 'octavos'],
+  9: ['noveno', 'novenos'],
+  10: ['décimo', 'décimos'],
+};
+
+/** Nombre hablado de una fracción simple: «un medio», «tres cuartos», «menos siete décimos». */
+export function fractionName(numerator: string, denominator: string): string | null {
+  const n = Number(numerator);
+  const d = Number(denominator);
+  if (!Number.isInteger(n) || !Number.isInteger(d) || !FRACTION_NAMES[d]) return null;
+  if (n === 0 || Math.abs(n) > 20) return null;
+  const size = Math.abs(n);
+  const [one, many] = FRACTION_NAMES[d];
+  return `${n < 0 ? 'menos ' : ''}${size === 1 ? 'un' : size} ${size === 1 ? one : many}`;
+}
+
+export interface PeriodicDecimal {
+  negative: boolean;
+  integer: string;
+  /** Cifras decimales antes del período. */
+  head: string;
+  /** Cifras que se repiten; vacío si la expansión termina. */
+  period: string;
+}
+
+/** Expansión decimal exacta de numerador/denominador enteros, con su período si lo tiene. */
+export function periodicDecimal(
+  numerator: string,
+  denominator: string,
+  maxDigits = 60,
+): PeriodicDecimal | null {
+  if (!/^-?\d+$/.test(numerator) || !/^\d+$/.test(denominator)) return null;
+  let n = BigInt(numerator);
+  const d = BigInt(denominator);
+  if (d === 0n) return null;
+  const negative = n < 0n;
+  if (negative) n = -n;
+  const integer = (n / d).toString();
+  let remainder = n % d;
+  const seen = new Map<bigint, number>();
+  let digits = '';
+  while (remainder !== 0n && !seen.has(remainder) && digits.length < maxDigits) {
+    seen.set(remainder, digits.length);
+    remainder *= 10n;
+    digits += (remainder / d).toString();
+    remainder %= d;
+  }
+  if (remainder === 0n) return { negative, integer, head: digits, period: '' };
+  const start = seen.get(remainder);
+  if (start === undefined) return null;
+  return { negative, integer, head: digits.slice(0, start), period: digits.slice(start) };
+}
+
+/** Lectura de un decimal periódico corto: «0 coma 3 periódico», «0 coma 1 y luego 6 periódico». */
+export function speakPeriodic(value: PeriodicDecimal, maxPeriod = 6): string | null {
+  if (!value.period || value.period.length > maxPeriod || value.head.length > 4) return null;
+  const head = value.head ? `${speakDigits(value.head)} y luego ` : '';
+  return `${value.negative ? 'menos ' : ''}${value.integer} coma ${head}${speakDigits(value.period)} periódico`;
+}
+
 const HEX_NAMES: Record<string, string> = { A: 'a', B: 'be', C: 'ce', D: 'de', E: 'e', F: 'efe' };
 
 /** Lee un número en base 2, 8 o 16 dígito por dígito, en grupos de 4, nombrando la base. */
 export function speakRadix(text: string, base: number): string {
-  const clean = text.trim().toUpperCase().replace(/^0[BXO]/, '');
+  const clean = text
+    .trim()
+    .toUpperCase()
+    .replace(/^0[BXO]/, '');
   const negative = clean.startsWith('-');
   const digits = (negative ? clean.slice(1) : clean).replace(/[\s_]/g, '');
   const groups: string[] = [];

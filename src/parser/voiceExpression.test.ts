@@ -383,8 +383,14 @@ describe('lo que la app lee en voz alta se puede dictar de vuelta', () => {
     'x^2+2*x+1',
     'mod(7,3)',
     'tan(x)*2',
-    'exp(1)',
+    'e^2',
+    '-2^2',
+    '(-2)^2',
+    'x^(2+1)',
+    'sin(x)/cos(x)',
   ])('%s', (expression) => expect(parseVoice(mathSpeech(expression)).expression).toBe(expression));
+  it('exp(1) se lee «e a la 1» y se dicta de vuelta como su equivalente e^1', () =>
+    expect(parseVoice(mathSpeech('exp(1)')).expression).toBe('e^1'));
 });
 
 describe('alternativas y resumen', () => {

@@ -16,6 +16,7 @@ import { describeElement, useAutomaticSpeech } from '../../accessibility/useAuto
 import { FeatureHub } from '../../components/FeatureHub';
 import { variableService } from '../../services/VariableService';
 import { resultSpeech } from '../../accessibility/resultSpeech';
+import { keySpeech } from '../../accessibility/symbolSpeech';
 import { Dictation } from '../../components/Dictation';
 import { OfflineStatus } from '../../components/OfflineStatus';
 import { toggleSign } from '../../parser/toggleSign';
@@ -48,6 +49,12 @@ const emptyCalculation: ToolCalculationState = { result: null, error: '', explan
 export function Calculator() {
   const [preferences, setPreferences] = useState(preferencesService.load);
   const [keyboard, setKeyboard] = useState(keyboardSettingsService.load);
+  // Cómo se dicen los resultados: nivel de detalle y cifras habladas.
+  const speechOptions = {
+    verbosity: keyboard.verbosity,
+    spokenDigits: preferences.spokenDigits,
+    decimalSeparator: preferences.decimalSeparator,
+  };
   const [keyboardManager] = useState(() => new KeyboardCommandManager());
   const [commandBus] = useState(() => new CommandBus());
   const [editHistory] = useState(() => new EditHistory());
@@ -438,7 +445,7 @@ export function Calculator() {
       if (targetTool === 'basic') justCalculated.current = true;
       const entry = { ...calculated, id: crypto.randomUUID(), date: new Date().toISOString() };
       saveHistory([entry, ...currentEntries.current].slice(0, 100));
-      announce(`Resultado: ${resultSpeech(calculated)}.`, preferences.autoRead);
+      announce(`Resultado: ${resultSpeech(calculated, speechOptions)}.`, preferences.autoRead);
       if (keyboard.sounds) void feedbackSound.play('success');
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'No pude completar el cálculo.';
@@ -481,7 +488,7 @@ export function Calculator() {
       ),
     ).find((element) => element.getClientRects().length)?.value;
     announce(
-      `${section}. ${keyboard.mode === 'math' ? 'Modo teclado matemático' : 'Modo escritura'}. ${preferences.guided ? 'Guía por voz activada' : 'Lector de pantalla externo'}. Campo: ${currentField}. ${draft ? `Expresión: ${mathSpeech(draft)}.` : 'Sin expresión en esta sección.'} ${result ? `Hay resultado: ${resultSpeech(result)}.` : 'Sin resultado.'} ${error ? `Error: ${error}.` : 'Sin errores.'} Teclado de botones ${keypad?.open ? 'abierto' : 'cerrado'}.`,
+      `${section}. ${keyboard.mode === 'math' ? 'Modo teclado matemático' : 'Modo escritura'}. ${preferences.guided ? 'Guía por voz activada' : 'Lector de pantalla externo'}. Campo: ${currentField}. ${draft ? `Expresión: ${mathSpeech(draft)}.` : 'Sin expresión en esta sección.'} ${result ? `Hay resultado: ${resultSpeech(result, speechOptions)}.` : 'Sin resultado.'} ${error ? `Error: ${error}.` : 'Sin errores.'} Teclado de botones ${keypad?.open ? 'abierto' : 'cerrado'}.`,
     );
   }
 
@@ -597,7 +604,9 @@ export function Calculator() {
           readExpression();
           break;
         case 'read-result':
-          explicitRead(result ? `Resultado: ${resultSpeech(result)}.` : 'No hay resultado.');
+          explicitRead(
+            result ? `Resultado: ${resultSpeech(result, speechOptions)}.` : 'No hay resultado.',
+          );
           break;
         case 'read-error':
           explicitRead(error || 'No hay errores.');
@@ -1091,7 +1100,7 @@ export function Calculator() {
                         !e.ctrlKey &&
                         !e.altKey
                       )
-                        speech.hablarAutomatico(mathSpeech(e.key));
+                        speech.hablarAutomatico(keySpeech(e.key));
                     }}
                   />
                   <p className="hint" id="expression-hint">
@@ -1187,7 +1196,7 @@ export function Calculator() {
                   <p
                     className={`result-value ${result.table || result.matrix ? 'sr-only' : ['Álgebra', 'Cálculo'].includes(result.kind) ? 'symbolic-value' : ''}`}
                     aria-label={`Resultado: ${result.value}`}
-                    data-speech={`Resultado: ${resultSpeech(result)}`}
+                    data-speech={`Resultado: ${resultSpeech(result, speechOptions)}`}
                   >
                     {result.approximate && <span aria-hidden="true">≈ </span>}
                     {result.value}
@@ -1270,7 +1279,7 @@ export function Calculator() {
                       disabled={!speech.available}
                       onClick={() => {
                         automatic.cancel();
-                        speech.hablar(`Resultado: ${resultSpeech(result)}`);
+                        speech.hablar(`Resultado: ${resultSpeech(result, speechOptions)}`);
                       }}
                     >
                       Escuchar resultado

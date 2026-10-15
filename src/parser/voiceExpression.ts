@@ -377,7 +377,7 @@ const vocabulary = new Set([
   ...genericClosers,
   ...structural,
   ...leadingFillers,
-  ...'mil millon millones mas menos o por multiplicado veces dividido sobre entre modulo mod elevado al la cuadrado cubo ciento porciento resto dividir igual que menor mayor distinto diferente abre abrir abro parentesis coma punto base indice enesima enesimo orden definida indefinida izquierda derecha ecuacion inecuacion desigualdad con y d'.split(
+  ...'mil millon millones mas menos o por multiplicado veces dividido sobre entre modulo mod elevado al la cuadrado cubo ciento porciento resto dividir igual que menor mayor distinto diferente abre abrir abro parentesis coma punto base indice enesima enesimo orden definida indefinida izquierda derecha ecuacion inecuacion desigualdad con y d el opuesto fraccion numerador denominador'.split(
     ' ',
   ),
 ]);
@@ -870,6 +870,13 @@ class VoiceParser {
     if (word === 'cierra' || word === 'cerrar' || word === 'cierro')
       return this.wordAt(index + 1) === 'parentesis' ? null : { end: index + 1 };
     if (word !== 'fin') return null;
+    // «fin de fracción» cierra la fracción hablada, no la función que la precede.
+    const after = [1, 2, 3].map((k) => this.wordAt(index + k));
+    if (
+      after[0] === 'de' &&
+      (after[1] === 'fraccion' || (after[1] === 'la' && after[2] === 'fraccion'))
+    )
+      return null;
     let j = index + 1;
     if (this.wordAt(j) === 'de' || this.wordAt(j) === 'del') j++;
     const name = closeNames.find((words) => words.every((w, k) => this.wordAt(j + k) === w));
@@ -1260,8 +1267,36 @@ class VoiceParser {
         p: NEG,
       };
     }
+    // «el opuesto de 2 al cuadrado» es −(2²): así lo lee la app para no confundirlo con (−2)².
+    if (this.eat('el', 'opuesto', 'de') || this.eat('opuesto', 'de')) {
+      const operand = this.unary() ?? this.missing(this.raw(start));
+      return {
+        s: `-${operand.p <= SUM || operand.p === NEG ? `(${operand.s})` : operand.s}`,
+        p: NEG,
+      };
+    }
     if (this.eatSym('+') || this.eat('mas')) return this.unary();
     return this.power();
+  }
+  // «fracción con numerador A, y denominador B, fin de fracción»: la forma en que la app lee
+  // las fracciones compuestas.
+  private spokenFraction(start: number): Node {
+    const beforeDenominator = (parser: VoiceParser) =>
+      parser.at('denominador') || parser.at('y', 'denominador');
+    const numerator =
+      this.isolated(() => this.withStop(beforeDenominator, () => this.sum())) ??
+      this.missing(this.raw(start));
+    this.skipNoise();
+    this.eat('y');
+    if (!this.eat('denominador')) return numerator;
+    const closesFraction = (parser: VoiceParser) =>
+      parser.at('fin', 'de', 'fraccion') || parser.at('fin', 'de', 'la', 'fraccion');
+    const denominator =
+      this.isolated(() => this.withStop(closesFraction, () => this.sum())) ??
+      this.missing('denominador');
+    this.skipNoise();
+    if (!this.eat('fin', 'de', 'fraccion')) this.eat('fin', 'de', 'la', 'fraccion');
+    return join(numerator, '/', denominator);
   }
 
   private power(): Node | null {
@@ -1395,6 +1430,7 @@ class VoiceParser {
     )
       return this.group();
     if (this.at('resto', 'de')) return this.remainder();
+    if (this.eat('fraccion', 'con', 'numerador')) return this.spokenFraction(start);
     const fn = this.phrase(functionPhrases);
     if (fn) {
       this.pos += fn[0];
