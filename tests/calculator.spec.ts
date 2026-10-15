@@ -144,7 +144,9 @@ test('voz centralizada: activación, resultado y Escape', async ({ page }) => {
   const spoken = await page.evaluate(
     () => (window as unknown as { __speechTest: { spoken: string[] } }).__speechTest.spoken,
   );
-  expect(spoken[0]).toContain('Bienvenido');
+  // Primero, la locución silenciosa que habilita la voz en iOS dentro del clic.
+  expect(spoken[0]).toBe('');
+  expect(spoken[1]).toContain('Bienvenido');
   expect(spoken.at(-1)).toContain('Resultado: 4');
   const count = await page.evaluate(
     () =>
