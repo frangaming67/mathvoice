@@ -21,6 +21,7 @@ export function KeyboardPanel({
   practice,
   announce,
   read,
+  guided = true,
   cancelAutomatic,
 }: {
   settings: KeyboardSettings;
@@ -29,6 +30,8 @@ export function KeyboardPanel({
   practice: (mode: 'identify' | 'training', category: string) => void;
   announce: (message: string, speak?: boolean) => void;
   read: (message: string) => void;
+  /** Sin la guía, la lista no se dice de corrido: se lee de a un atajo con el lector. */
+  guided?: boolean;
   cancelAutomatic: () => void;
 }) {
   const [query, setQuery] = useState(''),
@@ -182,6 +185,7 @@ export function KeyboardPanel({
         <button
           disabled={!results.length}
           onClick={() => {
+            if (!guided) return readOne(0);
             setReadingIndex(0);
             cancelAutomatic();
             speech.hablarLista(results.map(description), setReadingIndex);
@@ -189,36 +193,42 @@ export function KeyboardPanel({
         >
           Escuchar atajos
         </button>
-        <button
-          onClick={() => {
-            cancelAutomatic();
-            speech.pausar();
-          }}
-        >
-          Pausar lectura de atajos
-        </button>
-        <button
-          onClick={() => {
-            cancelAutomatic();
-            speech.continuar();
-          }}
-        >
-          Continuar lectura de atajos
-        </button>
+        {guided && (
+          <>
+            <button
+              onClick={() => {
+                cancelAutomatic();
+                speech.pausar();
+              }}
+            >
+              Pausar lectura de atajos
+            </button>
+            <button
+              onClick={() => {
+                cancelAutomatic();
+                speech.continuar();
+              }}
+            >
+              Continuar lectura de atajos
+            </button>
+          </>
+        )}
         <button disabled={!results.length} onClick={() => readOne(readingIndex - 1)}>
           Atajo anterior
         </button>
         <button disabled={!results.length} onClick={() => readOne(readingIndex + 1)}>
           Atajo siguiente
         </button>
-        <button
-          onClick={() => {
-            cancelAutomatic();
-            speech.detener();
-          }}
-        >
-          Detener lectura de atajos
-        </button>
+        {guided && (
+          <button
+            onClick={() => {
+              cancelAutomatic();
+              speech.detener();
+            }}
+          >
+            Detener lectura de atajos
+          </button>
+        )}
       </div>
       <h3>Funciones favoritas</h3>
       <ul>

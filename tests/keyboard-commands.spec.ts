@@ -555,3 +555,14 @@ test('cancelar la paleta no deja un cursor viejo para la próxima inserción', a
   await page.keyboard.press('*');
   await expect(expression).toHaveValue('2+3+4*');
 });
+test('con lector de pantalla, los atajos se leen de a uno por el lector', async ({ page }) => {
+  await page.keyboard.press('Alt+Shift+k');
+  await page.getByRole('button', { name: 'Escuchar atajos', exact: true }).click();
+  const status = page.getByRole('status');
+  await expect(status).not.toBeEmpty();
+  const first = await status.textContent();
+  // Sin la guía no hay lectura de corrido que pausar: se avanza de a un atajo.
+  await expect(page.getByRole('button', { name: 'Pausar lectura de atajos' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Atajo siguiente', exact: true }).click();
+  await expect(status).not.toHaveText(first!);
+});

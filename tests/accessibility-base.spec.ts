@@ -79,13 +79,19 @@ test('Ctrl más Enter solicita lectura explícita sin calcular ni mover el foco'
   page,
 }) => {
   const expression = page.getByLabel('Expresión matemática', { exact: true });
+  const spoken = () => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken);
   await expression.fill('2+3');
   await page.keyboard.press('Control+Enter');
-  await expect
-    .poll(() => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken.at(-1)))
-    .toBe('2 más 3');
+  // Con lector de pantalla, lo dice el lector (y llega al braille): la voz propia calla.
+  await expect(page.getByRole('status')).toHaveText('2 más 3');
+  expect(await spoken()).toEqual([]);
   await expect(expression).toBeFocused();
   await expect(resultValue(page, '5')).toHaveCount(0);
+  // Con la guía por voz, lo dice la voz de MathVoice.
+  await page.getByRole('button', { name: 'Guía por voz', exact: true, pressed: false }).click();
+  await expression.focus();
+  await page.keyboard.press('Control+Enter');
+  await expect.poll(async () => (await spoken()).at(-1)).toBe('2 más 3');
 });
 
 test('la bienvenida conserva el aviso cuando no puede guardar preferencias', async ({ page }) => {
@@ -293,10 +299,12 @@ test('lector externo evita síntesis automática incluso al revisar y confirmar 
   expect(await page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken)).toEqual(
     [],
   );
+  // «Escuchar resultado» se lo pasa al lector: tampoco usa la voz propia.
   await page.getByRole('button', { name: 'Escuchar resultado', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Resultado: 5');
   expect(
     await page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken.length),
-  ).toBe(1);
+  ).toBe(0);
 });
 
 test('abandonar la herramienta cancela micrófono y descarta reconocimiento tardío', async ({

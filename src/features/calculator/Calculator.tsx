@@ -311,6 +311,15 @@ export function Calculator() {
     },
     [cancelAutomatic],
   );
+  // Lectura pedida (Ctrl+Enter, «Escuchar…», «; R»): con la guía la dice la voz de MathVoice;
+  // con lector de pantalla va a la región viva, así la lee el lector y llega a la línea braille.
+  const explicitRead = useCallback(
+    (message: string) => {
+      cancelAutomatic();
+      announce(message);
+    },
+    [cancelAutomatic, announce],
+  );
   function reportStorageFailure() {
     setStorageWarning(storage.warning);
     pendingStorageWarning.current = storage.warning;
@@ -320,14 +329,17 @@ export function Calculator() {
     });
   }
   const readExpression = useCallback(() => {
-    cancelAutomatic();
     const draft = Array.from(
       document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
         '[data-expression], #expression',
       ),
     ).find((element) => element.getClientRects().length)?.value;
-    speech.hablar(draft ? mathSpeech(draft) : 'No hay expresión visible en esta sección.');
-  }, [cancelAutomatic]);
+    explicitRead(
+      draft
+        ? mathSpeech(draft, { decimalSeparator: preferences.decimalSeparator })
+        : 'No hay expresión visible en esta sección.',
+    );
+  }, [explicitRead, preferences.decimalSeparator]);
   const openHelp = useCallback(() => {
     if (help) return;
     helpOrigin.current = document.activeElement as HTMLElement;
@@ -630,10 +642,6 @@ export function Calculator() {
     setPractice(null);
     focusTarget('keyboard-title');
     announce('Práctica finalizada. Tus datos se conservaron.');
-  }
-  function explicitRead(message: string) {
-    cancelAutomatic();
-    speech.hablar(message);
   }
   function announceResult() {
     announce(
@@ -1419,13 +1427,7 @@ export function Calculator() {
                     >
                       Volver a editar el cálculo
                     </button>
-                    <button
-                      disabled={!speech.available}
-                      onClick={() => {
-                        automatic.cancel();
-                        speech.hablar(`Resultado: ${resultView!.spoken}`);
-                      }}
-                    >
+                    <button onClick={() => explicitRead(`Resultado: ${resultView!.spoken}`)}>
                       Escuchar resultado
                     </button>
                     <button onClick={() => void copy(result.value)}>Copiar resultado</button>
@@ -1479,13 +1481,7 @@ export function Calculator() {
                       Explicar resultado
                     </button>
                   </div>
-                  <CalculationSteps
-                    steps={result.steps}
-                    speak={(text) => {
-                      automatic.cancel();
-                      speech.hablar(text);
-                    }}
-                  />
+                  <CalculationSteps steps={result.steps} speak={explicitRead} />
                   {explanation && (
                     <div className="explanation">
                       <h3>Método de cálculo</h3>
@@ -1588,6 +1584,7 @@ export function Calculator() {
                 execute={executeCommand}
                 announce={announce}
                 read={explicitRead}
+                guided={preferences.guided}
                 cancelAutomatic={cancelAutomatic}
                 practice={(mode, category) => {
                   stopAll();
@@ -1653,10 +1650,7 @@ export function Calculator() {
                 saveHistory([]);
                 announce('Historial vacío.');
               }}
-              speak={(text) => {
-                automatic.cancel();
-                speech.hablar(text);
-              }}
+              speak={explicitRead}
               copy={(text) => void copy(text)}
             />
           </div>

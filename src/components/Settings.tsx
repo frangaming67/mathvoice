@@ -105,7 +105,7 @@ export function Settings({
           <p>
             {p.guided
               ? 'Voz automática de MathVoice activada.'
-              : 'Modo lector externo: MathVoice no habla automáticamente. Los botones Escuchar permiten pedir voz explícitamente.'}
+              : 'Modo lector de pantalla: MathVoice no usa su voz. Lo que pidas escuchar lo dice tu lector y aparece en la línea braille.'}
           </p>
           <label>
             Idioma de la voz

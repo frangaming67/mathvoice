@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildGraph } from '../services/GraphClient';
 import { graphEvaluator, type GraphData } from '../services/GraphService';
 import { sonification } from '../services/SonificationService';
-import { speech } from '../services/SpeechService';
 import type { AngleMode } from '../types';
 import { GraphFigure } from './GraphFigure';
 import { useToolCommands, usePreserveReaderKeys } from '../keyboard/CommandContext';
@@ -384,7 +383,7 @@ export function Graphs({
             {coordinates}
           </p>
           <div className="actions">
-            <button onClick={() => speech.hablar(coordinates)}>Escuchar coordenadas</button>
+            <button onClick={() => announce(coordinates)}>Escuchar coordenadas</button>
             <button
               onClick={() => {
                 if (audio) {
