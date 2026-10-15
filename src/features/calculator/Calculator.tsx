@@ -19,6 +19,7 @@ import { resultSpeech } from '../../accessibility/resultSpeech';
 import { keySpeech } from '../../accessibility/symbolSpeech';
 import { toLatex, toMathML } from '../../accessibility/mathml';
 import { MathView } from '../../components/MathView';
+import { captureFocus, restoreFocus, type FocusSnapshot } from '../../keyboard/focusSnapshot';
 import { Dictation } from '../../components/Dictation';
 import { OfflineStatus } from '../../components/OfflineStatus';
 import { toggleSign } from '../../parser/toggleSign';
@@ -71,6 +72,10 @@ export function Calculator() {
   } | null>(null);
   const [vectorContext, setVectorContext] = useState<'vectors' | 'complex'>('vectors');
   const dialogOrigin = useRef<HTMLElement | null>(null);
+  // Campo y cursor antes de abrir la paleta o un diálogo de función: al cerrarse un <dialog>,
+  // Chrome deja el cursor en 0 y la función terminaba al principio de la expresión.
+  const dialogSelection = useRef<FocusSnapshot | null>(null);
+  const guidedVoice = useRef(false);
   const lastCalculation = useRef<
     Partial<
       Record<
@@ -218,6 +223,14 @@ export function Calculator() {
   useEffect(() => {
     document.title = `${viewTitle} — MathVoice`;
   }, [viewTitle]);
+  useEffect(() => {
+    guidedVoice.current = preferences.guided;
+  }, [preferences.guided]);
+  // El cursor guardado vale solo mientras la paleta o el diálogo de función siguen abiertos:
+  // si se elige otro comando, no debe mover una inserción posterior.
+  useEffect(() => {
+    if (!palette && !functionPrompt) dialogSelection.current = null;
+  }, [palette, functionPrompt]);
   // Primera visita: diálogo de bienvenida con el foco adentro. Después, directo al campo.
   const firstVisit = useRef(!preferences.welcomed);
   useEffect(() => {
@@ -238,12 +251,27 @@ export function Calculator() {
   );
 
   const announce = useCallback(
-    (text: string, voice = true) => {
+    // live: false deja el mensaje solo para la guía por voz (el lector ya lo obtiene del foco).
+    (text: string, voice = true, live = true) => {
       const warning = pendingStorageWarning.current;
       pendingStorageWarning.current = '';
       const message = [text, warning].filter(Boolean).join(' ');
       setStatus(message);
       setAnnouncementId((previous) => previous + 1);
+      const dialog = document.querySelector<HTMLDialogElement>('dialog[open]');
+      if (dialog && live && !guidedVoice.current) {
+        let region = dialog.querySelector<HTMLElement>(':scope > .dialog-status');
+        if (!region) {
+          region = document.createElement('p');
+          region.className = 'sr-only dialog-status';
+          region.setAttribute('role', 'status');
+          dialog.append(region);
+        }
+        region.textContent = '';
+        requestAnimationFrame(() => {
+          if (region) region.textContent = message;
+        });
+      }
       if (voice || warning) {
         cancelAutomatic();
         speech.hablarAutomatico(message);
@@ -338,8 +366,10 @@ export function Calculator() {
   function insert(value: string, focus = true) {
     justCalculated.current = false;
     const el = input.current;
-    const start = el?.selectionStart ?? expression.length;
-    const end = el?.selectionEnd ?? start;
+    const saved = dialogSelection.current?.element === el ? dialogSelection.current : null;
+    dialogSelection.current = null;
+    const start = saved?.start ?? el?.selectionStart ?? expression.length;
+    const end = saved?.end ?? el?.selectionEnd ?? start;
     setExpression(expression.slice(0, start) + value + expression.slice(end));
     requestAnimationFrame(() => {
       if (focus) {
@@ -534,9 +564,12 @@ export function Calculator() {
     focusTarget('keyboard-title');
   }
   function closeCommandDialog() {
+    const saved = dialogSelection.current;
+    dialogSelection.current = null;
     setPalette(false);
     setFunctionPrompt(null);
     requestAnimationFrame(() => {
+      if (restoreFocus(saved)) return;
       if (dialogOrigin.current?.getClientRects().length) dialogOrigin.current.focus();
       else document.getElementById('view-title')?.focus();
     });
@@ -549,6 +582,13 @@ export function Calculator() {
   function explicitRead(message: string) {
     cancelAutomatic();
     speech.hablar(message);
+  }
+  function announceResult() {
+    announce(
+      resultView
+        ? `Resultado: ${resultView.spoken}`
+        : 'Todavía no hay resultado en esta herramienta.',
+    );
   }
   function executeCommand(command: MathCommand) {
     setPalette(false);
@@ -570,7 +610,11 @@ export function Calculator() {
         keypadInsert(action.value);
       }
     } else if (action.type === 'function') {
-      dialogOrigin.current = document.activeElement as HTMLElement;
+      // Desde la paleta se conserva la selección guardada al abrirla.
+      if (!palette) {
+        dialogOrigin.current = document.activeElement as HTMLElement;
+        dialogSelection.current = captureFocus();
+      }
       setFunctionPrompt(command);
     } else if (action.type === 'tool') {
       openTool(action.tool);
@@ -603,6 +647,7 @@ export function Calculator() {
         }
         case 'palette':
           dialogOrigin.current = document.activeElement as HTMLElement;
+          dialogSelection.current = captureFocus();
           setPalette(true);
           break;
         case 'keyboard':
@@ -706,6 +751,7 @@ export function Calculator() {
         case 'dictation':
         case 'settings':
           navigate(action.operation);
+          if (action.operation === 'result') announceResult();
           break;
       }
     }
@@ -720,7 +766,10 @@ export function Calculator() {
       keyboardManager.handle(event, {
         settings: keyboard,
         context: activeTool === 'vectors' ? vectorContext : activeTool,
-        insideApp: !!target?.closest('.app'),
+        insideApp:
+          !!target?.closest('.app') ||
+          target === document.body ||
+          target === document.documentElement,
         insideWorkspace: !!target?.closest('[data-keyboard-workspace]'),
         editing: !!target?.closest(
           'input, textarea, select, [contenteditable=true], [role=textbox]',
@@ -738,7 +787,10 @@ export function Calculator() {
             stop: stopAll,
             read: readExpression,
             help: openHelp,
-            navigate,
+            navigate: (target) => {
+              navigate(target);
+              if (target === 'result') announceResult();
+            },
             symbolic: (operation) => {
               openTool('advanced');
               requestAnimationFrame(() => advanced.current?.selectOperation(operation));
@@ -1055,7 +1107,8 @@ export function Calculator() {
               <div
                 id="math-keyboard-area"
                 className="math-keyboard-area"
-                role="group"
+                role="application"
+                aria-roledescription="teclado matemático"
                 tabIndex={0}
                 aria-label="Área del teclado matemático"
                 aria-describedby="math-keyboard-help"
@@ -1453,7 +1506,8 @@ export function Calculator() {
                 <div
                   id="practice-area"
                   className="math-keyboard-area"
-                  role="group"
+                  role="application"
+                  aria-roledescription="práctica de teclado"
                   tabIndex={0}
                   data-keyboard-workspace
                   aria-label="Área de práctica de teclado"

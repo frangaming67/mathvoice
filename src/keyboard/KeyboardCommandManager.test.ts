@@ -73,6 +73,24 @@ it('escritura, campos editables y foco fuera del área nunca activan letras', ()
   expect(press('d').preventDefault).not.toHaveBeenCalled();
   expect(env.execute).not.toHaveBeenCalled();
 });
+it('una tecla de carácter sin función lo avisa en vez de quedar en silencio', () => {
+  const free = [...'QWYUOJKZ'].find(
+    (key) =>
+      !commands.some(
+        (command) =>
+          (command.contexts === 'all' || command.contexts.includes('basic')) &&
+          command.shortcut.split(' ')[0] === key,
+      ),
+  )!;
+  expect(press(free.toLowerCase()).preventDefault).toHaveBeenCalledOnce();
+  expect(env.announce).toHaveBeenLastCalledWith(
+    expect.stringMatching(/: sin función aquí\. Alt\+Shift\+P busca comandos\.$/),
+  );
+  expect(env.execute).not.toHaveBeenCalled();
+  // Las teclas de navegación siguen siendo del navegador.
+  for (const key of ['Tab', 'ArrowDown', 'PageDown'])
+    expect(press(key).preventDefault).not.toHaveBeenCalled();
+});
 it('la misma tecla cambia entre cálculo y matrices sin calcular todavía', () => {
   press('d');
   expect(env.execute).toHaveBeenLastCalledWith(commandById.get('derivative'));
@@ -216,4 +234,22 @@ it('Ctrl+Enter conserva activación nativa sobre enlaces y controles', () => {
   env.nativeActivation = false;
   press('Enter', { ctrlKey: true });
   expect(env.legacy).toHaveBeenCalledOnce();
+});
+
+it('reconoce los atajos con Option en Mac por la tecla física', () => {
+  const mac = (key: string, code: string) =>
+    eventShortcut({ key, code, altKey: true, shiftKey: true, ctrlKey: false, metaKey: false });
+  expect(mac('‰', 'KeyR')).toBe('Alt+Shift+R');
+  expect(mac('Ç', 'KeyC')).toBe('Alt+Shift+C');
+  expect(mac('∏', 'KeyP')).toBe('Alt+Shift+P');
+  expect(
+    eventShortcut({
+      key: 'R',
+      code: 'KeyR',
+      altKey: true,
+      shiftKey: true,
+      ctrlKey: false,
+      metaKey: false,
+    }),
+  ).toBe('Alt+Shift+R');
 });

@@ -18,6 +18,10 @@ export function focusToolField(
   selector = 'input:not([type=checkbox]), textarea',
 ) {
   requestAnimationFrame(() => {
-    if (section?.getClientRects().length) section.querySelector<HTMLElement>(selector)?.focus();
+    if (!section?.getClientRects().length) return;
+    const field = section.querySelector<HTMLElement>(selector);
+    field?.focus();
+    // El ejemplo queda seleccionado: lo que se escribe lo reemplaza en vez de pegarse al final.
+    if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) field.select();
   });
 }

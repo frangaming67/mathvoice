@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MathCommand } from '../keyboard/commands';
+import { fillFunctionTemplate } from '../keyboard/functionTemplate';
 export function FunctionPrompt({
   command,
   close,
@@ -26,10 +27,7 @@ export function FunctionPrompt({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          const expression = action.expression.replace(
-            /\$(\d+)/g,
-            (_match, index: string) => `(${values[Number(index)]})`,
-          );
+          const expression = fillFunctionTemplate(action.expression, values);
           dialog.current?.close();
           insert(expression);
         }}
@@ -59,6 +57,8 @@ export function FunctionPrompt({
           </button>
         </div>
       </form>
+      {/* Avisos con el diálogo abierto: la región viva de la página queda inerte detrás. */}
+      <p className="sr-only dialog-status" role="status" />
     </dialog>
   );
 }

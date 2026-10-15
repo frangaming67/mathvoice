@@ -1,3 +1,4 @@
+import { keySpeech } from '../accessibility/symbolSpeech';
 import { commands, type CommandContext, type MathCommand } from './commands';
 import {
   enabledCommands,
@@ -24,8 +25,20 @@ export interface KeyboardEnvironment {
   exitPractice: () => void;
 }
 
+/** Tecla del evento. En Mac, Option cambia la letra (Option+Shift+R da «‰»): se usa la física. */
+export function shortcutKey(
+  event: Pick<KeyboardEvent, 'key' | 'altKey' | 'shiftKey'> & { code?: string },
+) {
+  const key = event.key === ' ' ? 'Space' : event.key;
+  const physical = event.altKey ? event.code?.match(/^Key([A-Z])$|^Digit(\d)$/) : null;
+  if (!physical || /^[a-z0-9]$/i.test(key)) return key;
+  return physical[2] ?? (event.shiftKey ? physical[1] : physical[1].toLowerCase());
+}
+
 export function eventShortcut(
-  event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'metaKey'>,
+  event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'metaKey'> & {
+    code?: string;
+  },
 ) {
   if (
     event.metaKey ||
@@ -43,7 +56,7 @@ export function eventShortcut(
     ].includes(event.key)
   )
     return '';
-  const key = event.key === ' ' ? 'Space' : event.key;
+  const key = shortcutKey(event);
   // Shift is already represented in punctuation such as +, *, (, and ).
   const shift = event.shiftKey && (key.length > 1 || /^[a-z]$/i.test(key));
   try {
@@ -211,6 +224,15 @@ export class KeyboardCommandManager {
         this.cancelSequence();
         env.announce('Secuencia cancelada por tiempo de espera.');
       }, 4000);
+      return true;
+    }
+    // Una tecla de carácter sin función avisa en vez de quedar en silencio.
+    const character = chord.replace(/^Shift\+/, '');
+    if (character.length === 1) {
+      event.preventDefault();
+      env.announce(
+        `${chord === character ? '' : 'Shift '}${keySpeech(character)}: sin función aquí. Alt+Shift+P busca comandos.`,
+      );
       return true;
     }
     return false;

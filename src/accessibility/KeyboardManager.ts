@@ -1,3 +1,5 @@
+import { shortcutKey } from '../keyboard/KeyboardCommandManager';
+
 export function handleKeyboard(
   event: KeyboardEvent,
   actions: {
@@ -23,7 +25,7 @@ export function handleKeyboard(
   if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey || event.repeat) return;
   // Do not move focus behind a modal dialog.
   if (document.querySelector('dialog[open]')) return;
-  const key = event.key.toLowerCase();
+  const key = shortcutKey(event).toLowerCase();
   const destinations = {
     c: 'basic',
     r: 'result',

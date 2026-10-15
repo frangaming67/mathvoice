@@ -86,6 +86,14 @@ it('mantiene el foco del diálogo y permite detener la voz con Escape', () => {
   press('Escape', { altKey: false, shiftKey: false });
   expect(actions.stop).toHaveBeenCalledOnce();
 });
+it('reconoce Option+Shift en Mac aunque la tecla escriba otro carácter', () => {
+  const target = new Target();
+  targets.set('result-title', target);
+  expect(press('‰', { code: 'KeyR' }).preventDefault).toHaveBeenCalledOnce();
+  expect(target.focus).toHaveBeenCalledOnce();
+  press('∂', { code: 'KeyD' });
+  expect(actions.symbolic).toHaveBeenCalledWith('diff');
+});
 it('conserva los accesos a resultados e historial sin capturar destinos ausentes', () => {
   const target = new Target();
   targets.set('history-title', target);

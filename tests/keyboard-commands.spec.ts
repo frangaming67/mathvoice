@@ -76,7 +76,7 @@ test('modo matemático calcula, deshace y conserva escritura nativa dentro del c
   page,
 }) => {
   await page.keyboard.press('F2');
-  const area = page.getByRole('group', { name: 'Área del teclado matemático', exact: true });
+  const area = page.getByRole('application', { name: 'Área del teclado matemático', exact: true });
   await expect(area).toBeFocused();
   await page.keyboard.type('2+3');
   await page.keyboard.press('Enter');
@@ -170,7 +170,7 @@ test('edición simbólica respeta selección, Delete, Backspace y deshacer sin p
   await body.fill('12345');
   await body.evaluate((element: HTMLInputElement) => element.setSelectionRange(1, 3));
   await page.keyboard.press('F2');
-  const area = page.getByRole('group', { name: 'Área del teclado matemático', exact: true });
+  const area = page.getByRole('application', { name: 'Área del teclado matemático', exact: true });
   await expect(area).toBeFocused();
   await page.keyboard.press('9');
   await expect(body).toHaveValue('1945');
@@ -229,7 +229,7 @@ test('borrar en los extremos no deja un cursor pendiente sobre la escritura nati
     await body.press(boundary);
     await page.keyboard.press('F2');
     await expect(
-      page.getByRole('group', { name: 'Área del teclado matemático', exact: true }),
+      page.getByRole('application', { name: 'Área del teclado matemático', exact: true }),
     ).toBeFocused();
     await page.keyboard.press(erase);
     await expect(body).toHaveValue('x^3');
@@ -262,7 +262,7 @@ test('secuencia de herramienta y teclas de matriz conservan celdas y foco', asyn
   await cells.last().press('Control+Home');
   await expect(cells.first()).toBeFocused();
   await expect(cells.first()).toHaveValue('9');
-  await page.getByRole('group', { name: 'Área del teclado matemático', exact: true }).focus();
+  await page.getByRole('application', { name: 'Área del teclado matemático', exact: true }).focus();
   await page.keyboard.press('i');
   await expect(
     page.getByRole('combobox', { name: 'Operación matricial', exact: true }),
@@ -307,7 +307,9 @@ test('práctica e identificación describen sin cambiar expresión ni ejecutar f
     .getByRole('combobox', { name: 'Categoría de atajos', exact: true })
     .selectOption('Cálculo');
   await page.getByRole('button', { name: 'Practicar teclado', exact: true }).click();
-  await expect(page.getByRole('group', { name: 'Área de práctica de teclado' })).toBeFocused();
+  await expect(
+    page.getByRole('application', { name: 'Área de práctica de teclado' }),
+  ).toBeFocused();
   await page.keyboard.press('d');
   await expect(page.getByRole('status')).toContainText('Derivada');
   await expect(expression).toHaveValue('12+3');
@@ -360,7 +362,9 @@ test('personalización rechaza conflicto, persiste, exporta e importa sin acepta
   await page.reload();
   await expect(page.getByLabel('Expresión matemática', { exact: true })).toBeFocused();
   await page.keyboard.press('F2');
-  await expect(page.getByRole('group', { name: 'Área del teclado matemático' })).toBeFocused();
+  await expect(
+    page.getByRole('application', { name: 'Área del teclado matemático' }),
+  ).toBeFocused();
   await page.keyboard.press(';');
   await page.keyboard.press('q');
   await expect(page.getByRole('dialog', { name: 'Raíz cuadrada', exact: true })).toBeVisible();
@@ -384,7 +388,7 @@ test('comandos contextuales abren media, factorial, conversión y complejos sin 
 }) => {
   await page.keyboard.press('F2');
   await openTool(page, 'Estadística');
-  await page.getByRole('group', { name: 'Área del teclado matemático', exact: true }).focus();
+  await page.getByRole('application', { name: 'Área del teclado matemático', exact: true }).focus();
   await page.keyboard.press('m');
   await expect(
     page.getByRole('combobox', { name: 'Análisis estadístico', exact: true }),
@@ -393,11 +397,11 @@ test('comandos contextuales abren media, factorial, conversión y complejos sin 
   await page.getByRole('button', { name: 'Calcular estadística', exact: true }).click();
   await expect(resultValue(page, '3')).toBeVisible();
   await openTool(page, 'Probabilidad');
-  await page.getByRole('group', { name: 'Área del teclado matemático', exact: true }).focus();
+  await page.getByRole('application', { name: 'Área del teclado matemático', exact: true }).focus();
   await page.keyboard.press('f');
   await expect(page.getByLabel('Entero no negativo', { exact: true })).toBeFocused();
   await openTool(page, 'Conversores');
-  await page.getByRole('group', { name: 'Área del teclado matemático', exact: true }).focus();
+  await page.getByRole('application', { name: 'Área del teclado matemático', exact: true }).focus();
   await page.keyboard.press('t');
   await expect(
     page.getByRole('combobox', { name: 'Categoría de unidades', exact: true }),
@@ -405,7 +409,7 @@ test('comandos contextuales abren media, factorial, conversión y complejos sin 
   await expect(page.getByLabel('Valor a convertir', { exact: true })).toBeFocused();
   await openTool(page, 'Vectores y complejos');
   await page.getByLabel('Número complejo', { exact: true }).focus();
-  await page.getByRole('group', { name: 'Área del teclado matemático', exact: true }).focus();
+  await page.getByRole('application', { name: 'Área del teclado matemático', exact: true }).focus();
   await page.keyboard.press('c');
   await expect(page.getByRole('combobox', { name: 'Operación compleja', exact: true })).toHaveValue(
     'conj',
@@ -478,4 +482,76 @@ test('gráfico por comandos: coordenadas, paso, evento, pausa, continuación, ve
   await expect(
     page.getByRole('button', { name: 'Pausar sonificación', exact: true }),
   ).toBeDisabled();
+});
+test('los atajos funcionan aunque el foco quede en el cuerpo de la página', async ({ page }) => {
+  const blur = () => page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await blur();
+  await expect(page.locator('body')).toBeFocused();
+  await page.keyboard.press('Alt+Shift+k');
+  await expect(page.getByRole('heading', { name: 'Teclado y atajos', exact: true })).toBeVisible();
+  await blur();
+  await page.keyboard.press('Alt+Shift+c');
+  await expect(page.getByLabel('Expresión matemática', { exact: true })).toBeFocused();
+  await blur();
+  await page.keyboard.press('F1');
+  await expect(page.getByRole('button', { name: 'Cerrar ayuda' })).toBeVisible();
+});
+test('la paleta inserta la función donde estaba el cursor y avisa los resultados', async ({
+  page,
+}) => {
+  const expression = page.getByLabel('Expresión matemática', { exact: true });
+  const search = page.getByRole('combobox', { name: 'Buscar comando' });
+  const insertSqrt = async (value: string) => {
+    await page.keyboard.press('Alt+Shift+p');
+    await search.fill('raiz cuadrada');
+    // Con el diálogo abierto, el aviso va a una región dentro del propio diálogo.
+    await expect(
+      page.getByRole('dialog', { name: 'Paleta de comandos' }).getByRole('status'),
+    ).toHaveText('1 resultado. Flechas para recorrerlos y Enter para abrir.');
+    await search.press('Enter');
+    await page.getByLabel('Radicando', { exact: true }).fill(value);
+    await page.getByRole('button', { name: 'Insertar en expresión', exact: true }).click();
+  };
+  await expression.fill('2+');
+  await insertSqrt('25');
+  await expect(expression).toHaveValue('2+sqrt(25)');
+  await expect(expression).toBeFocused();
+  // Con una parte seleccionada, la función la reemplaza y el cursor queda después.
+  await expression.fill('(1)*3');
+  await expression.evaluate((element: HTMLInputElement) => element.setSelectionRange(1, 2));
+  await insertSqrt('4');
+  await expect(expression).toHaveValue('(sqrt(4))*3');
+  await expect
+    .poll(() => expression.evaluate((element: HTMLInputElement) => element.selectionStart))
+    .toBe('(sqrt(4)'.length);
+  await page.keyboard.press('Alt+Shift+p');
+  await search.fill('zzz');
+  await expect(
+    page.getByRole('dialog', { name: 'Paleta de comandos' }).getByRole('status'),
+  ).toHaveText('Sin resultados. Probá con otra palabra.');
+  await page.keyboard.press('Escape');
+  await expect(expression).toHaveValue('(sqrt(4))*3');
+});
+test('Alt+Shift+R lleva al resultado y lo lee', async ({ page }) => {
+  await page.keyboard.press('Alt+Shift+r');
+  await expect(page.getByRole('status')).toContainText('Todavía no hay resultado');
+  const expression = page.getByLabel('Expresión matemática', { exact: true });
+  await expression.fill('2+3');
+  await expression.press('Enter');
+  await expect(resultValue(page, '5')).toBeVisible();
+  await page.keyboard.press('Alt+Shift+r');
+  await expect(page.getByRole('heading', { name: 'Resultado', exact: true })).toBeFocused();
+  await expect(page.getByRole('status')).toContainText('Resultado: 5');
+});
+test('cancelar la paleta no deja un cursor viejo para la próxima inserción', async ({ page }) => {
+  const expression = page.getByLabel('Expresión matemática', { exact: true });
+  await expression.fill('2+');
+  await page.keyboard.press('Alt+Shift+p');
+  await page.keyboard.press('Escape');
+  await expect(expression).toBeFocused();
+  await expression.press('End');
+  await expression.pressSequentially('3+4');
+  await page.keyboard.press('F2');
+  await page.keyboard.press('*');
+  await expect(expression).toHaveValue('2+3+4*');
 });

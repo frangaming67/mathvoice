@@ -158,7 +158,7 @@ add('equation-equals', 'Insertar igualdad', '=', 'Álgebra', ['advanced'], {
 add('square', 'Elevar al cuadrado', 'Q', 'Científica', arithmetic, { type: 'insert', value: '^2' });
 add('cube', 'Elevar al cubo', 'Shift+Q', 'Científica', arithmetic, { type: 'insert', value: '^3' });
 for (const [id, name, shortcut, expression, fields] of [
-  ['power', 'Potencia', 'P', '($0)^($1)', ['Base', 'Exponente']],
+  ['power', 'Potencia', 'P', '$0^$1', ['Base', 'Exponente']],
   ['sqrt', 'Raíz cuadrada', 'R', 'sqrt($0)', ['Radicando']],
   ['cbrt', 'Raíz cúbica', 'Shift+R', 'cbrt($0)', ['Radicando']],
   ['nthroot', 'Raíz de índice n', '; N', 'nthRoot($0,$1)', ['Radicando', 'Índice']],
@@ -175,7 +175,7 @@ for (const [id, name, shortcut, expression, fields] of [
   ['ln', 'Logaritmo natural', 'Shift+L', 'ln($0)', ['Argumento']],
   ['log-base', 'Logaritmo de base personalizada', '; L', 'log($0,$1)', ['Argumento', 'Base']],
   ['exp', 'Exponencial', 'E', 'exp($0)', ['Exponente']],
-  ['fraction', 'Fracción', '', '($0)/($1)', ['Numerador', 'Denominador']],
+  ['fraction', 'Fracción', '', '$0/$1', ['Numerador', 'Denominador']],
 ] as [string, string, string, string, string[]][])
   add(
     id,

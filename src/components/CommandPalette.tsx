@@ -12,7 +12,7 @@ export function CommandPalette({
   settings: KeyboardSettings;
   execute: (command: MathCommand) => void;
   close: () => void;
-  announce: (text: string, speak?: boolean) => void;
+  announce: (text: string, speak?: boolean, live?: boolean) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const preservesReaderKeys = usePreserveReaderKeys();
@@ -28,14 +28,21 @@ export function CommandPalette({
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
+  const count = results.length === 1 ? '1 resultado' : `${results.length} resultados`;
   useEffect(() => {
+    // Con la búsqueda vacía, el diálogo ya se presenta con su descripción.
+    if (!query.trim()) return;
     const timer = setTimeout(
       () =>
-        announce(`${results.length} resultados. Usá las flechas y Enter para abrir una función.`),
+        announce(
+          results.length
+            ? `${count}. Flechas para recorrerlos y Enter para abrir.`
+            : 'Sin resultados. Probá con otra palabra.',
+        ),
       250,
     );
     return () => clearTimeout(timer);
-  }, [query, results.length, announce]);
+  }, [query, results.length, count, announce]);
   function choose(command: MathCommand) {
     dialog.current?.close();
     execute(command);
@@ -78,9 +85,12 @@ export function CommandPalette({
                 Math.min(results.length - 1, selected + (event.key === 'ArrowDown' ? 1 : -1)),
               );
               setSelected(next);
+              // El lector ya lee la opción activa: esto es solo para la guía por voz.
               if (results[next])
                 announce(
                   `${results[next].name}. ${shortcutFor(results[next], settings) || 'Sin tecla asignada'}.`,
+                  true,
+                  false,
                 );
             } else if (event.key === 'Enter') {
               event.preventDefault();
@@ -89,7 +99,7 @@ export function CommandPalette({
           }}
         />
       </label>
-      <p>{results.length} resultados.</p>
+      <p>{results.length ? `${count}.` : 'Sin resultados.'}</p>
       <ul
         id="palette-results"
         role="listbox"
@@ -120,6 +130,8 @@ export function CommandPalette({
       <button type="button" onClick={close}>
         Cancelar paleta
       </button>
+      {/* Avisos con el diálogo abierto: la región viva de la página queda inerte detrás. */}
+      <p className="sr-only dialog-status" role="status" />
     </dialog>
   );
 }
