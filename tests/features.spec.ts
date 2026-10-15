@@ -256,3 +256,28 @@ test('Escape cancela la escucha y descarta un reconocimiento tardío', async ({ 
   expect(aborted).toBe(true);
   await expect(page.getByRole('dialog', { name: 'Revisar dictado' })).not.toBeVisible();
 });
+
+test('estadística lee la coma decimal, confirma los datos y pregunta si es ambigua', async ({
+  page,
+}) => {
+  await openTool(page, 'Estadística');
+  const data = page.getByLabel('Datos X', { exact: true });
+  await data.fill('1,5;2,5;3,5');
+  await page.getByLabel('Análisis estadístico').selectOption('mean');
+  await page.getByRole('button', { name: 'Calcular estadística' }).click();
+  await expect(page.getByText('Se leyeron 3 datos: 1,5; 2,5; 3,5.')).toBeVisible();
+  await expect(resultValue(page, '2.5')).toBeVisible();
+  await data.fill('1,5, 2,5');
+  await page.getByRole('button', { name: 'Calcular estadística' }).click();
+  const choice = page.getByRole('group', { name: /No sé si la coma separa datos o es decimal/ });
+  await expect(choice).toBeVisible();
+  await expect(choice.getByRole('button').first()).toBeFocused();
+  await choice.getByRole('button', { name: /^2 datos con coma decimal/ }).click();
+  await expect(data).toHaveValue('1,5; 2,5');
+  await expect(data).toBeFocused();
+  await data.fill('1; 2; tres');
+  await page.getByRole('button', { name: 'Calcular estadística' }).click();
+  await expect(data).toHaveAttribute('aria-invalid', 'true');
+  await expect(data).toBeFocused();
+  await expect(page.getByText(/El dato 3, «tres»/)).toBeVisible();
+});

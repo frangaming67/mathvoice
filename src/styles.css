@@ -795,3 +795,19 @@ footer {
   min-height: 44px;
   padding: 0.5rem;
 }
+
+.field-error {
+  color: var(--error);
+  font-weight: 600;
+  margin-top: -0.4rem;
+}
+fieldset.choice {
+  border: 2px solid var(--focus);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  margin-block: 1rem;
+}
+fieldset.choice legend {
+  font-weight: 700;
+  padding-inline: 0.3rem;
+}
