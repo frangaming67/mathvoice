@@ -521,8 +521,28 @@ input[type='range'] {
   border-top: 1px solid var(--border);
 }
 .history-expression {
-  font-family: ui-monospace, monospace;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
   overflow-wrap: anywhere;
+}
+.history-expression > div {
+  min-width: 0;
+}
+.history-expression math {
+  font-size: 1.15rem;
+}
+.history-syntax,
+.history-value {
+  display: block;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.history-entry:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
 }
 .history-list .actions button {
   font-size: 0.75rem;

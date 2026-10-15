@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openTool, resultValue } from './navigation';
+import { historyEntry, openTool, resultValue } from './navigation';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -148,14 +148,10 @@ for (const guided of [false, true]) {
       await expect(page.getByRole('status')).toHaveAttribute('aria-live', 'polite');
     }
     await page.keyboard.press('Alt+Shift+h');
-    await expect(
-      page.getByRole('button', { name: 'Editar cálculo 9*9', exact: true }),
-    ).toBeVisible();
+    await expect(historyEntry(page, '9*9')).toBeVisible();
     await page.reload();
     await page.getByRole('link', { name: 'Historial', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Editar cálculo 9*9', exact: true })).toHaveCount(
-      0,
-    );
+    await expect(historyEntry(page, '9*9')).toHaveCount(0);
   });
 }
 
@@ -248,7 +244,7 @@ test('cancelar el vaciado explica la decisión y devuelve el foco sin perder his
   await expect(cancel).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(clear).toBeFocused();
-  await expect(page.getByRole('button', { name: 'Editar cálculo 2+3', exact: true })).toBeVisible();
+  await expect(historyEntry(page, '2+3')).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(cancel).toHaveAccessibleDescription(
     '¿Eliminar todos los cálculos guardados en este dispositivo?',

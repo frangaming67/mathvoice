@@ -8,19 +8,23 @@ function stepSpeech(step: CalculationStep, index: number) {
 export function CalculationSteps({
   steps,
   speak,
+  tabbable = true,
 }: {
   steps?: CalculationStep[];
   speak: (text: string) => void;
+  /** En el historial, la entrada es la única parada de Tab: sus controles se alcanzan igual. */
+  tabbable?: boolean;
 }) {
   if (!steps?.length) return null;
+  const tabIndex = tabbable ? undefined : -1;
   return (
     <details className="calculation-steps">
-      <summary>Procedimiento paso a paso ({steps.length} pasos)</summary>
+      <summary tabIndex={tabIndex}>Procedimiento paso a paso ({steps.length} pasos)</summary>
       <p>
         Estos pasos muestran las operaciones y comprobaciones disponibles. Las restricciones de
         dominio de la expresión original siguen vigentes.
       </p>
-      <button onClick={() => speak(steps.map(stepSpeech).join(' '))}>
+      <button tabIndex={tabIndex} onClick={() => speak(steps.map(stepSpeech).join(' '))}>
         Escuchar todos los pasos
       </button>
       <ol>
@@ -35,6 +39,7 @@ export function CalculationSteps({
               </p>
             )}
             <button
+              tabIndex={tabIndex}
               onClick={() => speak(stepSpeech(step, index))}
               aria-label={`Escuchar paso ${index + 1}: ${step.title}`}
             >

@@ -12,8 +12,16 @@ export async function openKeypad(page: Page) {
   await page.getByText('Teclado de botones y memoria', { exact: true }).click();
 }
 
+const exactly = (text: string) => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+
 /** El último resultado, por su sintaxis lineal visible (el valor accesible es MathML). */
 export function resultValue(page: Page, value: string) {
-  const exact = new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
-  return page.locator('.result-syntax').filter({ hasText: exact });
+  return page.locator('.result-syntax').filter({ hasText: exactly(value) });
+}
+
+/** Una entrada del historial, por la expresión tal como se escribió. */
+export function historyEntry(page: Page, expression: string) {
+  return page
+    .locator('li.history-entry')
+    .filter({ has: page.locator('.history-syntax', { hasText: exactly(expression) }) });
 }

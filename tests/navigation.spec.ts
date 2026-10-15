@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { openTool, resultValue } from './navigation';
+import { historyEntry, openTool, resultValue } from './navigation';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -92,7 +92,7 @@ test('historial, configuración y ayuda tienen foco y retorno predecibles', asyn
   await expect(page).toHaveTitle('Historial — MathVoice');
   await expect(expression).toBeHidden();
   await expect(page.getByRole('status')).toHaveAttribute('aria-live', 'polite');
-  await page.getByRole('button', { name: 'Editar cálculo 2+3' }).click();
+  await historyEntry(page, '2+3').getByRole('button', { name: 'Editar' }).click();
   await expect(expression).toBeFocused();
   await page.getByRole('link', { name: 'Configuración', exact: true }).click();
   const theme = page.getByRole('combobox', { name: 'Tema', exact: true });

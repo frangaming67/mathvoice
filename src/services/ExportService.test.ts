@@ -29,3 +29,20 @@ it('incluye los pasos y las fórmulas en los tres formatos', () => {
   }
   expect(JSON.parse(exportHistory(history, 'json')).calculations[0].steps).toEqual(steps);
 });
+it('el informe HTML muestra las fórmulas en MathML con su lectura y escapa el texto', () => {
+  const html = exportHistory(
+    [
+      { ...entries[0], expression: '1/3+1/6', value: '1/2' },
+      { ...entries[0], id: '2', expression: '<script>', value: '0', warnings: ['Ojo & cuidado'] },
+    ],
+    'html',
+  );
+  expect(html).toMatch(/^<!doctype html>/);
+  expect(html).toContain('<html lang="es">');
+  expect(html).toContain('2 cálculos');
+  expect(html).toContain('<mfrac>');
+  expect(html).toContain('alttext="un tercio más un sexto"');
+  expect(html).toContain('<code>&lt;script&gt;</code>');
+  expect(html).not.toContain('<script>');
+  expect(html).toContain('Aviso: Ojo &amp; cuidado');
+});

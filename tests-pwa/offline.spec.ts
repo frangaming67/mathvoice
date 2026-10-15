@@ -55,7 +55,7 @@ test('actualización requiere acción y conserva historial al recargar', async (
     await reload;
     await page.getByRole('link', { name: 'Historial', exact: true }).click();
     await expect(
-      page.getByRole('button', { name: 'Editar cálculo 2+2', exact: true }),
+      page.locator('li.history-entry .history-syntax', { hasText: /^2\+2$/ }),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Usar mi lector de pantalla' })).toHaveCount(0);
   } finally {

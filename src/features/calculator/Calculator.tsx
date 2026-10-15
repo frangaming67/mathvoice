@@ -8,7 +8,7 @@ import type {
 } from '../../types';
 import { CalculatorClient } from '../../services/CalculatorClient';
 import { preferencesService } from '../../services/PreferencesService';
-import { historyService } from '../../services/HistoryService';
+import { historyRemovalMessage, historyService } from '../../services/HistoryService';
 import { storage } from '../../services/StorageService';
 import { speech } from '../../services/SpeechService';
 import { mathSpeech } from '../../accessibility/MathSpeechFormatter';
@@ -255,6 +255,15 @@ export function Calculator() {
   useEffect(() => {
     guidedVoice.current = preferences.guided;
   }, [preferences.guided]);
+  // Otra pestaña guardó cálculos: se suman a esta sin pisar lo que se hizo acá.
+  useEffect(
+    () =>
+      historyService.subscribe((next) => {
+        currentEntries.current = next;
+        setEntries(next);
+      }),
+    [],
+  );
   useEffect(() => {
     feedbackSound.configure({ enabled: keyboard.sounds, volume: keyboard.soundVolume });
   }, [keyboard.sounds, keyboard.soundVolume]);
@@ -579,9 +588,12 @@ export function Calculator() {
       announce('No pude copiar automáticamente. Seleccioná el texto del resultado para copiarlo.');
     }
   }
+  /** La expresión de una entrada, escrita con el separador decimal que se usa ahora. */
+  const entryExpression = (entry: HistoryEntry) =>
+    convertSeparator(entry.expression, entry.separator ?? 'punto', preferences.decimalSeparator);
   function edit(entry: HistoryEntry) {
     justCalculated.current = false;
-    setExpression(entry.expression);
+    setExpression(entryExpression(entry));
     changePreferences({ ...preferences, angle: entry.angleMode });
     openTool('basic', 'expression');
     announce('Cálculo listo para editar.');
@@ -1635,24 +1647,34 @@ export function Calculator() {
             />
           </div>
           <div hidden={view !== 'history' || help}>
-            <History
-              entries={entries}
-              edit={edit}
-              recalculate={(entry) => {
-                edit(entry);
-                void calculate(entry.expression, entry.angleMode, entry.variables ?? variables);
-              }}
-              remove={(id) => {
-                saveHistory(entries.filter((e) => e.id !== id));
-                announce('Cálculo eliminado.');
-              }}
-              clear={() => {
-                saveHistory([]);
-                announce('Historial vacío.');
-              }}
-              speak={explicitRead}
-              copy={(text) => void copy(text)}
-            />
+            {/* Solo se arma al verlo: así escribir en la calculadora no recalcula el historial. */}
+            {view === 'history' && (
+              <History
+                entries={entries}
+                speechOptions={speechOptions}
+                srMath={preferences.srMath}
+                edit={edit}
+                recalculate={(entry) => {
+                  edit(entry);
+                  void calculate(
+                    entryExpression(entry),
+                    entry.angleMode,
+                    entry.variables ?? variables,
+                  );
+                }}
+                remove={(id) => {
+                  const next = entries.filter((e) => e.id !== id);
+                  saveHistory(next);
+                  announce(historyRemovalMessage(next.length));
+                }}
+                clear={() => {
+                  saveHistory([]);
+                  announce('Historial vacío.');
+                }}
+                speak={explicitRead}
+                copy={(text) => void copy(text)}
+              />
+            )}
           </div>
         </main>
         <footer>

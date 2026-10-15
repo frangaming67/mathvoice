@@ -1,4 +1,4 @@
-import { resultValue } from './navigation';
+import { historyEntry, resultValue } from './navigation';
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
@@ -13,9 +13,7 @@ test('flujo por teclado, fracciones, historial persistente y errores', async ({ 
   await expect(input).toBeFocused();
   await page.reload();
   await page.getByRole('link', { name: 'Historial', exact: true }).click();
-  await expect(
-    page.getByRole('button', { name: 'Editar cálculo 1/3 + 1/6', exact: true }),
-  ).toBeVisible();
+  await expect(historyEntry(page, '1/3 + 1/6')).toBeVisible();
   await page.getByRole('link', { name: 'Calculadora', exact: true }).click();
   await input.fill('1/0');
   await input.press('Enter');
@@ -36,7 +34,7 @@ test('modos, herramientas y recálculo conservan semántica', async ({ page }) =
   await expect(resultValue(page, '0.5')).toBeVisible();
   await page.getByLabel('Modo angular').selectOption('rad');
   await page.getByRole('link', { name: 'Historial', exact: true }).click();
-  await page.getByRole('button', { name: 'Recalcular sen(30)', exact: true }).click();
+  await historyEntry(page, 'sen(30)').getByRole('button', { name: 'Recalcular' }).click();
   await expect(page.getByLabel('Modo angular')).toHaveValue('deg');
   await expect(resultValue(page, '0.5')).toBeVisible();
   await page.getByRole('link', { name: 'Historial', exact: true }).click();
