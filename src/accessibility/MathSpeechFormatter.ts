@@ -1,6 +1,4 @@
 import {
-  create,
-  parseDependencies,
   type ArrayNode,
   type ConstantNode,
   type FunctionNode,
@@ -15,9 +13,14 @@ import { parseCommand } from '../parser/commands';
 import type { DecimalSeparator } from '../types';
 import { fractionName, speakNumber } from './numberSpeech';
 import { letterName, symbolName } from './symbolSpeech';
-
-// Solo el parser de mathjs: evita cargar todas sus funciones en el hilo principal.
-const { parse } = create({ parseDependencies });
+import {
+  isEquals,
+  literalOf as literalIn,
+  parse,
+  protect,
+  splitTop,
+  stripParens,
+} from './mathTree';
 
 export type SpeechVerbosity = 'minimal' | 'normal' | 'detailed' | 'training';
 export interface MathSpeechOptions {
@@ -220,38 +223,7 @@ const COMMANDS = new Set([
   'partfrac',
 ]);
 const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
-const LITERAL = /(?<![\w.])(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/g;
-const PLACEHOLDER = /^_n(\d+)_$/;
-
-// Cada número escrito se reemplaza por un símbolo para leer sus cifras exactas: mathjs
-// guarda los números como double y cambiaría los dígitos de los enteros grandes.
-function protect(text: string, literals: string[]): string {
-  return text
-    .split(/("[^"]*"|'[^']*')/)
-    .map((part, index) =>
-      index % 2 ? part : part.replace(LITERAL, (raw) => `(_n${literals.push(raw) - 1}_)`),
-    )
-    .join('');
-}
-function stripParens(node: MathNode): MathNode {
-  let current = node;
-  while (current.type === 'ParenthesisNode') current = (current as ParenthesisNode).content;
-  return current;
-}
-function literalOf(node: MathNode, ctx: Context): string | null {
-  const inner = stripParens(node);
-  if (inner.type === 'SymbolNode') {
-    const match = (inner as SymbolNode).name.match(PLACEHOLDER);
-    return match ? (ctx.literals[Number(match[1])] ?? null) : null;
-  }
-  if (inner.type === 'ConstantNode' && typeof (inner as ConstantNode).value === 'number')
-    return String((inner as ConstantNode).value);
-  if (inner.type === 'OperatorNode' && (inner as OperatorNode).fn === 'unaryMinus') {
-    const value = literalOf((inner as OperatorNode).args[0], ctx);
-    return value === null || value.startsWith('-') ? null : `-${value}`;
-  }
-  return null;
-}
+const literalOf = (node: MathNode, ctx: Context) => literalIn(node, ctx.literals);
 function significantCount(raw: string): number {
   const mantissa = raw.replace(/^[+-]/, '').split(/[eE]/)[0];
   return mantissa.replace(/[.,]/, '').replace(/^0+/, '').length;
@@ -522,31 +494,6 @@ function read(node: MathNode, ctx: Context): string {
   }
 }
 
-/** Divide en el nivel superior (fuera de paréntesis, corchetes y comillas). */
-function splitTop(text: string, at: (text: string, index: number) => boolean): string[] {
-  const parts: string[] = [];
-  let depth = 0;
-  let quote = '';
-  let start = 0;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (quote) {
-      if (char === quote) quote = '';
-      continue;
-    }
-    if (char === '"' || char === "'") quote = char;
-    else if (char === '(' || char === '[') depth++;
-    else if (char === ')' || char === ']') depth--;
-    else if (depth === 0 && at(text, i)) {
-      parts.push(text.slice(start, i));
-      start = i + 1;
-    }
-  }
-  parts.push(text.slice(start));
-  return parts;
-}
-const isEquals = (text: string, i: number) =>
-  text[i] === '=' && !'<>=!'.includes(text[i - 1] ?? '') && text[i + 1] !== '=';
 /** Nombre de la función si la expresión entera es una sola llamada: «diff(x^2,x)». */
 function wholeCall(text: string): string | null {
   const match = text.match(/^([a-zA-Z]+)\s*\(/);
