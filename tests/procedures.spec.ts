@@ -76,7 +76,7 @@ test('salto a intersección selecciona la curva y devuelve el foco al explorador
   await page.getByLabel('Función a explorar').selectOption('1');
   await jump.click();
   await expect(page.getByLabel('Función a explorar')).toHaveValue('0');
-  await expect(page.getByRole('button', { name: 'Explorar gráfico', exact: true })).toBeFocused();
+  await expect(page.getByRole('slider', { name: 'Explorar gráfico', exact: true })).toBeFocused();
   await expect(page.locator('.coordinates')).toHaveText('Equis igual a 0; ye igual a 0');
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('.coordinates')).toHaveText('Equis igual a 0.1; ye igual a 0.1');

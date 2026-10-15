@@ -10,6 +10,40 @@
   max-height: 420px;
   overflow: auto;
 }
+/* Explorador: un deslizador propio, porque las posiciones de los eventos no caen en la grilla. */
+.graph-explorer {
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-top: 14px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+.graph-explorer:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.graph-explorer-track {
+  position: relative;
+  height: 6px;
+  margin: 0 8px;
+  border-radius: 3px;
+  background: var(--border);
+}
+.graph-explorer-track::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: var(--at, 0%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+}
 .coordinates {
   padding: 16px;
   border: 1px solid var(--border);

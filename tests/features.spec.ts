@@ -107,7 +107,7 @@ test('variables persistentes, conversión de temperatura y exportación', async 
 test('gráfico: paso exacto de 0.01, bordes, tabla y Escape', async ({ page }) => {
   await openTool(page, 'Gráficos');
   await page.getByRole('button', { name: 'Graficar funciones' }).click();
-  const explore = page.getByRole('button', { name: 'Explorar gráfico', exact: true });
+  const explore = page.getByRole('slider', { name: 'Explorar gráfico', exact: true });
   await expect(explore).toBeVisible();
   await page.getByLabel('Paso en X').selectOption('0.01');
   await explore.focus();
@@ -142,7 +142,7 @@ test('herramientas abiertas: accesibilidad y reflow móvil', async ({ page }) =>
     ).toEqual([]);
   }
   await page.getByRole('button', { name: 'Graficar funciones' }).click();
-  await expect(page.getByRole('button', { name: 'Explorar gráfico', exact: true })).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Explorar gráfico', exact: true })).toBeVisible();
   expect(
     (
       await new AxeBuilder({ page })

@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import type { ToolId } from './toolCatalog';
-import type { AngleMode } from '../types';
+import type { AngleMode, DecimalSeparator } from '../types';
 const MatrixCalculator = lazy(() =>
   import('./MatrixCalculator').then((m) => ({ default: m.MatrixCalculator })),
 );
@@ -25,6 +25,7 @@ type Props = {
   removeVariable: (name: string) => void;
   insert: (value: string) => void;
   angle: AngleMode;
+  decimalSeparator?: DecimalSeparator;
   announce: (text: string) => void;
   graphRequest?: { id: number; expression: string };
 };
@@ -68,6 +69,7 @@ export function FeatureHub(props: Props) {
                     initialExpression={props.graphRequest?.expression}
                     variables={props.variables}
                     angle={props.angle}
+                    decimalSeparator={props.decimalSeparator}
                     announce={props.announce}
                   />
                 ) : (

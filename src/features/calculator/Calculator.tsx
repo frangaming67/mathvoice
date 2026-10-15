@@ -1320,6 +1320,7 @@ export function Calculator() {
               busy={busy}
               variables={variables}
               angle={preferences.angle}
+              decimalSeparator={preferences.decimalSeparator}
               announce={announce}
               calculate={(value) => {
                 void calculate(value);
@@ -1466,13 +1467,10 @@ export function Calculator() {
                     {result.graphable && !result.assigned && (
                       <button
                         onClick={() => {
+                          // Gráficos lee la función con el separador elegido.
                           setGraphRequest({
                             id: Date.now(),
-                            expression: convertSeparator(
-                              result.value,
-                              result.separator ?? 'punto',
-                              'punto',
-                            ),
+                            expression: reusable(result.value, result.separator),
                           });
                           openTool('graphs');
                           announce(

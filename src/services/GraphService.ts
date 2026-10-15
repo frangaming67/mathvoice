@@ -1,7 +1,7 @@
 import type { MathNode, FunctionNode, OperatorNode } from 'mathjs';
 import { math } from './mathRuntime';
 import { normalizeExpression } from '../parser/expression';
-import type { AngleMode } from '../types';
+import type { AngleMode, DecimalSeparator } from '../types';
 import { physicalScope } from './PhysicalConstants';
 export interface GraphRequest {
   expressions: string[];
@@ -11,6 +11,8 @@ export interface GraphRequest {
   maxY: number;
   angle: AngleMode;
   variables: Record<string, number>;
+  /** Con coma, las funciones se escriben «2,5*x» y los argumentos se separan con «;». */
+  decimalSeparator?: DecimalSeparator;
 }
 export interface GraphPoint {
   x: number;
@@ -35,7 +37,11 @@ export function graphEvaluator(expression: string, request: GraphRequest) {
   if (expression.length > 300) throw new Error('Usá hasta 300 caracteres por función.');
   let node: MathNode;
   try {
-    node = math.parse(normalizeExpression(expression.replace(/^y\s*=\s*/, '')));
+    node = math.parse(
+      normalizeExpression(expression.replace(/^y\s*=\s*/, ''), {
+        decimalSeparator: request.decimalSeparator,
+      }),
+    );
   } catch {
     throw new Error('No pude interpretar una función del gráfico.');
   }

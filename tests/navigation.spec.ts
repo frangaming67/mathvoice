@@ -118,7 +118,7 @@ test('salir del gráfico detiene el audio y conserva funciones y coordenadas', a
   await openTool(page, 'Gráficos');
   await expect(page.getByRole('button', { name: 'Sonificar recorrido' })).toBeVisible();
   await expect(page.getByLabel('Funciones de x, una por línea (hasta 4)')).toHaveValue('x^2+1');
-  await expect(page.getByRole('button', { name: 'Explorar gráfico', exact: true })).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Explorar gráfico', exact: true })).toBeVisible();
 });
 
 test('primera visita: la bienvenida es un diálogo con el foco adentro y habla con la primera tecla', async ({

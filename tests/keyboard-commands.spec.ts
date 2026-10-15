@@ -287,7 +287,7 @@ test('modificadores del lector conservan celdas y coordenadas aunque el foco cam
   }
   await openTool(page, 'Gráficos');
   await page.getByRole('button', { name: 'Graficar funciones', exact: true }).click();
-  const explorer = page.getByRole('button', { name: 'Explorar gráfico', exact: true });
+  const explorer = page.getByRole('slider', { name: 'Explorar gráfico', exact: true });
   await explorer.focus();
   const before = await page.locator('.coordinates').textContent();
   await page.keyboard.down('Insert');
@@ -446,7 +446,7 @@ test('gráfico por comandos: coordenadas, paso, evento, pausa, continuación, ve
     .getByRole('textbox', { name: 'Funciones de x, una por línea (hasta 4)', exact: true })
     .fill('x^2');
   await page.getByRole('button', { name: 'Graficar funciones', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Explorar gráfico', exact: true })).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Explorar gráfico', exact: true })).toBeVisible();
   await page.keyboard.press('F2');
   await page.keyboard.press('Home');
   await expect(page.locator('.coordinates')).toContainText('Equis igual a -5');
