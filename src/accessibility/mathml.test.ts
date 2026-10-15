@@ -86,4 +86,11 @@ describe('toLatex', () => {
     expect(toLatex('2.5', { decimalSeparator: 'coma' })).toBe('2{,}5');
     expect(toLatex('sqrt(')).toBeNull();
   });
+  it('con coma decimal separa elementos y argumentos con punto y coma', () => {
+    const coma = { decimalSeparator: 'coma' as const };
+    expect(toLatex('[1.5, 2]', coma)).toBe(String.raw`\left[1{,}5; 2\right]`);
+    expect(toMathML('[1, 2, 3]', coma)).toContain('<mn>1</mn><mo>;</mo><mn>2</mn>');
+    expect(toMathML('max(1, 2)', coma)).toContain('<mo>;</mo>');
+    expect(toMathML('max(1, 2)')).toContain('<mo>,</mo>');
+  });
 });

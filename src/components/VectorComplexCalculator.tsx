@@ -29,7 +29,7 @@ export function VectorComplexCalculator({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            calculate(`${op}([${a}]${['norm', 'normalize'].includes(op) ? '' : `,[${b}]`})`);
+            calculate(`${op}([${a}]${['norm', 'normalize'].includes(op) ? '' : `, [${b}]`})`);
           }}
         >
           <fieldset data-keyboard-context="vectors">
@@ -77,7 +77,7 @@ export function VectorComplexCalculator({
                 : cop === 'root'
                   ? `(${z})^(1/(${power}))`
                   : cop === 'nthRoots'
-                    ? `nthRoots(${z},${power})`
+                    ? `nthRoots(${z}, ${power})`
                     : `${cop}(${z})`,
             );
           }}

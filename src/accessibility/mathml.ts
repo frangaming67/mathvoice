@@ -92,6 +92,8 @@ const row = (...parts: string[]) =>
   parts.length === 1 ? parts[0] : `<mrow>${parts.join('')}</mrow>`;
 const fenced = (inner: string, open = '(', close = ')') =>
   `<mrow><mo>${escape(open)}</mo>${inner}<mo>${escape(close)}</mo></mrow>`;
+/** Entre argumentos o elementos: con coma decimal, «;» para no confundirlo con un decimal. */
+const separator = (ctx: Context) => (ctx.comma ? '<mo>;</mo>' : '<mo>,</mo>');
 
 function number(raw: string, ctx: Context): string {
   const negative = raw.startsWith('-');
@@ -124,7 +126,7 @@ function group(node: MathNode, ctx: Context): string {
 function functionCall(node: FunctionNode, ctx: Context): string {
   const name = node.fn.toString();
   const args = node.args;
-  const all = () => fenced(args.map((arg) => render(stripParens(arg), ctx)).join('<mo>,</mo>'));
+  const all = () => fenced(args.map((arg) => render(stripParens(arg), ctx)).join(separator(ctx)));
   switch (name) {
     case 'sqrt':
       return `<msqrt>${render(stripParens(args[0]), ctx)}</msqrt>`;
@@ -199,7 +201,7 @@ function array(node: ArrayNode, ctx: Context): string {
         )
         .join('')}</mtable>`,
     );
-  return fenced(node.items.map((item) => render(item, ctx)).join('<mo>,</mo>'), '[', ']');
+  return fenced(node.items.map((item) => render(item, ctx)).join(separator(ctx)), '[', ']');
 }
 function render(node: MathNode, ctx: Context): string {
   const raw = literalOf(node, ctx.literals);
@@ -351,7 +353,7 @@ function latex(node: MathNode, ctx: Context): string {
       const items = (node as ArrayNode).items;
       if (items.length && items.every((item) => item.type === 'ArrayNode'))
         return `\\begin{pmatrix}${(items as ArrayNode[]).map((r) => r.items.map((item) => latex(item, ctx)).join(' & ')).join(' \\\\ ')}\\end{pmatrix}`;
-      return `\\left[${items.map((item) => latex(item, ctx)).join(', ')}\\right]`;
+      return `\\left[${items.map((item) => latex(item, ctx)).join(ctx.comma ? '; ' : ', ')}\\right]`;
     }
     case 'FunctionNode': {
       const call = node as FunctionNode;
@@ -371,7 +373,7 @@ function latex(node: MathNode, ctx: Context): string {
       if (INVERSES[name]) return `\\${INVERSES[name]}^{-1}${paren(a)}`;
       // El espacio separa el comando de una letra: \sin x, no \sinx.
       if (NAMED.has(name) && call.args.length === 1) return `\\${name} ${paren(a)}`;
-      return `\\operatorname{${name}}\\left(${call.args.map((arg) => latex(stripParens(arg), ctx)).join(', ')}\\right)`;
+      return `\\operatorname{${name}}\\left(${call.args.map((arg) => latex(stripParens(arg), ctx)).join(ctx.comma ? '; ' : ', ')}\\right)`;
     }
     case 'OperatorNode': {
       const op = node as OperatorNode;

@@ -50,7 +50,7 @@ export function ProbabilityCalculator({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          calculate(`${op}(${args.join(',')})`);
+          calculate(`${op}(${args.join(', ')})`);
         }}
       >
         <label>

@@ -156,6 +156,13 @@ describe('coma decimal', () => {
       expect(again.value).toBe(first.value);
     },
   );
+  it('marca los resultados escritos con coma para poder reutilizarlos', () => {
+    expect(engine.evaluate('2,5+1', coma).separator).toBe('coma');
+    expect(engine.evaluate('2.5+1', opts()).separator).toBeUndefined();
+    expect(engine.evaluate('ans*2', opts({ decimalSeparator: 'coma', ans: '2,5' })).value).toBe(
+      '5',
+    );
+  });
   it('en modo punto la tabla de estadística avisa de la coma', () =>
     expect(fails('mean([1,5;2,5;3,5])').message).toMatch(/tabla de 3 filas y 2 columnas.*coma/));
 });

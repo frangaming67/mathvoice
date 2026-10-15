@@ -80,7 +80,7 @@ export function StatisticsCalculator({
             `${describeReading(x).text}${second ? ` Y: ${describeReading(second).text}` : ''}`,
           );
           calculate(
-            `${op}(${listExpression(x)}${second ? `,${listExpression(second)}` : op === 'stats' ? `,${sample ? 1 : 0}` : ['std', 'variance'].includes(op) ? `,"${sample ? 'unbiased' : 'uncorrected'}"` : op === 'percentile' ? `,${percentile}` : ''})`,
+            `${op}(${listExpression(x)}${second ? `, ${listExpression(second)}` : op === 'stats' ? `, ${sample ? 1 : 0}` : ['std', 'variance'].includes(op) ? `, "${sample ? 'unbiased' : 'uncorrected'}"` : op === 'percentile' ? `, ${percentile}` : ''})`,
           );
         }}
       >

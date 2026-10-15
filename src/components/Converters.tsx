@@ -28,7 +28,7 @@ export function Converters({ calculate, busy }: { calculate: (e: string) => void
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          calculate(`convert(${value},${JSON.stringify(from)},${JSON.stringify(to)})`);
+          calculate(`convert(${value}, ${JSON.stringify(from)}, ${JSON.stringify(to)})`);
         }}
       >
         <fieldset>
@@ -88,7 +88,7 @@ export function Converters({ calculate, busy }: { calculate: (e: string) => void
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          calculate(`base(${JSON.stringify(number)},${baseFrom},${baseTo})`);
+          calculate(`base(${JSON.stringify(number)}, ${baseFrom}, ${baseTo})`);
         }}
       >
         <fieldset>
@@ -122,7 +122,7 @@ export function Converters({ calculate, busy }: { calculate: (e: string) => void
         onSubmit={(e) => {
           e.preventDefault();
           calculate(
-            `bitop(${JSON.stringify(op)},${JSON.stringify(a)},${JSON.stringify(b)},${width})`,
+            `bitop(${JSON.stringify(op)}, ${JSON.stringify(a)}, ${JSON.stringify(b)}, ${width})`,
           );
         }}
       >

@@ -128,7 +128,7 @@ export function AdvancedCalculator({
           if (operation === 'substitute') args.push(point);
           if (operation === 'integrate' && definite) args.push(lower, upper);
           if (operation === 'series') args.push(point, order);
-          calculate(`${operation}(${args.join(',')})`);
+          calculate(`${operation}(${args.join(', ')})`);
         }}
       >
         <label>

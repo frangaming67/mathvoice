@@ -7,6 +7,7 @@ import type {
   SymbolNode,
 } from 'mathjs';
 import {
+  convertSeparator,
   normalizeWithMap,
   reservedWords,
   rewritePercentages,
@@ -410,8 +411,7 @@ function isExpressionInX(value: string) {
 
 // En modo coma, los resultados se muestran con coma decimal y «;» entre elementos.
 function withSeparators(text: string, settings: Settings) {
-  if (settings.decimalSeparator !== 'coma') return text;
-  return text.replace(/,/g, ';').replace(/(\d)\.(\d)/g, '$1,$2');
+  return convertSeparator(text, 'punto', settings.decimalSeparator);
 }
 
 function buildScope(
@@ -646,7 +646,9 @@ export class MathEngine {
   ): CalculationResult {
     const settings = resolveOptions(angleOrOptions);
     try {
-      return this.run(input, settings, variables);
+      const result = this.run(input, settings, variables);
+      // Quien reutilice el valor (ans, memoria) necesita saber con qué separador está escrito.
+      return settings.decimalSeparator === 'coma' ? { ...result, separator: 'coma' } : result;
     } catch (error) {
       throw translateRuntimeError(error);
     }

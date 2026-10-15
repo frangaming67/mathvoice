@@ -13,6 +13,11 @@ it('agrupa solo lo que no es atómico junto a un operador', () => {
   expect(fillFunctionTemplate('$0^$1', ['-2', '2'])).toBe('(-2)^2');
   expect(fillFunctionTemplate('$0^$1', ['sin(x)', '2'])).toBe('sin(x)^2');
 });
+it('con coma decimal separa argumentos con punto y coma sin agregar paréntesis', () => {
+  expect(fillFunctionTemplate('nthRoot($0;$1)', ['2,5', '3'])).toBe('nthRoot(2,5;3)');
+  expect(fillFunctionTemplate('log($0;$1)', ['x+1', '2'])).toBe('log(x+1;2)');
+  expect(fillFunctionTemplate('$0^$1', ['2,5', '2'])).toBe('2,5^2');
+});
 it('reconoce operandos completos', () => {
   expect(isAtomic('3.5')).toBe(true);
   expect(isAtomic('radio')).toBe(true);

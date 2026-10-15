@@ -294,7 +294,7 @@ export function MatrixCalculator({
             }
           }
           calculate(
-            `${operation}(${matrixExpression(a)}${second ? `,${matrixExpression(b)}` : ''})`,
+            `${operation}(${matrixExpression(a)}${second ? `, ${matrixExpression(b)}` : ''})`,
           );
         }}
       >

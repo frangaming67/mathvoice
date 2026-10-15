@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { AngleMode, CalculationResult, HistoryEntry, Preferences } from '../../types';
+import type {
+  AngleMode,
+  CalculationResult,
+  DecimalSeparator,
+  HistoryEntry,
+  Preferences,
+} from '../../types';
 import { CalculatorClient } from '../../services/CalculatorClient';
 import { preferencesService } from '../../services/PreferencesService';
 import { historyService } from '../../services/HistoryService';
@@ -23,6 +29,7 @@ import { captureFocus, restoreFocus, type FocusSnapshot } from '../../keyboard/f
 import { Dictation } from '../../components/Dictation';
 import { OfflineStatus } from '../../components/OfflineStatus';
 import { toggleSign } from '../../parser/toggleSign';
+import { convertSeparator } from '../../parser/expression';
 import { downloadHistory } from '../../services/ExportService';
 import { CalculationSteps } from '../../components/CalculationSteps';
 import { ToolsPage } from '../../components/ToolsPage';
@@ -61,6 +68,28 @@ export function Calculator() {
     }),
     [keyboard.verbosity, preferences.spokenDigits, preferences.decimalSeparator],
   );
+  // Preferencias numéricas que viajan a cada cálculo.
+  const numberOptions = useMemo(
+    () => ({
+      decimalSeparator: preferences.decimalSeparator,
+      numberMode: preferences.numberMode,
+      resultForm: preferences.resultForm,
+      numberFormat: preferences.numberFormat,
+      numberDigits: preferences.numberDigits,
+    }),
+    [
+      preferences.decimalSeparator,
+      preferences.numberMode,
+      preferences.resultForm,
+      preferences.numberFormat,
+      preferences.numberDigits,
+    ],
+  );
+  // Último resultado numérico, para «ans» o «resultado» dentro de una expresión.
+  const lastAnswer = useRef<{ value: string; separator: DecimalSeparator } | null>(null);
+  /** Un valor calculado antes, escrito con el separador que se usa ahora. */
+  const reusable = (value: string, separator: DecimalSeparator = 'punto') =>
+    convertSeparator(value, separator, preferences.decimalSeparator);
   const [keyboardManager] = useState(() => new KeyboardCommandManager());
   const [commandBus] = useState(() => new CommandBus());
   const [editHistory] = useState(() => new EditHistory());
@@ -226,6 +255,9 @@ export function Calculator() {
   useEffect(() => {
     guidedVoice.current = preferences.guided;
   }, [preferences.guided]);
+  useEffect(() => {
+    feedbackSound.configure({ enabled: keyboard.sounds, volume: keyboard.soundVolume });
+  }, [keyboard.sounds, keyboard.soundVolume]);
   // El cursor guardado vale solo mientras la paleta o el diálogo de función siguen abiertos:
   // si se elige otro comando, no debe mover una inserción posterior.
   useEffect(() => {
@@ -383,7 +415,9 @@ export function Calculator() {
     setError('');
     if (justCalculated.current) {
       const previous =
-        result && ['Básico', 'Científico'].includes(result.kind) ? `(${result.value})` : '';
+        result && ['Básico', 'Científico'].includes(result.kind)
+          ? `(${reusable(result.value, result.separator)})`
+          : '';
       const next = /^[+*/^%-]/.test(value) ? previous + value : value;
       setExpression(next);
       requestAnimationFrame(() => input.current?.setSelectionRange(next.length, next.length));
@@ -398,6 +432,7 @@ export function Calculator() {
             '*': 'Por',
             '/': 'Dividido por',
             '.': 'Punto decimal',
+            ',': preferences.decimalSeparator === 'coma' ? 'Coma decimal' : 'Coma',
             '%': 'Por ciento',
             '(': 'Abre paréntesis',
             ')': 'Cierra paréntesis',
@@ -423,7 +458,7 @@ export function Calculator() {
   async function memoryAction(action: 'clear' | 'recall' | 'add' | 'subtract') {
     automatic.cancel();
     if (action === 'recall') {
-      keypadInsert(`(${memory})`);
+      keypadInsert(`(${reusable(memory)})`);
       return;
     }
     if (memoryBusy.current) return;
@@ -434,12 +469,15 @@ export function Calculator() {
         return;
       }
       memoryBusy.current = true;
+      // La memoria se guarda con punto: así sirve aunque después cambie el separador.
+      const added = convertSeparator(result.value, result.separator ?? 'punto', 'punto');
       try {
         next = (
-          await client.evaluate(
-            `(${memory})${action === 'add' ? '+' : '-'}(${result.value})`,
-            preferences.angle,
-          )
+          await client.evaluate(`(${memory})${action === 'add' ? '+' : '-'}(${added})`, {
+            ...numberOptions,
+            decimalSeparator: 'punto',
+            angle: preferences.angle,
+          })
         ).value;
       } catch {
         announce('No pude guardar este resultado en memoria. Usá un número real finito.');
@@ -482,7 +520,21 @@ export function Calculator() {
     updateCalculation({ error: '', explanation: false }, targetTool);
     announce('Calculando.', false);
     try {
-      const calculated = await client.evaluate(value, angle, scope);
+      const answer = lastAnswer.current;
+      const calculated = await client.evaluate(
+        value,
+        {
+          ...numberOptions,
+          angle,
+          ans: answer ? reusable(answer.value, answer.separator) : undefined,
+        },
+        scope,
+      );
+      if (['Básico', 'Científico'].includes(calculated.kind) && !calculated.table)
+        lastAnswer.current = {
+          value: calculated.value,
+          separator: calculated.separator ?? 'punto',
+        };
       if (calculated.assigned) {
         const next = { ...variables, [calculated.assigned.name]: calculated.assigned.value };
         setVariables(next);
@@ -493,7 +545,7 @@ export function Calculator() {
       const entry = { ...calculated, id: crypto.randomUUID(), date: new Date().toISOString() };
       saveHistory([entry, ...currentEntries.current].slice(0, 100));
       announce(`Resultado: ${resultSpeech(calculated, speechOptions)}.`, preferences.autoRead);
-      if (keyboard.sounds) void feedbackSound.play('success');
+      void feedbackSound.play('success');
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'No pude completar el cálculo.';
       updateCalculation({ error: message }, targetTool);
@@ -501,7 +553,7 @@ export function Calculator() {
       if (document.activeElement === focused) origin?.focus();
       automatic.cancel();
       if (preferences.guided) speech.hablarAutomatico(message);
-      if (keyboard.sounds) void feedbackSound.play('error');
+      void feedbackSound.play('error');
     } finally {
       computing.current = false;
       setBusy(false);
@@ -625,7 +677,7 @@ export function Calculator() {
         `${command.name}. Contexto: ${command.category}. Completá los campos antes de calcular.`,
         keyboard.verbosity !== 'minimal',
       );
-      if (keyboard.sounds) void feedbackSound.play('change');
+      void feedbackSound.play('change');
     } else if (action.type === 'graph') {
       if (activeTool !== 'graphs' || view !== 'work') openTool('graphs');
       commandBus.send('graphs', action);
@@ -780,6 +832,7 @@ export function Calculator() {
         practiceCategory: practice?.category ?? '',
         execute: executeCommand,
         announce,
+        sound: (kind) => void feedbackSound.play(kind),
         stop: stopAll,
         exitPractice,
         legacy: (event) =>
@@ -1174,7 +1227,9 @@ export function Calculator() {
                     }}
                   />
                   <p className="hint" id="expression-hint">
-                    Enter para calcular · Punto para decimales · Paréntesis para agrupar
+                    {preferences.decimalSeparator === 'coma'
+                      ? 'Enter para calcular · Coma para decimales · Punto y coma entre argumentos'
+                      : 'Enter para calcular · Punto para decimales · Paréntesis para agrupar'}
                   </p>
                   <div className="actions main-actions">
                     <button type="submit" className="primary" aria-disabled={busy}>
@@ -1218,9 +1273,10 @@ export function Calculator() {
                       announce={announce}
                       onListeningChange={setListening}
                       confirm={(value, angle) => {
-                        setExpression(value);
+                        const text = convertSeparator(value, 'punto', preferences.decimalSeparator);
+                        setExpression(text);
                         if (angle) changePreferences({ ...preferences, angle });
-                        void calculate(value, angle ?? preferences.angle);
+                        void calculate(text, angle ?? preferences.angle);
                       }}
                     />
                   )}
@@ -1395,7 +1451,14 @@ export function Calculator() {
                     {result.graphable && !result.assigned && (
                       <button
                         onClick={() => {
-                          setGraphRequest({ id: Date.now(), expression: result.value });
+                          setGraphRequest({
+                            id: Date.now(),
+                            expression: convertSeparator(
+                              result.value,
+                              result.separator ?? 'punto',
+                              'punto',
+                            ),
+                          });
                           openTool('graphs');
                           announce(
                             'Resultado cargado en Gráficos. Podés editar la función y pulsar Graficar funciones.',
@@ -1458,8 +1521,9 @@ export function Calculator() {
                   }}
                   calculate={() => void calculate()}
                   busy={busy}
-                  memory={memory}
+                  memory={reusable(memory)}
                   onMemory={(action) => void memoryAction(action)}
+                  decimal={preferences.decimalSeparator}
                 />
               </details>
               <details className="panel">
@@ -1546,6 +1610,7 @@ export function Calculator() {
             <FunctionPrompt
               key={functionPrompt.id}
               command={functionPrompt}
+              decimal={preferences.decimalSeparator}
               close={closeCommandDialog}
               insert={(value) => {
                 setFunctionPrompt(null);
@@ -1563,6 +1628,12 @@ export function Calculator() {
               preferences={preferences}
               change={changePreferences}
               cancelAutomatic={cancelAutomatic}
+              feedbackSounds={{
+                enabled: keyboard.sounds,
+                volume: keyboard.soundVolume,
+                change: (sounds, soundVolume) =>
+                  changeKeyboard({ ...keyboard, sounds, soundVolume }),
+              }}
             />
           </div>
           <div hidden={view !== 'history' || help}>

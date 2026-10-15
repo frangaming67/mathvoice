@@ -404,3 +404,14 @@ export function rewritePercentages(input: MappedExpression, separator = ','): Ma
   map.push(input.map[text.length] ?? input.source.length);
   return { source: input.source, text: out.join(''), map, issues };
 }
+
+/**
+ * Pasa un texto de un separador decimal al otro. Con coma: «2,5» y «;» entre elementos; con
+ * punto: «2.5» y «,». Sirve para reutilizar un resultado (ans, memoria) después de cambiarlo.
+ */
+export function convertSeparator(text: string, from: DecimalSeparator, to: DecimalSeparator) {
+  if (from === to) return text;
+  return to === 'coma'
+    ? text.replace(/,/g, ';').replace(/(\d)\.(\d)/g, '$1,$2')
+    : text.replace(/(\d),(\d)/g, '$1.$2').replace(/;/g, ',');
+}

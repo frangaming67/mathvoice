@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MathCommand } from '../keyboard/commands';
 import { fillFunctionTemplate } from '../keyboard/functionTemplate';
+import { convertSeparator } from '../parser/expression';
+import type { DecimalSeparator } from '../types';
 export function FunctionPrompt({
   command,
   close,
   insert,
+  decimal = 'punto',
 }: {
   command: MathCommand;
+  /** Con coma decimal, los argumentos se separan con «;» como escribe el usuario. */
+  decimal?: DecimalSeparator;
   close: () => void;
   insert: (expression: string) => void;
 }) {
@@ -27,7 +32,10 @@ export function FunctionPrompt({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          const expression = fillFunctionTemplate(action.expression, values);
+          const expression = fillFunctionTemplate(
+            convertSeparator(action.expression, 'punto', decimal),
+            values,
+          );
           dialog.current?.close();
           insert(expression);
         }}

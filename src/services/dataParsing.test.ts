@@ -30,7 +30,7 @@ describe('parseList', () => {
     expect(parsed.status).toBe('ok');
     if (parsed.status === 'ok') {
       expect(parsed.reading.skippedHeader).toBe('Altura');
-      expect(listExpression(parsed.reading)).toBe('[1.70,1.65,1.82]');
+      expect(listExpression(parsed.reading)).toBe('[1.70, 1.65, 1.82]');
     }
   });
   it('señala el dato inválido y su posición', () => {

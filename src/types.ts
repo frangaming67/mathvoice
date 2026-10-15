@@ -51,6 +51,8 @@ export interface CalculationResult {
   warnings?: string[];
   /** Descripción legible de la operación, en palabras. */
   description?: string;
+  /** Separador decimal con que está escrito el valor; si falta, punto. */
+  separator?: DecimalSeparator;
 }
 export interface HistoryEntry extends CalculationResult {
   id: string;

@@ -1,7 +1,8 @@
-/** El texto ya es un operando completo: número sin signo, nombre, llamada o grupo entre paréntesis. */
+/** Operando completo: número sin signo (con punto o coma decimal), nombre, llamada o grupo. */
 export function isAtomic(value: string): boolean {
   const text = value.trim();
-  if (/^(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?$/i.test(text) || /^[a-zA-Z_]\w*$/.test(text)) return true;
+  if (/^(\d+([.,]\d*)?|[.,]\d+)(e[+-]?\d+)?$/i.test(text) || /^[a-zA-Z_]\w*$/.test(text))
+    return true;
   const open = text.match(/^[a-zA-Z_]\w*\(|^\(/)?.[0];
   if (!open || !text.endsWith(')')) return false;
   let depth = 0;
@@ -21,7 +22,8 @@ export function fillFunctionTemplate(template: string, values: readonly string[]
     const value = (values[Number(index)] ?? '').trim();
     const before = template[offset - 1];
     const after = template[offset + _match.length];
-    const argument = (before === '(' || before === ',') && (after === ')' || after === ',');
+    // Con coma decimal, los argumentos se separan con «;».
+    const argument = /[(,;]/.test(before ?? '') && /[),;]/.test(after ?? '');
     return argument || isAtomic(value) ? value : `(${value})`;
   });
 }

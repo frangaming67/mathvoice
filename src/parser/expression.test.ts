@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeExpression, normalizeWithMap, rewritePercentages } from './expression';
+import {
+  convertSeparator,
+  normalizeExpression,
+  normalizeWithMap,
+  rewritePercentages,
+} from './expression';
 
 describe('alias en español', () => {
   it.each([
@@ -136,4 +141,23 @@ describe('porcentajes', () => {
     expect(rewrite('5 % 3', ';').issues[0].message).toContain('mod(5; 3)');
   });
   it('no toca expresiones sin porcentaje', () => expect(rewrite('2+3').text).toBe('2+3'));
+});
+
+describe('convertSeparator', () => {
+  it.each([
+    ['2.5', '2,5'],
+    ['-0.25', '-0,25'],
+    ['1.5e-7', '1,5e-7'],
+    ['1/3', '1/3'],
+    ['[1.5, 2]', '[1,5; 2]'],
+    ['[[-2, 1], [1.5, -0.5]]', '[[-2; 1]; [1,5; -0,5]]'],
+    ['2 + 3.5i', '2 + 3,5i'],
+  ])('%s ↔ %s', (punto, coma) => {
+    expect(convertSeparator(punto, 'punto', 'coma')).toBe(coma);
+    expect(convertSeparator(coma, 'coma', 'punto')).toBe(punto);
+  });
+  it('no cambia nada si el separador es el mismo', () => {
+    expect(convertSeparator('2,5', 'coma', 'coma')).toBe('2,5');
+    expect(convertSeparator('[1, 2]', 'punto', 'punto')).toBe('[1, 2]');
+  });
 });

@@ -7,6 +7,8 @@ export interface KeyboardSettings {
   profile: 'simple' | 'standard' | 'advanced' | 'custom';
   verbosity: 'minimal' | 'normal' | 'detailed' | 'training';
   sounds: boolean;
+  /** Volumen propio de los sonidos de confirmación, de 0 a 1. */
+  soundVolume: number;
   overrides: Record<string, string>;
   favorites: string[];
 }
@@ -16,6 +18,7 @@ export const defaultKeyboardSettings: KeyboardSettings = {
   profile: 'standard',
   verbosity: 'normal',
   sounds: false,
+  soundVolume: 0.5,
   overrides: {},
   favorites: [],
 };
@@ -146,6 +149,8 @@ export function parseKeyboardSettings(value: unknown): KeyboardSettings {
     !['simple', 'standard', 'advanced', 'custom'].includes(String(v.profile)) ||
     !['minimal', 'normal', 'detailed', 'training'].includes(String(v.verbosity)) ||
     typeof v.sounds !== 'boolean' ||
+    (v.soundVolume !== undefined &&
+      (typeof v.soundVolume !== 'number' || !(v.soundVolume >= 0 && v.soundVolume <= 1))) ||
     !v.overrides ||
     typeof v.overrides !== 'object' ||
     Array.isArray(v.overrides) ||
@@ -168,6 +173,8 @@ export function parseKeyboardSettings(value: unknown): KeyboardSettings {
     profile: v.profile as KeyboardSettings['profile'],
     verbosity: v.verbosity as KeyboardSettings['verbosity'],
     sounds: v.sounds,
+    soundVolume:
+      typeof v.soundVolume === 'number' ? v.soundVolume : defaultKeyboardSettings.soundVolume,
     overrides,
     favorites: [...new Set(v.favorites as string[])],
   };

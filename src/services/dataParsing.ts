@@ -620,9 +620,9 @@ export function describeReading(
   };
 }
 
-/** Sintaxis de mathjs de una lista leída: «[1.5,2.5,3.5]». */
+/** Sintaxis de mathjs de una lista leída: «[1.5, 2.5, 3.5]». Con «, » vale con punto o coma. */
 export const listExpression = (reading: ListReading) =>
-  `[${reading.items.map((item) => item.expression).join(',')}]`;
+  `[${reading.items.map((item) => item.expression).join(', ')}]`;
 
 // ---------- Matrices escritas o pegadas como texto ----------
 
@@ -871,9 +871,9 @@ export function matrixExpression(cells: string[][]): string {
             if (!cell.ok) throw new Error(cell.message);
             return cell.expression;
           })
-          .join(',')}]`,
+          .join(', ')}]`,
     )
-    .join(',')}]`;
+    .join(', ')}]`;
 }
 
 const BINARY_VECTOR = ['dot', 'distance', 'vectorangle', 'add', 'subtract'];

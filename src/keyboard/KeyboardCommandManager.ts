@@ -21,6 +21,8 @@ export interface KeyboardEnvironment {
   execute: (command: MathCommand) => void;
   legacy: (event: KeyboardEvent) => void;
   announce: (text: string) => void;
+  /** Sonido breve que acompaña al aviso, si los sonidos están activados. */
+  sound?: (kind: 'sequence' | 'sequence-cancel' | 'unassigned') => void;
   stop: () => void;
   exitPractice: () => void;
 }
@@ -208,6 +210,7 @@ export class KeyboardCommandManager {
     if (this.prefix) {
       event.preventDefault();
       this.cancelSequence();
+      env.sound?.('sequence-cancel');
       env.announce('Secuencia cancelada. No se ejecutó ningún comando.');
       return true;
     }
@@ -215,6 +218,7 @@ export class KeyboardCommandManager {
       event.preventDefault();
       this.prefix = chord;
       this.prefixContext = env.context;
+      env.sound?.('sequence');
       env.announce(
         chord === 'G'
           ? 'Comando Ir a. Presioná la herramienta: D derivada, I integral, M matrices, G gráficos.'
@@ -230,6 +234,7 @@ export class KeyboardCommandManager {
     const character = chord.replace(/^Shift\+/, '');
     if (character.length === 1) {
       event.preventDefault();
+      env.sound?.('unassigned');
       env.announce(
         `${chord === character ? '' : 'Shift '}${keySpeech(character)}: sin función aquí. Alt+Shift+P busca comandos.`,
       );

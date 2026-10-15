@@ -1,3 +1,5 @@
+import type { DecimalSeparator } from '../types';
+
 const keys = [
   ['7', 'Siete'],
   ['8', 'Ocho'],
@@ -26,6 +28,7 @@ export function Keypad({
   busy,
   memory,
   onMemory,
+  decimal = 'punto',
 }: {
   insert: (value: string) => void;
   erase: () => void;
@@ -35,7 +38,10 @@ export function Keypad({
   busy: boolean;
   memory: string;
   onMemory: (action: 'clear' | 'recall' | 'add' | 'subtract') => void;
+  /** Separador decimal elegido: con coma, la tecla escribe «,». */
+  decimal?: DecimalSeparator;
 }) {
+  const decimalKey = decimal === 'coma' ? [',', 'Coma decimal'] : ['.', 'Punto decimal'];
   return (
     <div className="keypad-area">
       <div className="memory-bar" role="group" aria-label="Memoria de la calculadora">
@@ -79,17 +85,19 @@ export function Keypad({
         <button type="button" aria-label="Borrar último carácter" onClick={erase}>
           ⌫
         </button>
-        {keys.map(([value, label]) => (
-          <button
-            type="button"
-            key={value}
-            className={/[0-9.]/.test(value) ? 'key-number' : 'key-operator'}
-            aria-label={label}
-            onClick={() => insert(value)}
-          >
-            {display[value] ?? value}
-          </button>
-        ))}
+        {keys
+          .map((key) => (key[0] === '.' ? decimalKey : key))
+          .map(([value, label]) => (
+            <button
+              type="button"
+              key={value}
+              className={/[0-9.,]/.test(value) ? 'key-number' : 'key-operator'}
+              aria-label={label}
+              onClick={() => insert(value)}
+            >
+              {display[value] ?? value}
+            </button>
+          ))}
         <button type="button" aria-label="Cambiar signo de la expresión" onClick={sign}>
           ±
         </button>
