@@ -252,6 +252,9 @@ test('secuencia de herramienta y teclas de matriz conservan celdas y foco', asyn
   await cells.first().fill('9');
   await cells.first().press('Control+End');
   await expect(cells.last()).toBeFocused();
+  // Inicio va primero al principio del texto y, desde ahí, a la primera columna.
+  await cells.last().press('Home');
+  await expect(cells.last()).toBeFocused();
   await cells.last().press('Home');
   await expect(cells.nth(2)).toBeFocused();
   await cells.nth(2).press('End');

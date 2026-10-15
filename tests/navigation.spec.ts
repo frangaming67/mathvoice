@@ -57,10 +57,7 @@ test('conserva borradores y vuelve al formulario que produjo el resultado', asyn
   const body = page.getByLabel('Función o ecuación', { exact: true });
   await body.fill('x^2=25');
   await openTool(page, 'Matrices');
-  const cell = page.getByRole('spinbutton', {
-    name: 'Matriz A, fila 1, columna 1, valor 1',
-    exact: true,
-  });
+  const cell = page.getByRole('textbox', { name: 'Matriz A, fila 1, columna 1', exact: true });
   await cell.fill('9');
   await openTool(page, 'Álgebra y cálculo');
   await expect(body).toHaveValue('x^2=25');
@@ -70,7 +67,7 @@ test('conserva borradores y vuelve al formulario que produjo el resultado', asyn
   await expect(page.getByRole('heading', { name: 'Resultado', exact: true })).toBeFocused();
   await openTool(page, 'Matrices');
   await expect(
-    page.getByRole('spinbutton', { name: 'Matriz A, fila 1, columna 1, valor 9', exact: true }),
+    page.getByRole('textbox', { name: 'Matriz A, fila 1, columna 1', exact: true }),
   ).toHaveValue('9');
   // Results belong to their tool; returning restores the algebra result and its edit target.
   await expect(page.getByRole('button', { name: 'Volver a editar el cálculo' })).toHaveCount(0);

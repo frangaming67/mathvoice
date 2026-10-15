@@ -53,16 +53,19 @@ test('escala general persistente y reflow equivalente a 320 píxeles', async ({ 
 
 test('matriz editable con flechas, inversa tabular y estadística', async ({ page }) => {
   await openTool(page, 'Matrices');
-  const first = page.getByRole('spinbutton', { name: 'Matriz A, fila 1, columna 1, valor 1' });
+  const cell = (row: number, column: number) =>
+    page.getByRole('textbox', { name: `Matriz A, fila ${row}, columna ${column}`, exact: true });
+  const first = cell(1, 1);
   await first.focus();
+  // Las flechas laterales recorren el texto y pasan a la celda vecina desde el borde.
+  await first.evaluate((input: HTMLInputElement) => input.setSelectionRange(0, 0));
   await first.press('ArrowRight');
-  await expect(
-    page.getByRole('spinbutton', { name: 'Matriz A, fila 1, columna 2, valor 2' }),
-  ).toBeFocused();
+  await expect(first).toBeFocused();
+  await first.press('ArrowRight');
+  await expect(cell(1, 2)).toBeFocused();
   await page.keyboard.press('ArrowDown');
-  await expect(
-    page.getByRole('spinbutton', { name: 'Matriz A, fila 2, columna 2, valor 4' }),
-  ).toBeFocused();
+  await expect(cell(2, 2)).toBeFocused();
+  await expect(cell(2, 2)).toHaveValue('4');
   await page.getByRole('button', { name: 'Calcular matriz' }).click();
   await expect(resultValue(page, '-2')).toBeVisible();
   await page.getByLabel('Operación matricial').selectOption('inv');
@@ -280,4 +283,32 @@ test('estadística lee la coma decimal, confirma los datos y pregunta si es ambi
   await expect(data).toHaveAttribute('aria-invalid', 'true');
   await expect(data).toBeFocused();
   await expect(page.getByText(/El dato 3, «tres»/)).toBeVisible();
+});
+
+test('matrices aceptan fracciones, señalan celdas y tamaños inválidos y se pueden pegar', async ({
+  page,
+}) => {
+  await openTool(page, 'Matrices');
+  const cell = (row: number, column: number) =>
+    page.getByRole('textbox', { name: `Matriz A, fila ${row}, columna ${column}`, exact: true });
+  const calculateMatrix = () => page.getByRole('button', { name: 'Calcular matriz' }).click();
+  await cell(1, 1).fill('1/2');
+  await calculateMatrix();
+  await expect(resultValue(page, '-4')).toBeVisible();
+  await cell(1, 2).fill('dos');
+  await calculateMatrix();
+  await expect(cell(1, 2)).toBeFocused();
+  await expect(cell(1, 2)).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByText(/^A, fila 1, columna 2:/)).toBeVisible();
+  await cell(1, 2).fill('2');
+  await page.getByLabel('Columnas de A').selectOption('3');
+  await calculateMatrix();
+  await expect(page.getByRole('alert').filter({ hasText: 'una matriz cuadrada' })).toBeVisible();
+  await expect(page.getByLabel('Columnas de A')).toBeFocused();
+  await page.getByRole('button', { name: 'Escribir o pegar la matriz A' }).click();
+  await page.getByLabel('Matriz A como texto').fill('1 2\n3 4');
+  await page.getByRole('button', { name: 'Usar esta matriz' }).click();
+  await expect(page.getByLabel('Columnas de A')).toHaveValue('2');
+  await expect(cell(2, 2)).toHaveValue('4');
+  await expect(cell(1, 1)).toBeFocused();
 });
