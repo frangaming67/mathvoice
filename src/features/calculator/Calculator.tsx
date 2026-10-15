@@ -880,6 +880,7 @@ export function Calculator() {
           automatic.onFocusCapture(event);
         }}
         onChangeCapture={automatic.onChangeCapture}
+        onKeyDownCapture={automatic.onKeyDownCapture}
         onPointerOver={automatic.onPointerOver}
         onPointerOut={automatic.onPointerOut}
       >

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { FormEvent, FocusEvent, PointerEvent } from 'react';
+import type { FormEvent, FocusEvent, KeyboardEvent, PointerEvent } from 'react';
 import type { Preferences } from '../types';
 import { speech } from '../services/SpeechService';
 import { mathSpeech } from './MathSpeechFormatter';
@@ -7,6 +7,23 @@ import { mathSpeech } from './MathSpeechFormatter';
 const selector =
   'button, a, input, select, textarea, summary, h1, h2, h3, p, legend, label, li, dt, dd, td, th, tr, caption, output, [data-speech]';
 const clean = (text: string | null | undefined) => text?.trim().replace(/\s+/g, ' ') ?? '';
+const notTyped = ['checkbox', 'radio', 'range', 'button', 'submit', 'reset', 'color', 'file'];
+const modifiers = ['Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'CapsLock', 'OS'];
+function editable(target: EventTarget | null) {
+  if (target instanceof HTMLTextAreaElement) return !target.readOnly;
+  if (target instanceof HTMLInputElement)
+    return !target.readOnly && !notTyped.includes(target.type);
+  return (target as HTMLElement | null)?.isContentEditable === true;
+}
+function expressionSpeech(value: string) {
+  const lines = value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.length > 1
+    ? lines.map((line, index) => `Línea ${index + 1}: ${mathSpeech(line)}`).join('. ')
+    : mathSpeech(value);
+}
 function cellDescription(cell: HTMLTableCellElement): string {
   const row = cell.parentElement as HTMLTableRowElement | null;
   const table = cell.closest('table');
@@ -42,8 +59,11 @@ export function describeElement(element: HTMLElement): string {
       Array.from(element.labels ?? [])
         .map((l) => {
           const clone = l.cloneNode(true) as HTMLElement;
-          clone.querySelectorAll('input, select, textarea').forEach((control) => control.remove());
-          return clone.textContent?.trim();
+          // El valor visible de un deslizador va oculto en la etiqueta: se lee por aria-valuetext.
+          clone
+            .querySelectorAll('input, select, textarea, [aria-hidden="true"]')
+            .forEach((node) => node.remove());
+          return clean(clone.textContent);
         })
         .join(' ');
     if (element instanceof HTMLInputElement && element.type === 'checkbox')
@@ -56,7 +76,8 @@ export function describeElement(element: HTMLElement): string {
     if (spokenValue) return `${label}: ${spokenValue}`;
     // Matrix inputs already include coordinates and the current value in their label.
     if (explicit && /\bvalor\b/i.test(explicit)) return explicit;
-    return `${label}. ${element.value ? (element.id === 'expression' ? mathSpeech(element.value) : element.value) : 'Vacío'}`;
+    const expression = element.id === 'expression' || element.hasAttribute('data-expression');
+    return `${label}. ${element.value ? (expression ? expressionSpeech(element.value) : element.value) : 'Vacío'}`;
   }
   if (explicit) return explicit;
   if (element instanceof HTMLTableCellElement) return cellDescription(element);
@@ -75,6 +96,9 @@ export function useAutomaticSpeech(preferences: Preferences, suspended = false) 
     text: '',
     time: 0,
   });
+  // Si la página se desplaza o cambia de vista bajo un puntero quieto, el navegador genera
+  // «pointerover» sin que la persona mueva el ratón: eso no cuenta como pasar el puntero.
+  const pointer = useRef<{ x: number; y: number } | null>(null);
   const cancel = useCallback(() => {
     clearTimeout(timer.current);
     timer.current = undefined;
@@ -87,8 +111,10 @@ export function useAutomaticSpeech(preferences: Preferences, suspended = false) 
   useEffect(() => {
     if (!preferences.guided || suspended) clearTimeout(timer.current);
   }, [preferences.guided, suspended]);
-  function schedule(element: HTMLElement, delay: number) {
+  function schedule(target: HTMLElement, delay: number) {
     cancel();
+    // Una etiqueta se lee igual que su control, con su estado y su valor actual.
+    const element = (target.tagName === 'LABEL' && (target as HTMLLabelElement).control) || target;
     if (speech.readingList && element.closest('[data-preserve-reading]')) return;
     const text = describeElement(element);
     if (!text) return;
@@ -113,7 +139,14 @@ export function useAutomaticSpeech(preferences: Preferences, suspended = false) 
       if (element) schedule(element, 140);
     },
     onPointerOver(event: PointerEvent<HTMLDivElement>) {
+      const position = { x: event.clientX, y: event.clientY };
+      const still =
+        Number.isFinite(position.x) &&
+        pointer.current?.x === position.x &&
+        pointer.current?.y === position.y;
+      pointer.current = position;
       if (
+        still ||
         suspended ||
         !preferences.guided ||
         !preferences.readHover ||
@@ -135,9 +168,17 @@ export function useAutomaticSpeech(preferences: Preferences, suspended = false) 
       )
         cancel();
     },
+    // Al empezar a escribir, la lectura pendiente del campo ya no sirve y taparía el eco.
+    onKeyDownCapture(event: KeyboardEvent<HTMLDivElement>) {
+      if (!modifiers.includes(event.key) && editable(event.target)) cancel();
+    },
     onChangeCapture(event: FormEvent<HTMLDivElement>) {
-      if (suspended || !preferences.guided || !preferences.readFocus) return;
       const element = event.target;
+      if (editable(element)) {
+        cancel();
+        return;
+      }
+      if (suspended || !preferences.guided || !preferences.readFocus) return;
       if (
         element instanceof HTMLSelectElement ||
         (element instanceof HTMLInputElement &&

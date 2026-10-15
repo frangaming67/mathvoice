@@ -213,6 +213,21 @@ test('probar y pausar voz no se interrumpen por el foco de sus controles', async
   ).toEqual({ pauses: 1, resumes: 1 });
 });
 
+test('desplazar la página bajo un puntero quieto no lee lo que queda debajo', async ({ page }) => {
+  await page.getByRole('button', { name: 'Guía por voz', exact: true, pressed: false }).click();
+  await page.getByRole('link', { name: 'Configuración', exact: true }).click();
+  const spoken = () => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken);
+  const theme = page.getByRole('combobox', { name: 'Tema', exact: true });
+  await theme.scrollIntoViewIfNeeded();
+  const box = (await theme.boundingBox())!;
+  await page.mouse.move(box.x + 5, box.y + box.height / 2);
+  await expect.poll(async () => (await spoken()).at(-1)).toContain('Tema');
+  const before = (await spoken()).length;
+  await page.mouse.wheel(0, 240);
+  await page.waitForTimeout(600);
+  expect((await spoken()).slice(before)).toEqual([]);
+});
+
 test('cancelar el vaciado explica la decisión y devuelve el foco sin perder historial', async ({
   page,
 }) => {

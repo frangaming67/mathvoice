@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import type { FocusEvent, FormEvent, PointerEvent } from 'react';
+import type {
+  FocusEvent,
+  FormEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent,
+} from 'react';
 import { defaultPreferences } from '../types';
 import { speech } from '../services/SpeechService';
+import { mathSpeech } from './MathSpeechFormatter';
 import { describeElement, useAutomaticSpeech } from './useAutomaticSpeech';
 
 const cleanup = vi.hoisted(() => [] as (() => void)[]);
@@ -26,6 +32,9 @@ class Element {
   getAttribute(name: string) {
     return this.attributes[name] ?? null;
   }
+  hasAttribute(name: string) {
+    return name in this.attributes;
+  }
   closest(): Element | null {
     return this;
   }
@@ -36,8 +45,31 @@ class Element {
     return null;
   }
 }
+type LabelPart = { text: string; hidden?: boolean; control?: boolean; removed?: boolean };
+class Label {
+  constructor(private parts: LabelPart[]) {}
+  cloneNode() {
+    const parts = this.parts.map((part) => ({ ...part }));
+    return {
+      querySelectorAll: (selector: string) =>
+        parts
+          .filter(
+            (part) =>
+              (part.control && selector.includes('input')) ||
+              (part.hidden && selector.includes('[aria-hidden="true"]')),
+          )
+          .map((part) => ({ remove: () => (part.removed = true) })),
+      get textContent() {
+        return parts
+          .filter((part) => !part.removed)
+          .map((part) => part.text)
+          .join('');
+      },
+    };
+  }
+}
 class Input extends Element {
-  labels = [];
+  labels: Label[] = [];
   id = '';
   type = 'text';
   checked = false;
@@ -134,6 +166,132 @@ it('el gestor puede cancelar la lectura pendiente al pasar el puntero', () => {
   vi.advanceTimersByTime(200);
   expect(speech.hablarAutomatico).not.toHaveBeenCalled();
   expect(keyListeners.size).toBe(0);
+});
+it('no lee lo que queda bajo un puntero quieto cuando la página se desplaza', () => {
+  const automatic = useAutomaticSpeech({ ...defaultPreferences, guided: true });
+  const link = new Element();
+  link.textContent = 'Configuración';
+  const select = new Select();
+  select.attributes['aria-label'] = 'Escala general';
+  const over = (target: Element, x: number, y: number) =>
+    automatic.onPointerOver({
+      target,
+      pointerType: 'mouse',
+      relatedTarget: null,
+      clientX: x,
+      clientY: y,
+    } as unknown as PointerEvent<HTMLDivElement>);
+  over(link, 40, 20);
+  vi.advanceTimersByTime(200);
+  expect(speech.hablarAutomatico).toHaveBeenLastCalledWith('Configuración');
+  // Mismo lugar, otro elemento: lo movió el desplazamiento, no la persona.
+  over(select, 40, 20);
+  vi.advanceTimersByTime(200);
+  expect(speech.hablarAutomatico).toHaveBeenCalledOnce();
+  over(select, 42, 21);
+  vi.advanceTimersByTime(200);
+  expect(speech.hablarAutomatico).toHaveBeenLastCalledWith('Escala general: Radianes');
+});
+it('lee con mathSpeech el valor de cualquier campo de expresión', () => {
+  const graph = new TextArea();
+  graph.labels = [new Label([{ text: 'Funciones de x, una por línea (hasta 4)' }])];
+  graph.attributes['data-expression'] = 'true';
+  graph.value = 'x^2';
+  expect(describeElement(asElement(graph))).toBe(
+    `Funciones de x, una por línea (hasta 4). ${mathSpeech('x^2')}`,
+  );
+  graph.value = 'x^2\n\nsin(x)\n';
+  expect(describeElement(asElement(graph))).toBe(
+    `Funciones de x, una por línea (hasta 4). Línea 1: ${mathSpeech('x^2')}. Línea 2: ${mathSpeech('sin(x)')}`,
+  );
+  const plain = new Input();
+  plain.attributes['aria-label'] = 'Nombre de la variable';
+  plain.value = 'x^2';
+  expect(describeElement(asElement(plain))).toBe('Nombre de la variable. x^2');
+});
+it('el deslizador se nombra con su etiqueta fija y se lee con aria-valuetext', () => {
+  const slider = new Input();
+  slider.type = 'range';
+  slider.value = '1.1';
+  slider.attributes['aria-valuetext'] = '1,1 veces';
+  slider.labels = [
+    new Label([
+      { text: 'Velocidad ' },
+      { text: '1.1×', hidden: true },
+      { text: '', control: true },
+    ]),
+  ];
+  expect(describeElement(asElement(slider))).toBe('Velocidad: 1,1 veces');
+  const automatic = useAutomaticSpeech({ ...defaultPreferences, guided: true });
+  const label = Object.assign(new Element(), {
+    tagName: 'LABEL',
+    textContent: 'Velocidad: 1.1×',
+    control: slider,
+  });
+  automatic.onPointerOver({
+    target: label,
+    pointerType: 'mouse',
+    relatedTarget: null,
+  } as unknown as PointerEvent<HTMLDivElement>);
+  vi.advanceTimersByTime(200);
+  expect(speech.hablarAutomatico).toHaveBeenCalledWith('Velocidad: 1,1 veces');
+  automatic.onPointerOver({
+    target: slider,
+    pointerType: 'mouse',
+    relatedTarget: label,
+  } as unknown as PointerEvent<HTMLDivElement>);
+  vi.advanceTimersByTime(200);
+  expect(speech.hablarAutomatico).toHaveBeenCalledOnce();
+});
+it('la primera tecla en un campo editable cancela la lectura pendiente del foco', () => {
+  const automatic = useAutomaticSpeech({ ...defaultPreferences, guided: true });
+  const field = new Input();
+  field.attributes['aria-label'] = 'Expresión matemática';
+  automatic.onFocusCapture({ target: field } as unknown as FocusEvent<HTMLDivElement>);
+  automatic.onKeyDownCapture({
+    target: field,
+    key: 's',
+  } as unknown as ReactKeyboardEvent<HTMLDivElement>);
+  field.value = 's';
+  vi.advanceTimersByTime(300);
+  expect(speech.hablarAutomatico).not.toHaveBeenCalled();
+});
+it('escribir o pegar en un campo editable cancela la lectura pendiente del puntero', () => {
+  const automatic = useAutomaticSpeech({ ...defaultPreferences, guided: true });
+  const field = new TextArea();
+  field.attributes['aria-label'] = 'Funciones de x';
+  field.attributes['data-expression'] = 'true';
+  automatic.onPointerOver({
+    target: field,
+    pointerType: 'mouse',
+    relatedTarget: null,
+  } as unknown as PointerEvent<HTMLDivElement>);
+  field.value = 'x^';
+  automatic.onChangeCapture({ target: field } as unknown as FormEvent<HTMLDivElement>);
+  vi.advanceTimersByTime(300);
+  expect(speech.hablarAutomatico).not.toHaveBeenCalled();
+});
+it('las teclas modificadoras y los controles no editables conservan la lectura', () => {
+  const automatic = useAutomaticSpeech({ ...defaultPreferences, guided: true });
+  const field = new Input();
+  field.attributes['aria-label'] = 'Expresión matemática';
+  automatic.onFocusCapture({ target: field } as unknown as FocusEvent<HTMLDivElement>);
+  automatic.onKeyDownCapture({
+    target: field,
+    key: 'Shift',
+  } as unknown as ReactKeyboardEvent<HTMLDivElement>);
+  vi.advanceTimersByTime(150);
+  expect(speech.hablarAutomatico).toHaveBeenLastCalledWith('Expresión matemática. Vacío');
+  const checkbox = new Input();
+  checkbox.type = 'checkbox';
+  checkbox.attributes['aria-label'] = 'Leer teclas escritas';
+  automatic.onFocusCapture({ target: checkbox } as unknown as FocusEvent<HTMLDivElement>);
+  automatic.onKeyDownCapture({
+    target: checkbox,
+    key: ' ',
+  } as unknown as ReactKeyboardEvent<HTMLDivElement>);
+  vi.advanceTimersByTime(150);
+  expect(speech.hablarAutomatico).toHaveBeenLastCalledWith('Leer teclas escritas. Desactivado');
 });
 it('suspende foco, puntero y cambios durante el dictado', () => {
   const automatic = useAutomaticSpeech({ ...defaultPreferences, guided: true }, true);
