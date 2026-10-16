@@ -24,6 +24,20 @@ Escribí una expresión o usá el teclado numérico. Un operador después del re
 
 Usá punto para decimales y coma entre argumentos. `log` es base 10; `ln` es natural. Los modos radianes, grados y gradianes afectan la calculadora numérica y los gráficos. El cálculo simbólico usa radianes.
 
+## Calculadora de mano
+
+![MathVoice con forma de calculadora científica: pantalla LCD, cruceta y teclado](docs/capturas/calculadora.png)
+
+La pantalla principal es una calculadora científica como las de mano: pantalla LCD con la expresión en forma de libro y el resultado, cruceta, **SHIFT** (funciones impresas en dorado) y **ALPHA** (variables en rojo). El teclado es una sola parada de Tab y se recorre con las flechas; cada tecla dice su nombre, también con Shift o Alpha activos.
+
+- **S⇔D** alterna fracción y decimal; **ENG** y **←** recorren la notación de ingeniería; **°′″** pasa a grados, minutos y segundos; **FACT** descompone en primos; **a b/c** muestra la fracción mixta.
+- **STO** guarda el resultado en A–F, x, y o M; **RECALL** muestra las variables; **M+** y **M−** usan la memoria; **Ans** y **PreAns** traen los resultados anteriores.
+- **CALC** pregunta el valor de cada variable; **SOLVE** resuelve la ecuación escrita; **∫**, **d/dx** y **Σ** piden sus datos en un diálogo.
+- La cruceta trae cálculos anteriores (▲ ▼) y mueve el cursor (◀ ▶); **INS**, **UNDO**, **DEL** y **AC** editan; **OFF** apaga la pantalla y **ON** la enciende.
+- **MENU** abre los modos dentro de la pantalla (con las teclas 1–9 y A–F, o con la cruceta): Calcular, Complejos, Base-N, Matriz, Vector, Estadística, Distribución, Gráficos, Tabla, Ecuaciones y cálculo, Proporción, Hoja de cálculo, Funciones y constantes, Variables y Conversiones.
+
+**Tabla** calcula f(x) y g(x) desde un x hasta otro con un paso; la tabla se recorre con las flechas y cada celda se dice con su x. **Proporción** resuelve la regla de tres (A : B = X : D). **Hoja de cálculo** tiene cinco columnas y 45 filas: escribí sobre una celda un número o una fórmula (`A1*2`, `suma(A1:A5)`, `promedio(B1:B10)`) y Enter la guarda; **Copiar hacia abajo** corre las referencias de fila, salvo las fijadas con `$`. **Distribución** incluye la normal inversa. Las desigualdades se escriben sueltas (`x^2-4>0`) hasta grado 4, y una igualdad o desigualdad sin letras se verifica: `sqrt(2) > 1.4` da Verdadero.
+
 ## Ejemplos
 
 | Herramienta                   | Expresión                                     |
@@ -42,6 +56,9 @@ Usá punto para decimales y coma entre argumentos. `log` es base 10; `ln` es nat
 | Raíces complejas              | `nthRoots(-1,2)`                              |
 | Resumen estadístico muestral  | `stats([1,2,3,4,5],1)`                        |
 | Distribución normal acumulada | `normalcdf(1.96,0,1)`                         |
+| Normal inversa                | `invnorm(0.975,0,1)`                          |
+| Tabla de valores              | `tabla(x^2,-3,3,1)`                           |
+| Desigualdad de grado 4        | `x^4-5x^2+4<0`                                |
 | Variable persistente          | `radio=7`, después `pi*radio^2`               |
 | Temperatura                   | `convert(25,"degC","degF")`                   |
 | Base numérica                 | `base("255",10,16)`                           |

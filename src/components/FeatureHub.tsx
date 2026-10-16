@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import type { ToolId } from './toolCatalog';
-import type { AngleMode, DecimalSeparator } from '../types';
+import type { AngleMode, CalculationResult, DecimalSeparator } from '../types';
 const MatrixCalculator = lazy(() =>
   import('./MatrixCalculator').then((m) => ({ default: m.MatrixCalculator })),
 );
@@ -19,6 +19,7 @@ const Graphs = lazy(() => import('./Graphs').then((m) => ({ default: m.Graphs })
 const TableCalculator = lazy(() =>
   import('./TableCalculator').then((m) => ({ default: m.TableCalculator })),
 );
+const Spreadsheet = lazy(() => import('./Spreadsheet').then((m) => ({ default: m.Spreadsheet })));
 const RatioCalculator = lazy(() =>
   import('./RatioCalculator').then((m) => ({ default: m.RatioCalculator })),
 );
@@ -26,6 +27,8 @@ type Props = {
   active: ToolId | null;
   visited: ToolId[];
   calculate: (expression: string) => void;
+  /** Calcula sin mostrar el resultado: lo usa la hoja de cálculo para cada celda. */
+  evaluate: (expression: string, scope: Record<string, number>) => Promise<CalculationResult>;
   busy: boolean;
   variables: Record<string, number>;
   removeVariable: (name: string) => void;
@@ -39,6 +42,7 @@ const labels = [
   ['matrices', 'Matrices'],
   ['vectors', 'Vectores y complejos'],
   ['statistics', 'Estadística'],
+  ['sheet', 'Hoja de cálculo'],
   ['probability', 'Probabilidad'],
   ['variables', 'Variables'],
   ['converters', 'Conversores'],
@@ -68,6 +72,12 @@ export function FeatureHub(props: Props) {
                   <StatisticsCalculator calculate={props.calculate} busy={props.busy} />
                 ) : id === 'probability' ? (
                   <ProbabilityCalculator calculate={props.calculate} busy={props.busy} />
+                ) : id === 'sheet' ? (
+                  <Spreadsheet
+                    evaluate={props.evaluate}
+                    decimalSeparator={props.decimalSeparator}
+                    announce={props.announce}
+                  />
                 ) : id === 'table' ? (
                   <TableCalculator
                     calculate={props.calculate}

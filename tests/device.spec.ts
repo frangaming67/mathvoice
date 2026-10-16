@@ -227,3 +227,52 @@ test('MENU 7, Distribución: la normal inversa da el x de un área', async ({ pa
   await page.getByRole('button', { name: 'Calcular probabilidad' }).click();
   await expect(resultValue(page, '1.959963985')).toBeVisible();
 });
+
+test('MENU C, Hoja de cálculo: se escribe sobre la celda, fórmulas, rangos y copiar abajo', async ({
+  page,
+}) => {
+  await pressKey(page, 'Menú de modos');
+  await page.keyboard.press('C');
+  await expect(page.getByRole('heading', { name: 'Hoja de cálculo', level: 1 })).toBeVisible();
+  const sheet = page.getByRole('grid', { name: 'Hoja de cálculo' });
+  const cell = (name: string) => sheet.locator(`[data-cell="${name}"]`);
+  await expect(sheet.locator('[tabindex="0"]')).toHaveCount(1);
+  await cell('A1').focus();
+  // Escribir sobre la celda la edita en la línea de abajo; Enter guarda y baja.
+  for (const value of ['1', '2', '3', 'suma(A1:A3)']) {
+    await page.keyboard.type(value);
+    await page.keyboard.press('Enter');
+  }
+  await expect(cell('A4')).toHaveText('6');
+  await expect(cell('A5')).toBeFocused();
+  await expect(status(page)).toContainText('A4: 6. Fórmula');
+  await page.keyboard.press('ArrowUp');
+  await expect(cell('A4')).toBeFocused();
+  await expect(page.getByLabel('Contenido de A4')).toHaveValue('suma(A1:A3)');
+  // B1 = A1*10, copiada hasta la fila 3: las referencias se corren de fila.
+  await cell('B1').focus();
+  await page.keyboard.type('A1*10');
+  await page.keyboard.press('Enter');
+  await cell('B1').focus();
+  await page.getByLabel('Copiar B1 hacia abajo hasta la fila').fill('3');
+  await page.getByRole('button', { name: 'Copiar hacia abajo' }).click();
+  await expect(cell('B3')).toHaveText('30');
+  await expect(cell('B3')).toHaveAttribute('data-speech', /^B3: 30\. Fórmula: /);
+  // Un error se explica en la celda.
+  await cell('C1').focus();
+  await page.keyboard.type('1/0');
+  await page.keyboard.press('Enter');
+  await expect(cell('C1')).toHaveText('Error');
+  await expect(cell('C1')).toHaveAttribute(
+    'data-speech',
+    'C1: error. No se puede dividir por cero. Fórmula: 1 sobre 0',
+  );
+  const results = await new AxeBuilder({ page }).include('.sheet').analyze();
+  expect(results.violations).toEqual([]);
+  // La hoja queda guardada en el navegador.
+  await page.reload();
+  await page.getByRole('link', { name: 'Calculadora', exact: true }).click();
+  await pressKey(page, 'Menú de modos');
+  await page.keyboard.press('C');
+  await expect(cell('A4')).toHaveText('6');
+});

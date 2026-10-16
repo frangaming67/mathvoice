@@ -125,6 +125,14 @@ export const calculatorModes: CalculatorMode[] = [
     icon: icon(text(1, 17, 'a:b', 12)),
   },
   {
+    id: 'hoja',
+    label: 'Hoja de cálculo',
+    tool: 'sheet',
+    icon: icon(
+      <path d="M3 3 H29 V21 H3 Z M3 9 H29 M3 15 H29 M11 3 V21 M20 3 V21" strokeWidth="1.5" />,
+    ),
+  },
+  {
     id: 'funciones',
     label: 'Funciones y constantes',
     tool: 'scientific',

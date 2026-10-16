@@ -634,6 +634,22 @@ export function Calculator() {
       setBusy(false);
     }
   }
+  /** Una celda de la hoja de cálculo: con 15 cifras, para encadenar fórmulas sin perder precisión. */
+  const evaluateCell = useCallback(
+    (value: string, scope: Record<string, number>) =>
+      client.evaluate(
+        value,
+        {
+          ...numberOptions,
+          angle: preferences.angle,
+          resultForm: 'decimal',
+          numberFormat: 'normal',
+          numberDigits: 15,
+        },
+        { ...variables, ...scope },
+      ),
+    [numberOptions, preferences.angle, variables],
+  );
   // ---------- Calculadora de mano ----------
   const argumentSeparator = preferences.decimalSeparator === 'coma' ? ';' : ',';
   /**
@@ -2331,6 +2347,7 @@ export function Calculator() {
               angle={preferences.angle}
               decimalSeparator={preferences.decimalSeparator}
               announce={announce}
+              evaluate={evaluateCell}
               calculate={(value) => {
                 void calculate(value);
               }}

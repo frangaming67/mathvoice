@@ -93,9 +93,24 @@
   overflow: auto;
   max-height: 480px;
 }
-/* Tabla de valores: el foco se marca por dentro de la celda para que el borde no se corte. */
-.value-table [tabindex]:focus-visible {
+/* Tabla de valores y hoja: el foco se marca por dentro de la celda para que no se corte. */
+.value-table [tabindex]:focus-visible,
+.sheet-table [tabindex]:focus-visible {
   outline-offset: -3px;
+}
+.sheet-table td {
+  min-width: 4.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.sheet-table td,
+.sheet-table thead th {
+  text-align: center;
+}
+.sheet-table td[data-error] {
+  color: var(--error);
+}
+.sheet-editor input {
+  font-family: ui-monospace, 'Consolas', monospace;
 }
 .feature-nav {
   display: flex;

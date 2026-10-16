@@ -31,6 +31,11 @@ export const toolGroups = [
         'Media, mediana, desvío, cuartiles, correlación y regresión de tus datos.',
       ],
       [
+        'sheet',
+        'Hoja de cálculo',
+        'Cinco columnas y 45 filas con números y fórmulas, como en la calculadora de mano.',
+      ],
+      [
         'probability',
         'Probabilidad',
         'Distribuciones normal, binomial y de Poisson; combinaciones y permutaciones.',

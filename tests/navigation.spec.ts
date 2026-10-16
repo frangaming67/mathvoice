@@ -170,7 +170,7 @@ test('cada vista dice dónde estás y la lista de herramientas es una sola parad
   await sections.getByRole('link', { name: 'Herramientas', exact: true }).click();
   await expect(page).toHaveTitle('Herramientas — MathVoice');
   const items = page.locator('.tool-item');
-  await expect(items).toHaveCount(12);
+  await expect(items).toHaveCount(13);
   expect(await items.evaluateAll((list) => list.filter((item) => item.tabIndex === 0).length)).toBe(
     1,
   );
