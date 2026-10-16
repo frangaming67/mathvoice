@@ -93,6 +93,10 @@
   overflow: auto;
   max-height: 480px;
 }
+/* Tabla de valores: el foco se marca por dentro de la celda para que el borde no se corte. */
+.value-table [tabindex]:focus-visible {
+  outline-offset: -3px;
+}
 .feature-nav {
   display: flex;
   flex-wrap: wrap;

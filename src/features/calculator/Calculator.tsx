@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import {
-  UNDEFINED_CELL,
-  type AngleMode,
-  type CalculationResult,
-  type DecimalSeparator,
-  type EvaluateOptions,
-  type HistoryEntry,
-  type Preferences,
+import type {
+  AngleMode,
+  CalculationResult,
+  DecimalSeparator,
+  EvaluateOptions,
+  HistoryEntry,
+  Preferences,
 } from '../../types';
 import { CalculatorClient } from '../../services/CalculatorClient';
 import { preferencesService } from '../../services/PreferencesService';
@@ -19,6 +18,7 @@ import { Settings } from '../../components/Settings';
 import { History } from '../../components/History';
 import { Tools } from '../../components/Tools';
 import { CalculatorKeys } from '../../components/CalculatorKeys';
+import { ValueTable } from '../../components/ValueTable';
 import { LcdPanel, type LcdItem, type LcdPanelHandle } from '../../components/LcdPanel';
 import { KeyPrompt, type PromptRequest } from '../../components/KeyPrompt';
 import type { CalculatorKey, KeyFace, Layer } from '../../calculator/keys';
@@ -1621,35 +1621,12 @@ export function Calculator() {
             </div>
           )}
           {result.matrix && result.headers && (
-            <div className="result-table">
-              <table className="data-table value-table">
-                <caption>Tabla de valores</caption>
-                <thead>
-                  <tr>
-                    {result.headers.map((header) => (
-                      <th scope="col" key={header}>
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.matrix.map(([x, ...values], i) => (
-                    <tr key={i}>
-                      <th scope="row">{x}</th>
-                      {values.map((value, j) => (
-                        <td
-                          key={j}
-                          data-speech={`${result.headers![j + 1].replace('(x)', ' de equis')} en equis igual a ${mathSpeech(x, speechOptions)}: ${value === UNDEFINED_CELL ? 'no definida' : mathSpeech(value, speechOptions)}`}
-                        >
-                          {value}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ValueTable
+              key={result.expression}
+              headers={result.headers}
+              rows={result.matrix}
+              speechOptions={speechOptions}
+            />
           )}
           {result.matrix && !result.headers && (
             <div className="result-table">

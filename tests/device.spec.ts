@@ -183,11 +183,31 @@ test('MENU abre los modos Tabla y Proporción, como en la calculadora de mano', 
   await expect(page.getByRole('heading', { name: 'Tabla de valores', level: 1 })).toBeVisible();
   await page.getByLabel('g(x) = (opcional)').fill('1/x');
   await page.getByRole('button', { name: 'Calcular tabla' }).click();
-  const table = page.getByRole('table', { name: 'Tabla de valores' });
+  const table = page.getByRole('grid', { name: 'Tabla de valores' });
   await expect(table.getByRole('columnheader')).toHaveText(['x', 'f(x)', 'g(x)']);
   await expect(table.getByRole('rowheader')).toHaveText(['-3', '-2', '-1', '0', '1', '2', '3']);
-  await expect(table.getByRole('row').nth(4).getByRole('cell')).toHaveText(['0', 'No definida']);
+  await expect(table.getByRole('row').nth(4).getByRole('gridcell')).toHaveText([
+    '0',
+    'No definida',
+  ]);
   await expect(status(page)).toContainText('Tabla de valores de 7 filas');
+  // Una sola parada de Tab; las flechas van de celda en celda y cada una se dice con su x.
+  await expect(table.locator('[tabindex="0"]')).toHaveCount(1);
+  await table.getByRole('gridcell', { name: '9' }).first().focus();
+  for (const key of ['ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowRight'])
+    await page.keyboard.press(key);
+  const focused = table.locator(':focus');
+  await expect(focused).toHaveText('No definida');
+  await expect(focused).toHaveAttribute(
+    'data-speech',
+    'g de equis en equis igual a 0: no definida',
+  );
+  await page.keyboard.press('Control+End');
+  await expect(focused).toHaveText('0.3333333333');
+  await page.keyboard.press('Home');
+  await expect(focused).toHaveAttribute('data-speech', 'equis igual a 3, fila 7 de 7');
+  const results = await new AxeBuilder({ page }).include('.value-table').analyze();
+  expect(results.violations).toEqual([]);
   await page.getByRole('link', { name: 'Calculadora', exact: true }).click();
   await pressKey(page, 'Menú de modos');
   await page.keyboard.press('B');
