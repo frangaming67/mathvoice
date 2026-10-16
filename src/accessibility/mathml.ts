@@ -190,6 +190,9 @@ function functionCall(node: FunctionNode, ctx: Context): string {
         return row(sign, render(stripParens(args[0]), ctx), '<mi>d</mi>', render(args[1], ctx));
       }
       break;
+    // Tabla de valores: table(f, g, desde, hasta, paso), con su nombre en castellano.
+    case 'table':
+      return row('<mtext>Tabla</mtext>', APPLY, all());
     // Σ: sum(f, x, a, b) con la variable y los extremos abajo y arriba.
     case 'sum':
       if (args.length === 4)

@@ -13,7 +13,12 @@ import {
   rewritePercentages,
   type MappedExpression,
 } from '../parser/expression';
-import type { AngleMode, CalculationResult, EvaluateOptions } from '../types';
+import {
+  UNDEFINED_CELL,
+  type AngleMode,
+  type CalculationResult,
+  type EvaluateOptions,
+} from '../types';
 import { SymbolicEngine } from './SymbolicEngine';
 import { exactMath, math, userMath } from './mathRuntime';
 import {
@@ -118,6 +123,8 @@ const arities: Record<string, number[]> = {
   poissoncdf: [2],
 };
 const OVERFLOW = 'El resultado es demasiado grande: excede 10 elevado a 308.';
+/** Filas de una tabla de valores: alcanza para recorrerla y para escucharla entera. */
+const TABLE_ROWS = 50;
 
 interface Settings {
   angle: AngleMode;
@@ -191,8 +198,77 @@ function topLevelEquals(text: string): number[] {
   return found;
 }
 
+/** El primer comparador de nivel superior: <, >, <= o >=. */
+function topLevelRelation(text: string): { at: number; operator: string } | null {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      i++;
+      while (i < text.length && text[i] !== '"') i += text[i] === '\\' ? 2 : 1;
+    } else if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') depth--;
+    else if (depth === 0 && (c === '<' || c === '>'))
+      return { at: i, operator: text[i + 1] === '=' ? `${c}=` : c };
+  }
+  return null;
+}
+
 const isFunctionName = (child: MathNode, parent: MathNode | null) =>
   parent?.type === 'FunctionNode' && (parent as FunctionNode).fn === child;
+
+/** «x», «x e y», «x, y y z». */
+const list = (items: string[]) =>
+  items.length > 1 ? `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}` : items[0];
+
+/** Los dos lados de una ecuación o una desigualdad, ya interpretados. */
+function parseSides(sides: MappedExpression[], settings: Settings): MathNode[] {
+  const { parse } = userMath();
+  return sides.map((side) => {
+    try {
+      return parse(side.text);
+    } catch (error) {
+      throw translateSyntaxError(error, side, settings.decimalSeparator);
+    }
+  });
+}
+
+/** Letras libres de los lados: ni constantes ni nombres de funciones. */
+function freeNames(nodes: MathNode[]): string[] {
+  const free = new Set<string>();
+  nodes.forEach((node) =>
+    node.traverse((child, _path, parent) => {
+      if (child.type !== 'SymbolNode' || isFunctionName(child, parent)) return;
+      const name = (child as SymbolNode).name;
+      if (!symbols.has(name)) free.add(name);
+    }),
+  );
+  return [...free];
+}
+
+/** Los lados con las letras guardadas, menos la incógnita, reemplazadas por su valor. */
+function withValues(
+  sides: MappedExpression[],
+  nodes: MathNode[],
+  target: string,
+  names: string[],
+  variables: Record<string, number>,
+): string[] {
+  const known = names.filter((name) => name !== target);
+  if (!known.length) return sides.map((side) => side.text);
+  const { ConstantNode: Constant } = userMath().instance;
+  return nodes.map((node) =>
+    node
+      .transform((child, _path, parent) =>
+        child.type === 'SymbolNode' &&
+        known.includes((child as SymbolNode).name) &&
+        !isFunctionName(child, parent)
+          ? new Constant(variables[(child as SymbolNode).name])
+          : child,
+      )
+      .toString({ implicit: 'show' }),
+  );
+}
 
 function validate(node: MathNode, variables: Record<string, number>, mapped: MappedExpression) {
   node.traverse((child, _path, parent) => {
@@ -672,6 +748,8 @@ export class MathEngine {
       const total = this.summation(trimmed(mapped), input, settings, variables);
       if (total) return total;
     }
+    if (/^table\s*\(/.test(expression))
+      return this.valueTable(trimmed(mapped), input, settings, variables);
     if (symbolic.supports(expression)) {
       if (input.length > 500)
         throw new MathInputError(
@@ -680,6 +758,8 @@ export class MathEngine {
         );
       return this.symbolicResult(symbolic.evaluate(expression, input, settings.angle), settings);
     }
+    const relation = topLevelRelation(expression);
+    if (relation) return this.inequality(mapped, relation, input, settings, variables);
     const equals = topLevelEquals(expression);
     if (equals.length > 1)
       throw new MathInputError(
@@ -772,6 +852,100 @@ export class MathEngine {
     };
   }
 
+  /**
+   * Tabla de valores, como el modo Tabla de la calculadora de mano: table(f, desde, hasta, paso)
+   * o table(f, g, desde, hasta, paso) calcula f(x), y g(x), para x desde un valor hasta otro.
+   */
+  private valueTable(
+    mapped: MappedExpression,
+    input: string,
+    settings: Settings,
+    variables: Record<string, number>,
+  ): CalculationResult {
+    let node: MathNode;
+    try {
+      node = userMath().parse(mapped.text);
+    } catch (error) {
+      throw translateSyntaxError(error, mapped, settings.decimalSeparator);
+    }
+    const call = node as FunctionNode;
+    if (node.type !== 'FunctionNode' || ![4, 5].includes(call.args.length))
+      throw new MathInputError(
+        'Usá table(f, desde, hasta, paso) o table(f, g, desde, hasta, paso), con funciones de x.',
+        'argumentos',
+      );
+    const scope = buildScope(settings, variables, false);
+    const format = formatOf(settings);
+    const bound = (arg: MathNode, name: string) => {
+      validate(arg, variables, mapped);
+      let value: unknown;
+      try {
+        value = arg.compile().evaluate(scope);
+      } catch (error) {
+        throw translateRuntimeError(error);
+      }
+      const number = math.isFraction(value) ? fractionToNumber(value as unknown as Exact) : value;
+      if (typeof number !== 'number' || !Number.isFinite(number))
+        throw new MathInputError(`${name} de la tabla tiene que ser un número real.`, 'argumentos');
+      return number;
+    };
+    const [from, to, by] = call.args.slice(-3);
+    const first = bound(from, 'El inicio'),
+      last = bound(to, 'El final'),
+      step = bound(by, 'El paso');
+    if (step === 0)
+      throw new MathInputError('El paso de la tabla no puede ser cero.', 'argumentos');
+    const count = Math.floor((last - first) / step + 1e-9) + 1;
+    if (count < 1)
+      throw new MathInputError(
+        'Con ese paso no se llega del inicio al final. Si el final es menor que el inicio, usá un paso negativo.',
+        'argumentos',
+      );
+    if (count > TABLE_ROWS)
+      throw new MathInputError(
+        `La tabla admite hasta ${TABLE_ROWS} filas y esta tendría ${count}. Usá un paso más grande o un intervalo más corto.`,
+        'argumentos',
+      );
+    const notes = new Set<string>();
+    const terms = call.args.slice(0, -3).map((body) => {
+      validate(body, { ...variables, x: 0 }, mapped);
+      return prepare(body, notes).compile();
+    });
+    const rows: (string | null)[][] = [];
+    for (let i = 0; i < count; i++) {
+      // Sin el ruido de sumar el paso muchas veces: 0.1 * 3 es 0.3.
+      const x = Number((first + i * step).toPrecision(12));
+      scope.set('x', x);
+      const values = terms.map((term) => {
+        try {
+          const y: unknown = term.evaluate(scope);
+          const number = math.isFraction(y) ? fractionToNumber(y as unknown as Exact) : y;
+          return typeof number === 'number' && Number.isFinite(number)
+            ? formatReal(number, format)
+            : null;
+        } catch {
+          return null;
+        }
+      });
+      rows.push([formatReal(x, format), ...values]);
+    }
+    const missing = rows.flat().filter((cell) => cell === null).length;
+    const separator = settings.decimalSeparator === 'coma' ? '; ' : ', ';
+    const names = terms.length === 2 ? 'f(x) y g(x)' : 'f(x)';
+    return {
+      expression: input,
+      // Como las demás matrices: el valor se puede copiar y volver a usar.
+      value: `[${rows.map((row) => `[${row.map((cell) => cell ?? 'NaN').join(separator)}]`).join(separator)}]`,
+      matrix: rows.map((row) => row.map((cell) => cell ?? UNDEFINED_CELL)),
+      headers: ['x', 'f(x)', 'g(x)'].slice(0, terms.length + 1),
+      kind: 'Tabla',
+      angleMode: settings.angle,
+      variables,
+      explanation: `Se calculó ${names} para x desde ${formatReal(first, format)} hasta ${formatReal(last, format)} con paso ${formatReal(step, format)}: ${count} ${count === 1 ? 'fila' : 'filas'}.${missing ? ` En ${missing === 1 ? 'una celda' : `${missing} celdas`} la función no está definida o no da un número real.` : ''}`,
+      ...(notes.size && { warnings: [...notes] }),
+    };
+  }
+
   private symbolicResult(result: CalculationResult, settings: Settings): CalculationResult {
     const graphable = result.graphable ?? isExpressionInX(result.value);
     const convert = (text: string) => withSeparators(text, settings);
@@ -860,59 +1034,76 @@ export class MathEngine {
         'falta-valor',
         mapped.map[mapped.text.length] + 1,
       );
-    const { parse } = userMath();
-    const nodes = sides.map((side) => {
-      try {
-        return parse(side.text);
-      } catch (error) {
-        throw translateSyntaxError(error, side, settings.decimalSeparator);
-      }
-    });
-    const free = new Set<string>();
-    nodes.forEach((node) =>
-      node.traverse((child, _path, parent) => {
-        if (child.type !== 'SymbolNode' || isFunctionName(child, parent)) return;
-        const name = (child as SymbolNode).name;
-        if (!symbols.has(name)) free.add(name);
-      }),
-    );
-    const names = [...free];
+    const nodes = parseSides(sides, settings);
+    const names = freeNames(nodes);
     const unknown = names.filter((name) => !Object.hasOwn(variables, name));
-    const list = (items: string[]) =>
-      items.length > 1 ? `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}` : items[0];
     if (unknown.length > 1)
       throw new MathInputError(
         `La ecuación tiene más de una incógnita: ${list(unknown)}. Usá solve(ecuación, ${unknown[0]}) para elegir la variable, o guardá un valor para las demás.`,
         'ecuacion',
       );
-    if (!names.length) return this.compareSides(sides, input, settings, variables);
+    if (!names.length) return this.compareSides(sides, '=', input, settings, variables);
     if (!unknown.length && names.length > 1)
       throw new MathInputError(
         `Todas las letras de la ecuación tienen un valor guardado (${list(names)}). Para despejar una, usá solve(ecuación, ${names[0]}).`,
         'ecuacion',
       );
     const target = unknown[0] ?? names[0];
-    const known = names.filter((name) => name !== target);
-    const { ConstantNode: Constant } = userMath().instance;
-    const [left, right] = known.length
-      ? nodes.map((node) =>
-          node
-            .transform((child, _path, parent) =>
-              child.type === 'SymbolNode' &&
-              known.includes((child as SymbolNode).name) &&
-              !isFunctionName(child, parent)
-                ? new Constant(variables[(child as SymbolNode).name])
-                : child,
-            )
-            .toString({ implicit: 'show' }),
-        )
-      : sides.map((side) => side.text);
+    const [left, right] = withValues(sides, nodes, target, names, variables);
     const result = symbolic.evaluate(`solve(${left}=${right},${target})`, input, settings.angle);
     return this.symbolicResult({ ...result, expression: input }, settings);
   }
 
+  /**
+   * Una desigualdad escrita suelta, como en el modo Inecuación de la calculadora de mano: con una
+   * incógnita se resuelve por intervalos; sin letras, o con todas guardadas, se verifica.
+   */
+  private inequality(
+    mapped: MappedExpression,
+    relation: { at: number; operator: string },
+    input: string,
+    settings: Settings,
+    variables: Record<string, number>,
+  ): CalculationResult {
+    const { at, operator } = relation;
+    const sides = [trimmed(mapped, 0, at), trimmed(mapped, at + operator.length)];
+    if (!sides[0].text || !sides[1].text)
+      throw new MathInputError(
+        sides[0].text
+          ? `Falta el lado derecho de la desigualdad, después de ${operator}.`
+          : `Falta el lado izquierdo de la desigualdad, antes de ${operator}.`,
+        'ecuacion',
+        mapped.map[at] + 1,
+      );
+    if (sides.some((side) => topLevelRelation(side.text) || topLevelEquals(side.text).length))
+      throw new MathInputError(
+        'Escribí una sola desigualdad, por ejemplo x^2-4>0. Para un intervalo como 1<x<3, resolvé las dos partes por separado.',
+        'ecuacion',
+      );
+    const nodes = parseSides(sides, settings);
+    const names = freeNames(nodes);
+    const unknown = names.filter((name) => !Object.hasOwn(variables, name));
+    if (unknown.length > 1)
+      throw new MathInputError(
+        `La desigualdad tiene más de una incógnita: ${list(unknown)}. Guardá un valor para las demás.`,
+        'ecuacion',
+      );
+    // Como en las ecuaciones, una sola letra se despeja aunque tenga un valor guardado.
+    const target = unknown[0] ?? (names.length === 1 ? names[0] : undefined);
+    if (!target) return this.compareSides(sides, operator, input, settings, variables);
+    const [left, right] = withValues(sides, nodes, target, names, variables);
+    const result = symbolic.evaluate(
+      `inequality(${left}${operator}${right},${target})`,
+      input,
+      settings.angle,
+    );
+    return this.symbolicResult({ ...result, expression: input }, settings);
+  }
+
+  /** Verifica una igualdad o una desigualdad entre números: Verdadero o Falso. */
   private compareSides(
     sides: MappedExpression[],
+    operator: string,
     input: string,
     settings: Settings,
     variables: Record<string, number>,
@@ -924,17 +1115,24 @@ export class MathEngine {
     if (typeof x !== 'number' || typeof y !== 'number')
       throw new MathInputError('Solo puedo comparar dos números reales.', 'ecuacion');
     const equal = Math.abs(x - y) <= 1e-12 * Math.max(1, Math.abs(x), Math.abs(y));
+    const holds: Record<string, boolean> = {
+      '=': equal,
+      '<': !equal && x < y,
+      '<=': equal || x < y,
+      '>': !equal && x > y,
+      '>=': equal || x > y,
+    };
     const explanation = equal
       ? `Los dos lados valen ${a.result.value}.`
       : `El lado izquierdo vale ${a.result.value} y el derecho vale ${b.result.value}.`;
     return {
       expression: input,
-      value: equal ? 'Verdadero' : 'Falso',
+      value: holds[operator] ? 'Verdadero' : 'Falso',
       kind: 'Básico',
       angleMode: settings.angle,
       variables,
       description: explanation,
-      explanation: `Se calcularon los dos lados de la igualdad y se compararon. ${explanation}`,
+      explanation: `Se calcularon los dos lados de la ${operator === '=' ? 'igualdad' : 'desigualdad'} y se compararon. ${explanation}`,
     };
   }
 

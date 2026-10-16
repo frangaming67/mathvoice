@@ -40,7 +40,7 @@ test('una herramienta visible, resultado antes del teclado y cambio explícito c
   await expect(page.getByRole('button', { name: 'Calculadora', exact: true })).toBeFocused();
   await expect(expression).toBeHidden();
   // La lista es una sola parada de Tab: las flechas recorren las herramientas.
-  for (let step = 0; step < 3; step++) await page.keyboard.press('ArrowDown');
+  for (let step = 0; step < 4; step++) await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('button', { name: 'Matrices', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(
@@ -170,7 +170,7 @@ test('cada vista dice dónde estás y la lista de herramientas es una sola parad
   await sections.getByRole('link', { name: 'Herramientas', exact: true }).click();
   await expect(page).toHaveTitle('Herramientas — MathVoice');
   const items = page.locator('.tool-item');
-  await expect(items).toHaveCount(10);
+  await expect(items).toHaveCount(12);
   expect(await items.evaluateAll((list) => list.filter((item) => item.tabIndex === 0).length)).toBe(
     1,
   );

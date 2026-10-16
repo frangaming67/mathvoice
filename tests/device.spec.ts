@@ -176,3 +176,22 @@ test('el teclado es una sola parada de Tab, se recorre con flechas y pasa axe', 
   await page.setViewportSize({ width: 320, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('MENU abre los modos Tabla y Proporción, como en la calculadora de mano', async ({ page }) => {
+  await pressKey(page, 'Menú de modos');
+  await page.keyboard.press('9');
+  await expect(page.getByRole('heading', { name: 'Tabla de valores', level: 1 })).toBeVisible();
+  await page.getByLabel('g(x) = (opcional)').fill('1/x');
+  await page.getByRole('button', { name: 'Calcular tabla' }).click();
+  const table = page.getByRole('table', { name: 'Tabla de valores' });
+  await expect(table.getByRole('columnheader')).toHaveText(['x', 'f(x)', 'g(x)']);
+  await expect(table.getByRole('rowheader')).toHaveText(['-3', '-2', '-1', '0', '1', '2', '3']);
+  await expect(table.getByRole('row').nth(4).getByRole('cell')).toHaveText(['0', 'No definida']);
+  await expect(status(page)).toContainText('Tabla de valores de 7 filas');
+  await page.getByRole('link', { name: 'Calculadora', exact: true }).click();
+  await pressKey(page, 'Menú de modos');
+  await page.keyboard.press('B');
+  await expect(page.getByRole('heading', { name: 'Proporciones', level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Calcular X' }).click();
+  await expect(page.getByRole('region', { name: 'Resultado', exact: true })).toContainText('X = 6');
+});

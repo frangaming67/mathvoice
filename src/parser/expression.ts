@@ -33,6 +33,7 @@ const functionAliases: Record<string, string> = {
   npr: 'permutations',
   derivada: 'diff',
   integral: 'integrate',
+  tabla: 'table',
   limite: 'limit',
   límite: 'limit',
   resolver: 'solve',

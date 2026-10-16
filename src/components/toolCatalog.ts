@@ -13,6 +13,7 @@ export const toolGroups = [
         'Álgebra y cálculo',
         'Ecuaciones, sistemas, derivadas, integrales, límites y Taylor, con procedimiento.',
       ],
+      ['ratio', 'Proporciones', 'La regla de tres: A es a B como X es a D.'],
     ],
   },
   {
@@ -40,6 +41,11 @@ export const toolGroups = [
     label: 'Otras herramientas',
     tools: [
       ['graphs', 'Gráficos', 'Hasta 4 funciones para explorar con flechas, voz y sonido.'],
+      [
+        'table',
+        'Tabla de valores',
+        'f(x) y g(x) desde un x hasta otro, con el paso que elijas, en una tabla para recorrer.',
+      ],
       [
         'converters',
         'Conversores',

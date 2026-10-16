@@ -86,3 +86,24 @@ describe('resultSpeech', () => {
     );
   });
 });
+
+it('una tabla de valores se dice fila por fila y avisa cuántas quedan', () => {
+  const rows = (count: number) =>
+    Array.from({ length: count }, (_, i) => [String(i), String(i * i), String(i + 1)]);
+  const table = result({
+    kind: 'Tabla',
+    headers: ['x', 'f(x)', 'g(x)'],
+    matrix: [
+      ['-1', '1', 'No definida'],
+      ['0.5', '0.25', '2'],
+    ],
+  });
+  expect(resultSpeech(table)).toBe(
+    'Tabla de valores de 2 filas. equis igual a menos 1: f de equis, 1; g de equis, no definida. equis igual a 0 coma 5: f de equis, 0 coma 25; g de equis, 2',
+  );
+  const long = resultSpeech(result({ headers: ['x', 'f(x)', 'g(x)'], matrix: rows(15) }));
+  expect(long).toMatch(/^Tabla de valores de 15 filas\./);
+  expect(long).toMatch(
+    /equis igual a 11: f de equis, 121; g de equis, 12\. Y 3 filas más en la tabla$/,
+  );
+});

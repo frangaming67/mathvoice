@@ -52,7 +52,7 @@ En **Gráficos**, ingresá hasta cuatro funciones de `x`, una por línea. Config
 
 ## Alcance matemático
 
-Los sistemas simbólicos admiten entre 2 y 5 ecuaciones lineales con solución única. Las desigualdades admiten una variable y grado máximo 2; las derivadas órdenes 1–10 y Taylor órdenes 0–10. Taylor produce una aproximación local sin estimar su error ni radio de convergencia.
+Los sistemas simbólicos admiten entre 2 y 5 ecuaciones lineales con solución única. Las desigualdades admiten una variable y grado máximo 4 (se pueden escribir sueltas, como x^2-4>0; sin letras, se verifican); las derivadas órdenes 1–10 y Taylor órdenes 0–10. Taylor produce una aproximación local sin estimar su error ni radio de convergencia.
 
 Las integrales definidas requieren extremos finitos, un dominio real continuo que el análisis conservador pueda confirmar y una primitiva cerrada. Se rechazan integrales impropias y también puede rechazarse una integral válida cuyo dominio no pueda verificarse. El CAS no garantiza resolver toda ecuación o límite ni enumerar todas las raíces de ecuaciones trascendentes.
 

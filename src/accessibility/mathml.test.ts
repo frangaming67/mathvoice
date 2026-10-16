@@ -105,5 +105,6 @@ describe('notación de la calculadora científica', () => {
     expect(toMathML('diff(x^3, x)')).toContain('<mfrac><mi>d</mi><mrow><mi>d</mi><mi>x</mi>');
     expect(toLatex('sum(x^2, x, 1, 10)')).toBe(String.raw`\sum_{x=1}^{10}\left({x}^{2}\right)`);
     expect(toLatex('30°')).toBe(String.raw`30^\circ`);
+    expect(toMathML('table(x^2, -3, 3, 1)')).toContain('<mtext>Tabla</mtext>');
   });
 });

@@ -132,10 +132,30 @@ it.each([
   ['inequality(x^2+1<0,x)', ['Sin soluciones reales']],
   ['inequality(2*x+4>0,x)', ['Desde -2 excluido hasta más infinito excluido']],
   ['inequality(1<=2,x)', ['Todos los números reales']],
+  // Grado 3 y 4, como el modo Inecuación de la calculadora de mano.
+  ['inequality(x^3>0,x)', ['Desde 0 excluido hasta más infinito excluido']],
+  [
+    'inequality(x^3-x>=0,x)',
+    ['Desde -1 incluido hasta 0 incluido', 'Desde 1 incluido hasta más infinito excluido'],
+  ],
+  [
+    'inequality(x^4-5*x^2+4<0,x)',
+    ['Desde -2 excluido hasta -1 excluido', 'Desde 1 excluido hasta 2 excluido'],
+  ],
+  [
+    'inequality((x-1)^2*(x+2)>0,x)',
+    ['Desde -2 excluido hasta 1 excluido', 'Desde 1 excluido hasta más infinito excluido'],
+  ],
+  [
+    'inequality((x-1)^2*(x+2)<=0,x)',
+    ['Desde menos infinito excluido hasta -2 incluido', 'x igual a 1'],
+  ],
+  ['inequality(x^4+1>0,x)', ['Todos los números reales']],
+  ['inequality(x^3-2>0,x)', ['Desde 1.2599210498949 excluido hasta más infinito excluido']],
 ])('resuelve conjuntos e inclusiones: %s', (expression, expected) => {
   expect(engine.evaluate(expression).table?.map((row) => row.value)).toEqual(expected);
 });
-it.each(['inequality(1/x>0,x)', 'inequality(x^3>0,x)', 'inequality(x+y>0,x)'])(
+it.each(['inequality(1/x>0,x)', 'inequality(x^5>0,x)', 'inequality(x+y>0,x)'])(
   'explica el alcance de desigualdades: %s',
   (e) => expect(() => engine.evaluate(e)).toThrow(),
 );

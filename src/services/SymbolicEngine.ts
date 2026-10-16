@@ -480,6 +480,49 @@ function polynomialValue(coefficients: number[], z: Value) {
   }
   return { value: modulus(value), size };
 }
+/**
+ * Raíces reales de un polinomio (coeficientes de menor a mayor grado). Las raíces de la derivada
+ * parten la recta en tramos donde el polinomio es monótono: en cada tramo con cambio de signo hay
+ * una raíz, que se encierra por bisección; un punto crítico donde el polinomio se anula es una
+ * raíz doble (la curva toca el eje sin cruzarlo).
+ */
+function realPolynomialRoots(coefficients: number[]): number[] {
+  const degree = coefficients.length - 1;
+  const p = (x: number) => coefficients.reduceRight((value, c) => value * x + c, 0);
+  const scale = (x: number) =>
+    coefficients.reduce((sum, c, i) => sum + Math.abs(c * x ** i), 0) || 1;
+  if (degree < 1) return [];
+  if (degree === 1) return [-coefficients[0] / coefficients[1]];
+  if (degree === 2) {
+    const [c, b, a] = coefficients;
+    const discriminant = b * b - 4 * a * c;
+    if (Math.abs(discriminant) <= 1e-12 * (b * b + Math.abs(4 * a * c))) return [-b / (2 * a)];
+    if (discriminant < 0) return [];
+    const q = -(b + Math.sign(b || 1) * Math.sqrt(discriminant)) / 2;
+    return [q / a, c / q].sort((x, y) => x - y);
+  }
+  const critical = realPolynomialRoots(coefficients.slice(1).map((c, i) => c * (i + 1)));
+  const bound =
+    1 + Math.max(...coefficients.slice(0, -1).map((c) => Math.abs(c / coefficients[degree])));
+  const points = [-bound, ...critical.filter((x) => Math.abs(x) < bound), bound];
+  const roots = critical.filter((x) => Math.abs(p(x)) <= 1e-12 * scale(x));
+  for (let i = 0; i < points.length - 1; i++) {
+    let low = points[i],
+      high = points[i + 1];
+    const start = Math.sign(p(low));
+    if (!start || !Math.sign(p(high)) || start === Math.sign(p(high))) continue;
+    for (let mid = (low + high) / 2; mid !== low && mid !== high; mid = (low + high) / 2) {
+      const sign = Math.sign(p(mid));
+      if (!sign) low = high = mid;
+      else if (sign === start) low = mid;
+      else high = mid;
+    }
+    roots.push((low + high) / 2);
+  }
+  return roots
+    .sort((a, b) => a - b)
+    .filter((x, i, all) => i === 0 || x - all[i - 1] > 1e-9 * Math.max(1, Math.abs(x)));
+}
 function periodOf(residual: string, v: string): number | null {
   if (!/\b(sin|cos|tan|sec|csc|cot)\(/.test(residual)) return null;
   const f = evaluatorOf(residual) ?? never;
@@ -1663,7 +1706,7 @@ export class SymbolicEngine {
     const [, left, operator, right] = match;
     if (!polynomial(safeExpression(left)) || !polynomial(safeExpression(right)))
       throw new SymbolicError(
-        'Las desigualdades admiten polinomios de una variable, hasta grado 2.',
+        'Las desigualdades admiten polinomios de una variable, hasta grado 4.',
       );
     const body = casText(`expand((${toCas(left)})-(${toCas(right)}))`);
     if (casVariables(body).some((name) => name !== v))
@@ -1672,22 +1715,25 @@ export class SymbolicEngine {
     const coefficientExpressions = splitArguments(raw.slice(1, -1));
     const coefficients = coefficientExpressions.map(numberOf);
     while (coefficients.length > 1 && coefficients.at(-1) === 0) coefficients.pop();
-    if (!coefficients.length || coefficients.length > 3 || !coefficients.every(Number.isFinite))
+    if (!coefficients.length || coefficients.length > 5 || !coefficients.every(Number.isFinite))
       throw new SymbolicError(
-        'Las desigualdades admiten coeficientes reales finitos y grado máximo 2.',
+        'Las desigualdades admiten coeficientes reales finitos y grado máximo 4.',
       );
+    // Grado 3 y 4, como el modo Inecuación de la calculadora de mano: raíces por tramos monótonos.
     const roots =
       coefficients.length === 1
         ? []
-        : [
-            ...new Set(
-              math
-                .polynomialRoot(coefficients[0], coefficients[1], coefficients[2] ?? 0)
-                .filter(
-                  (root): root is number => typeof root === 'number' && Number.isFinite(root),
-                ),
-            ),
-          ].sort((a, b) => a - b);
+        : coefficients.length > 3
+          ? realPolynomialRoots(coefficients)
+          : [
+              ...new Set(
+                math
+                  .polynomialRoot(coefficients[0], coefficients[1], coefficients[2] ?? 0)
+                  .filter(
+                    (root): root is number => typeof root === 'number' && Number.isFinite(root),
+                  ),
+              ),
+            ].sort((a, b) => a - b);
     const strict = !operator.includes('=');
     const positive = operator.startsWith('>');
     const compiled = safeExpression(body).compile();
@@ -1728,7 +1774,7 @@ export class SymbolicEngine {
       {
         title: 'Separar los intervalos',
         detail: roots.length
-          ? `Raíces reales aproximadas: ${roots.join('; ')}. Entre raíces consecutivas el polinomio conserva su signo.`
+          ? `Raíces reales aproximadas: ${roots.map((root) => math.format(root, { precision: 10 })).join('; ')}. Entre raíces consecutivas el polinomio conserva su signo.`
           : 'No hay raíces reales que separen intervalos; comprobar el signo en la recta real.',
       },
     ];

@@ -140,3 +140,12 @@ it('dice grados sexagesimales y sumatorias', () => {
     'sumatoria para equis desde 1 hasta 10 de equis al cuadrado',
   );
 });
+
+it('dice la tabla de valores con sus funciones y su recorrido', () => {
+  expect(mathSpeech('table(x^2, -3, 3, 1)')).toBe(
+    'tabla de valores de equis al cuadrado, para equis desde menos 3 hasta 3 con paso 1',
+  );
+  expect(mathSpeech('table(x^2, 2x, 0, 1, 0.5)')).toBe(
+    'tabla de valores de equis al cuadrado y de 2 equis, para equis desde 0 hasta 1 con paso 0 coma 5',
+  );
+});

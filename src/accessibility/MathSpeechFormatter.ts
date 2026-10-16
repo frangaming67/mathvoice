@@ -397,6 +397,13 @@ const TEMPLATES: Record<string, (a: Arg[], ctx: Context) => string | undefined> 
     a.length === 4
       ? `sumatoria para ${a[1].text} desde ${a[2].text} hasta ${a[3].text} de ${a[0].text}`
       : undefined,
+  // Tabla de valores: table(f, desde, hasta, paso) o table(f, g, desde, hasta, paso).
+  table: (a) => {
+    if (a.length !== 4 && a.length !== 5) return undefined;
+    const functions = a.slice(0, -3).map((x) => x.text);
+    const [from, to, step] = a.slice(-3).map((x) => x.text);
+    return `tabla de valores de ${functions.join(' y de ')}, para equis desde ${from} hasta ${to} con paso ${step}`;
+  },
   gcd: (a) => `máximo común divisor de ${list(a.map((x) => x.text))}`,
   lcm: (a) => `mínimo común múltiplo de ${list(a.map((x) => x.text))}`,
   max: (a) => `máximo entre ${list(a.map((x) => x.text))}`,

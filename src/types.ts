@@ -8,6 +8,8 @@ export type ResultForm = 'auto' | 'decimal' | 'exacto' | 'ambos';
 export type NumberMode = 'real' | 'complejo';
 /** Cómo se expone la matemática a un lector de pantalla externo. */
 export type ScreenReaderMath = 'mathml' | 'texto';
+/** Lo que dice una celda de la tabla de valores donde la función no está definida. */
+export const UNDEFINED_CELL = 'No definida';
 export interface EvaluateOptions {
   angle: AngleMode;
   decimalSeparator?: DecimalSeparator;
@@ -35,6 +37,8 @@ export interface CalculationResult {
   assigned?: { name: string; value: number };
   table?: { label: string; value: string }[];
   matrix?: string[][];
+  /** Encabezados de las columnas de `matrix` cuando es una tabla de valores: x, f(x), g(x). */
+  headers?: string[];
   variables?: Record<string, number>;
   steps?: CalculationStep[];
   /** Forma exacta (fracción o simbólica) cuando el valor principal es decimal. */

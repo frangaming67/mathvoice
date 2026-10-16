@@ -16,6 +16,12 @@ const ProbabilityCalculator = lazy(() =>
 const Variables = lazy(() => import('./Variables').then((m) => ({ default: m.Variables })));
 const Converters = lazy(() => import('./Converters').then((m) => ({ default: m.Converters })));
 const Graphs = lazy(() => import('./Graphs').then((m) => ({ default: m.Graphs })));
+const TableCalculator = lazy(() =>
+  import('./TableCalculator').then((m) => ({ default: m.TableCalculator })),
+);
+const RatioCalculator = lazy(() =>
+  import('./RatioCalculator').then((m) => ({ default: m.RatioCalculator })),
+);
 type Props = {
   active: ToolId | null;
   visited: ToolId[];
@@ -37,6 +43,8 @@ const labels = [
   ['variables', 'Variables'],
   ['converters', 'Conversores'],
   ['graphs', 'Gráficos'],
+  ['table', 'Tabla de valores'],
+  ['ratio', 'Proporciones'],
 ];
 export function FeatureHub(props: Props) {
   return (
@@ -60,6 +68,18 @@ export function FeatureHub(props: Props) {
                   <StatisticsCalculator calculate={props.calculate} busy={props.busy} />
                 ) : id === 'probability' ? (
                   <ProbabilityCalculator calculate={props.calculate} busy={props.busy} />
+                ) : id === 'table' ? (
+                  <TableCalculator
+                    calculate={props.calculate}
+                    busy={props.busy}
+                    decimalSeparator={props.decimalSeparator}
+                  />
+                ) : id === 'ratio' ? (
+                  <RatioCalculator
+                    calculate={props.calculate}
+                    busy={props.busy}
+                    decimalSeparator={props.decimalSeparator}
+                  />
                 ) : id === 'converters' ? (
                   <Converters calculate={props.calculate} busy={props.busy} />
                 ) : id === 'graphs' ? (

@@ -102,6 +102,12 @@ export const calculatorModes: CalculatorMode[] = [
     icon: icon(<path d="M4 2 V22 H30 M5 19 C11 19 13 5 19 9 C24 12 25 4 29 3" />),
   },
   {
+    id: 'tabla',
+    label: 'Tabla',
+    tool: 'table',
+    icon: icon(<path d="M3 3 H29 V21 H3 Z M3 9 H29 M3 15 H29 M13 3 V21" strokeWidth="1.5" />),
+  },
+  {
     id: 'ecuaciones',
     label: 'Ecuaciones y cálculo',
     tool: 'advanced',
@@ -111,6 +117,12 @@ export const calculatorModes: CalculatorMode[] = [
         <path d="M2 21 H30" strokeWidth="1" />
       </>,
     ),
+  },
+  {
+    id: 'proporcion',
+    label: 'Proporción',
+    tool: 'ratio',
+    icon: icon(text(1, 17, 'a:b', 12)),
   },
   {
     id: 'funciones',

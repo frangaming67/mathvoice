@@ -16,7 +16,7 @@ const operations = [
   ['limit', 'Calcular límite', 'sin(x)/x'],
   ['substitute', 'Sustituir variable', 'x^2+3*x'],
   ['system', 'Resolver sistema lineal', 'x+y=10\nx-y=4'],
-  ['inequality', 'Resolver desigualdad (grado máximo 2)', 'x^2-4<=0'],
+  ['inequality', 'Resolver desigualdad (grado máximo 4)', 'x^2-4<=0'],
   ['series', 'Polinomio de Taylor', 'sin(x)'],
 ];
 export function AdvancedCalculator({

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type {
-  AngleMode,
-  CalculationResult,
-  DecimalSeparator,
-  EvaluateOptions,
-  HistoryEntry,
-  Preferences,
+import {
+  UNDEFINED_CELL,
+  type AngleMode,
+  type CalculationResult,
+  type DecimalSeparator,
+  type EvaluateOptions,
+  type HistoryEntry,
+  type Preferences,
 } from '../../types';
 import { CalculatorClient } from '../../services/CalculatorClient';
 import { preferencesService } from '../../services/PreferencesService';
@@ -1186,7 +1187,7 @@ export function Calculator() {
   const lcdAnswer = useMemo(() => {
     if (!result) return null;
     if (alternate?.mathml) return { mathml: alternate.mathml, text: alternate.spoken };
-    const text = alternate?.expression ?? (result.table ? '' : result.value);
+    const text = alternate?.expression ?? (result.table || result.headers ? '' : result.value);
     if (!text) return { mathml: null, text: 'Detalle en la tabla de abajo.' };
     const decimal = alternate ? preferences.decimalSeparator : (result.separator ?? 'punto');
     return { mathml: toMathML(text, { decimalSeparator: decimal, display: 'inline' }), text };
@@ -1619,7 +1620,38 @@ export function Calculator() {
               ))}
             </div>
           )}
-          {result.matrix && (
+          {result.matrix && result.headers && (
+            <div className="result-table">
+              <table className="data-table value-table">
+                <caption>Tabla de valores</caption>
+                <thead>
+                  <tr>
+                    {result.headers.map((header) => (
+                      <th scope="col" key={header}>
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.matrix.map(([x, ...values], i) => (
+                    <tr key={i}>
+                      <th scope="row">{x}</th>
+                      {values.map((value, j) => (
+                        <td
+                          key={j}
+                          data-speech={`${result.headers![j + 1].replace('(x)', ' de equis')} en equis igual a ${mathSpeech(x, speechOptions)}: ${value === UNDEFINED_CELL ? 'no definida' : mathSpeech(value, speechOptions)}`}
+                        >
+                          {value}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {result.matrix && !result.headers && (
             <div className="result-table">
               <table className="data-table">
                 <caption>Matriz o vector resultado</caption>

@@ -358,6 +358,8 @@ for (const [id, name, shortcut, tool, operation] of [
   ['goto-integral', 'Ir a integral', 'G I', 'advanced', 'integrate'],
   ['goto-matrix', 'Ir a matrices', 'G M', 'matrices', ''],
   ['goto-graph', 'Ir a gráficos', 'G G', 'graphs', ''],
+  ['goto-table', 'Ir a la tabla de valores', 'G T', 'table', ''],
+  ['goto-ratio', 'Ir a proporciones', 'G P', 'ratio', ''],
 ] as [string, string, string, ToolId, string][])
   add(id, name, shortcut, 'General', 'all', { type: 'tool', tool, operation });
 

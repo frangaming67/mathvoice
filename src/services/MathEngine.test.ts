@@ -463,3 +463,82 @@ describe('teclas de la calculadora científica', () => {
     expect(engine.evaluate('fix(-2.7)', opts()).value).toBe('-2');
   });
 });
+
+describe('tabla de valores', () => {
+  it('calcula f(x) y g(x) fila por fila, como el modo Tabla', () => {
+    const result = engine.evaluate('tabla(x^2, x+1, -2, 2, 1)');
+    expect(result.kind).toBe('Tabla');
+    expect(result.headers).toEqual(['x', 'f(x)', 'g(x)']);
+    expect(result.matrix).toEqual([
+      ['-2', '4', '-1'],
+      ['-1', '1', '0'],
+      ['0', '0', '1'],
+      ['1', '1', '2'],
+      ['2', '4', '3'],
+    ]);
+    expect(result.value).toBe('[[-2, 4, -1], [-1, 1, 0], [0, 0, 1], [1, 1, 2], [2, 4, 3]]');
+  });
+  it('pasos decimales sin ruido, grados exactos y celdas no definidas', () => {
+    const steps = engine.evaluate('table(x, 0, 0.3, 0.1)').matrix!.map((row) => row[0]);
+    expect(steps).toEqual(['0', '0.1', '0.2', '0.3']);
+    const trig = engine.evaluate('table(tan(x), 0, 180, 45)', 'deg');
+    expect(trig.matrix!.map((row) => row[1])).toEqual(['0', '1', 'No definida', '-1', '0']);
+    expect(trig.explanation).toMatch(/En una celda la función no está definida/);
+    expect(engine.evaluate('table(1/x, -1, 1, 1)').matrix![1]).toEqual(['0', 'No definida']);
+    expect(engine.evaluate('table(sqrt(x), -1, 0, 1)').matrix![0][1]).toBe('No definida');
+  });
+  it('coma decimal, paso negativo, variables guardadas y límites', () => {
+    const coma = engine.evaluate('tabla(x/2; 1; 0; -0,5)', {
+      angle: 'rad',
+      decimalSeparator: 'coma',
+    });
+    expect(coma.matrix).toEqual([
+      ['1', '0,5'],
+      ['0,5', '0,25'],
+      ['0', '0'],
+    ]);
+    expect(coma.value).toBe('[[1; 0,5]; [0,5; 0,25]; [0; 0]]');
+    expect(engine.evaluate('table(a*x, 0, 2, 1)', 'rad', { a: 3 }).matrix).toEqual([
+      ['0', '0'],
+      ['1', '3'],
+      ['2', '6'],
+    ]);
+    expect(() => engine.evaluate('table(x, 0, 100, 1)')).toThrow(/hasta 50 filas/);
+    expect(() => engine.evaluate('table(x, 0, 5, 0)')).toThrow(/no puede ser cero/);
+    expect(() => engine.evaluate('table(x, 5, 0, 1)')).toThrow(/paso negativo/);
+    expect(() => engine.evaluate('table(x, 1)')).toThrow(/table\(f, desde, hasta, paso\)/);
+    expect(() => engine.evaluate('table(y, 0, 1, 1)')).toThrow(/No reconozco «y»/);
+  });
+});
+
+describe('desigualdades sueltas', () => {
+  it('con una incógnita se resuelven por intervalos, como el modo Inecuación', () => {
+    expect(engine.evaluate('x^2-4>0').value).toBe(
+      'Desde menos infinito excluido hasta -2 excluido; Desde 2 excluido hasta más infinito excluido',
+    );
+    expect(engine.evaluate('x^4 - 5x^2 + 4 < 0').table?.map((row) => row.value)).toEqual([
+      'Desde -2 excluido hasta -1 excluido',
+      'Desde 1 excluido hasta 2 excluido',
+    ]);
+    expect(engine.evaluate('a*x > 6', 'rad', { a: 2 }).value).toBe(
+      'Desde 3 excluido hasta más infinito excluido',
+    );
+    expect(
+      engine.evaluate('x^2 - 2,25 < 0', { angle: 'rad', decimalSeparator: 'coma' }).value,
+    ).toBe('Desde -1,5 excluido hasta 1,5 excluido');
+  });
+  it('sin letras, o con todas guardadas, se verifican', () => {
+    expect(engine.evaluate('sqrt(2) > 1.4').value).toBe('Verdadero');
+    expect(engine.evaluate('pi < 3').value).toBe('Falso');
+    expect(engine.evaluate('0.1+0.2 <= 0.3').value).toBe('Verdadero');
+    expect(engine.evaluate('2 >= 3').value).toBe('Falso');
+    expect(engine.evaluate('a + b > 2', 'rad', { a: 1, b: 2 }).value).toBe('Verdadero');
+    expect(engine.evaluate('pi < 3').explanation).toMatch(/lados de la desigualdad/);
+  });
+  it('explica lo que falta o sobra', () => {
+    expect(() => engine.evaluate('x + y > 0')).toThrow(/más de una incógnita: x y y/);
+    expect(() => engine.evaluate('1 < x < 3')).toThrow(/una sola desigualdad/);
+    expect(() => engine.evaluate('> 2')).toThrow(/lado izquierdo/);
+    expect(() => engine.evaluate('x^5 > 1')).toThrow(/grado máximo 4/);
+  });
+});

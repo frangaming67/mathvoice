@@ -27,7 +27,7 @@ Avance 0.4: procedimientos accesibles y persistidos. Se muestran coeficientes, d
 - Adaptador Nerdamer en Worker con validación de entrada y máximo de seis segundos.
 - Simplificación, expansión, factorización, sustitución y fracciones parciales.
 - Ecuaciones y sistemas lineales de 2–5 ecuaciones con solución única verificada.
-- Desigualdades polinómicas reales de una variable, hasta grado 2.
+- Desigualdades polinómicas reales de una variable, hasta grado 4, también escritas sueltas (x^2-4>0).
 - Derivadas respecto de una variable, incluidas parciales, de órdenes 1–10.
 - Integrales indefinidas con `+ C`; definidas con comprobación conservadora del dominio y primitiva cerrada; límites mediante CAS.
 - Taylor de órdenes 0–10, identificado como aproximación local sin cota del error.

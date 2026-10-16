@@ -61,7 +61,8 @@ export function toStoredEntry(value: unknown): HistoryEntry | null {
     optional(v.assigned, isAssigned) &&
     optional(v.steps, (s) => Array.isArray(s) && s.every(isStep)) &&
     optional(v.table, (t) => Array.isArray(t) && t.every(isRow)) &&
-    optional(v.matrix, isMatrix);
+    optional(v.matrix, isMatrix) &&
+    optional(v.headers, (h) => Array.isArray(h) && h.every(isString));
   if (!valid) return null;
   const entry = {
     id: v.id,
@@ -101,6 +102,7 @@ export function toStoredEntry(value: unknown): HistoryEntry | null {
       value,
     }));
   if (v.matrix) entry.matrix = (v.matrix as string[][]).map((row) => [...row]);
+  if (v.matrix && v.headers) entry.headers = [...(v.headers as string[])];
   return fit(entry);
 }
 
@@ -109,6 +111,7 @@ function fit(entry: HistoryEntry): HistoryEntry {
   // La tabla y la matriz repiten el valor en forma estructurada: el texto del valor se conserva.
   let next: HistoryEntry = { ...entry };
   delete next.matrix;
+  delete next.headers;
   delete next.table;
   if (size(next) <= ENTRY_BUDGET) return next;
   const before = JSON.stringify(next);
@@ -308,13 +311,15 @@ export function historyEntryLabel(
   const cells = entry.matrix?.reduce((total, row) => total + row.length, 0) ?? 0;
   const columns = Math.max(0, ...(entry.matrix?.map((row) => row.length) ?? []));
   const summary =
-    entry.matrix && cells > 9
-      ? entry.matrix.length === 1
-        ? `una lista de ${columns} elementos`
-        : `una matriz de ${entry.matrix.length} por ${columns}`
-      : entry.table && entry.table.length > 4
-        ? `una tabla de ${entry.table.length} filas`
-        : resultSpeech(entry, speech);
+    entry.matrix && entry.headers
+      ? `una tabla de valores de ${entry.matrix.length} ${entry.matrix.length === 1 ? 'fila' : 'filas'}`
+      : entry.matrix && cells > 9
+        ? entry.matrix.length === 1
+          ? `una lista de ${columns} elementos`
+          : `una matriz de ${entry.matrix.length} por ${columns}`
+        : entry.table && entry.table.length > 4
+          ? `una tabla de ${entry.table.length} filas`
+          : resultSpeech(entry, speech);
   return `${expression}, igual a ${summary}`;
 }
 /** Lectura completa de una entrada, para la acción Escuchar (resultSpeech ya incluye los avisos). */

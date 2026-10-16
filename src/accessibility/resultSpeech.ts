@@ -1,4 +1,4 @@
-import type { CalculationResult, DecimalSeparator } from '../types';
+import { UNDEFINED_CELL, type CalculationResult, type DecimalSeparator } from '../types';
 import { mathSpeechDetail, type SpeechVerbosity } from './MathSpeechFormatter';
 import {
   fractionName,
@@ -75,6 +75,30 @@ function matrixSpeech(matrix: string[][], significant: number, options: ResultSp
     .join('. ')}`;
 }
 
+/** Filas que se dicen de una tabla de valores; el resto se recorre en la tabla. */
+const SPOKEN_ROWS = 12;
+
+/** Tabla de valores: cuántas filas y, fila por fila, x con lo que vale cada función. */
+function valueTableSpeech(
+  rows: string[][],
+  headers: string[],
+  significant: number,
+  options: ResultSpeechOptions,
+) {
+  const cell = (value: string) =>
+    value === UNDEFINED_CELL ? 'no definida' : valueSpeech(value, undefined, significant, options);
+  const names = headers.slice(1).map((header) => header.replace(/^(\w)\(x\)$/, '$1 de equis'));
+  const lines = rows.slice(0, SPOKEN_ROWS).map(
+    (row) =>
+      `equis igual a ${cell(row[0])}: ${row
+        .slice(1)
+        .map((value, i) => `${names[i]}, ${cell(value)}`)
+        .join('; ')}`,
+  );
+  const rest = rows.length - lines.length;
+  return `Tabla de valores de ${rows.length} ${rows.length === 1 ? 'fila' : 'filas'}. ${lines.join('. ')}${rest > 0 ? `. Y ${rest} ${rest === 1 ? 'fila' : 'filas'} más en la tabla` : ''}`;
+}
+
 /** Texto hablado de un resultado: números redondeados, fracciones con nombre y avisos. */
 export function resultSpeech(result: CalculationResult, options: ResultSpeechOptions = {}): string {
   const digits = options.spokenDigits ?? 6;
@@ -87,6 +111,8 @@ export function resultSpeech(result: CalculationResult, options: ResultSpeechOpt
           `${row.label}: ${TEXT_ROW.test(`${row.value} ${row.label}`) ? row.value : valueSpeech(row.value, undefined, significant, options)}`,
       )
       .join('. ');
+  else if (result.matrix && result.headers)
+    spoken = valueTableSpeech(result.matrix, result.headers, significant, options);
   else if (result.matrix) spoken = matrixSpeech(result.matrix, significant, options);
   else {
     const radix = radixOf(result);
