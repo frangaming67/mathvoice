@@ -182,6 +182,10 @@ const SINGLE: Record<string, [string, string]> = {
   expand: ['expansión de', 'expansión'],
   factor: ['factorización de', 'factorización'],
 };
+/** Nombre hablado de una función de un argumento, suelta: «sin» → «seno». */
+export function functionSpeechName(name: string): string | undefined {
+  return Object.hasOwn(SINGLE, name) ? SINGLE[name][0].replace(/ de$/, '') : undefined;
+}
 const ORDINALS: Record<string, string> = {
   '4': 'cuarta',
   '5': 'quinta',

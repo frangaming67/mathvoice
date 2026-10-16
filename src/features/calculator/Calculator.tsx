@@ -23,6 +23,16 @@ import { FeatureHub } from '../../components/FeatureHub';
 import { variableService } from '../../services/VariableService';
 import { resultSpeech } from '../../accessibility/resultSpeech';
 import { keySpeech } from '../../accessibility/symbolSpeech';
+import {
+  describeBalance,
+  describeCaret,
+  describeClosing,
+  describeDeletion,
+  matchingParen,
+  readFromCaret,
+  speakCharAt,
+  tokenAt,
+} from '../../accessibility/editingAids';
 import { toLatex, toMathML } from '../../accessibility/mathml';
 import { MathView } from '../../components/MathView';
 import { captureFocus, restoreFocus, type FocusSnapshot } from '../../keyboard/focusSnapshot';
@@ -343,9 +353,10 @@ export function Calculator() {
         '[data-expression], #expression',
       ),
     ).find((element) => element.getClientRects().length)?.value;
+    const balance = draft ? describeBalance(draft) : '';
     explicitRead(
       draft
-        ? mathSpeech(draft, { decimalSeparator: preferences.decimalSeparator })
+        ? `${mathSpeech(draft, { decimalSeparator: preferences.decimalSeparator })}${balance ? `. ${balance}` : ''}`
         : 'No hay expresión visible en esta sección.',
     );
   }, [explicitRead, preferences.decimalSeparator]);
@@ -660,7 +671,39 @@ export function Calculator() {
         : 'Todavía no hay resultado en esta herramienta.',
     );
   }
+  /** Campo de expresión y cursor sobre los que actúan las ayudas de edición. */
+  function editingTarget() {
+    const expressionField = (element: Element | null | undefined) =>
+      element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement
+        ? element.matches('[data-expression], #expression') && element.getClientRects().length
+          ? element
+          : null
+        : null;
+    const saved = dialogSelection.current;
+    const field =
+      expressionField(saved?.element) ??
+      expressionField(lastField.current) ??
+      expressionField(
+        Array.from(document.querySelectorAll('[data-expression], #expression')).find(
+          (element) => element.getClientRects().length,
+        ),
+      );
+    if (!field) return null;
+    const caret =
+      saved?.element === field && saved.start !== null
+        ? saved.start
+        : (field.selectionStart ?? field.value.length);
+    return { field, text: field.value, caret };
+  }
   function executeCommand(command: MathCommand) {
+    // Desde la paleta, un comando de lectura devuelve el foco y el cursor al campo.
+    const fromPalette = palette ? dialogSelection.current : null;
+    const backToField = (caret?: number) => {
+      if (!fromPalette) return;
+      const target =
+        caret === undefined ? fromPalette : { ...fromPalette, start: caret, end: caret };
+      requestAnimationFrame(() => restoreFocus(target));
+    };
     setPalette(false);
     keyboardManager.cancelSequence();
     cancelAutomatic();
@@ -739,16 +782,56 @@ export function Calculator() {
           explicitRead(
             result ? `Resultado: ${resultSpeech(result, speechOptions)}.` : 'No hay resultado.',
           );
+          backToField();
           break;
         case 'read-error':
           explicitRead(error || 'No hay errores.');
+          backToField();
           break;
         case 'read-message':
           explicitRead(status || 'No hay un mensaje anterior.');
+          backToField();
           break;
         case 'read-tool':
           explicitRead(`Herramienta actual: ${toolName(activeTool)}.`);
+          backToField();
           break;
+        case 'caret-token':
+        case 'caret-rest':
+        case 'caret-where':
+        case 'caret-pair':
+        case 'caret-balance': {
+          const target = editingTarget();
+          if (!target) {
+            explicitRead('No hay un campo de expresión en esta sección.');
+            break;
+          }
+          const { field, text, caret } = target;
+          if (action.operation === 'caret-pair') {
+            const pair = matchingParen(text, caret);
+            if (!pair) explicitRead('No hay un paréntesis junto al cursor.');
+            else {
+              explicitRead(pair.speech);
+              if (pair.match !== null) {
+                // El cursor queda delante de la pareja: la tecla siguiente la lee.
+                field.setSelectionRange(pair.match, pair.match);
+                backToField(pair.match);
+                break;
+              }
+            }
+          } else
+            explicitRead(
+              action.operation === 'caret-token'
+                ? (tokenAt(text, caret)?.speech ?? 'La expresión está vacía.')
+                : action.operation === 'caret-rest'
+                  ? readFromCaret(text, caret)
+                  : action.operation === 'caret-where'
+                    ? describeCaret(text, caret)
+                    : describeBalance(text) || 'Los paréntesis están completos.',
+            );
+          backToField();
+          break;
+        }
         case 'repeat-action': {
           const last = lastCalculation.current[calculationKey];
           if (last) void calculate(last.value, last.angle, last.scope);
@@ -1223,10 +1306,17 @@ export function Calculator() {
                     placeholder="Ej.: sqrt(25) + sin(pi/2)"
                     onChange={(e) => {
                       const value = e.target.value;
+                      const before = expression;
                       setExpression(value);
                       justCalculated.current = false;
                       setError('');
                       clearTimeout(typingTimer.current);
+                      const deleted = describeDeletion(before, value);
+                      if (deleted && preferences.guided) speech.hablarAutomatico(deleted);
+                      const caret = e.target.selectionStart ?? value.length;
+                      const closing =
+                        value.length === before.length + 1 ? describeClosing(value, caret) : '';
+                      if (closing) announce(closing);
                       if (preferences.guided && preferences.readTyping)
                         typingTimer.current = setTimeout(
                           () => speech.hablarAutomatico(mathSpeech(value)),
@@ -1235,6 +1325,26 @@ export function Calculator() {
                     }}
                     onKeyDown={(e) => {
                       if (keyboardManager.preservesReaderKeys(e.nativeEvent)) return;
+                      // Con la guía, mover el cursor dice qué quedó a su derecha (Ctrl: la palabra).
+                      if (
+                        preferences.guided &&
+                        ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) &&
+                        !e.shiftKey &&
+                        !e.altKey &&
+                        !e.metaKey
+                      ) {
+                        const field = e.currentTarget;
+                        const word = e.ctrlKey;
+                        requestAnimationFrame(() => {
+                          const caret = field.selectionStart ?? field.value.length;
+                          speech.hablarAutomatico(
+                            word
+                              ? (tokenAt(field.value, caret)?.speech ?? 'Final de la expresión.')
+                              : speakCharAt(field.value, caret),
+                          );
+                        });
+                        return;
+                      }
                       if (
                         preferences.guided &&
                         preferences.readKeys &&
