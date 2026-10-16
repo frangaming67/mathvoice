@@ -167,7 +167,7 @@
 .lcd-natural {
   min-height: 2.4rem;
   padding: 2px 0;
-  font-size: 1.15rem;
+  font-size: 1.45rem;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -183,7 +183,7 @@
   overflow: hidden;
 }
 .lcd-answer math {
-  font-size: 1.6rem;
+  font-size: 2.2rem;
 }
 .lcd-answer[data-error] {
   font-size: 1.05rem;
@@ -248,8 +248,11 @@
 .lcd-panel[data-columns='4'] .lcd-panel-item {
   justify-content: center;
 }
-.lcd .lcd-panel-item:focus,
+/* Solo la opción elegida se invierte, como en la pantalla real; el puntero apenas la remarca. */
 .lcd .lcd-panel-item:hover {
+  box-shadow: inset 0 0 0 2px var(--lcd-ink);
+}
+.lcd .lcd-panel-item:focus {
   background: var(--lcd-ink);
   color: var(--lcd-bg);
   outline: none;
@@ -325,7 +328,7 @@
 }
 .keys-top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 1.8fr) repeat(2, minmax(0, 1fr));
   grid-template-areas:
     'shift alpha dpad menu on'
     'optn calc dpad integral x';
@@ -542,7 +545,14 @@
   .calc-keys .calc-key {
     border: 1px solid ButtonText;
   }
+  .calc-keys .calc-key-round[aria-pressed='true'] {
+    border: 3px solid Highlight;
+  }
   .lcd {
     border: 1px solid CanvasText;
+  }
+  .lcd .lcd-panel-item:focus {
+    outline: 3px solid Highlight;
+    outline-offset: 1px;
   }
 }
