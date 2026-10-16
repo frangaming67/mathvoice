@@ -153,6 +153,51 @@ function functionCall(node: FunctionNode, ctx: Context): string {
     case 'log10':
     case 'log2':
       return row(`<msub><mi>log</mi><mn>${name.slice(3)}</mn></msub>`, APPLY, group(args[0], ctx));
+    // 12°30'45" llega como dms(12, 30, 45).
+    case 'dms':
+      return row(
+        render(args[0], ctx),
+        '<mo>°</mo>',
+        ...(args[1] && literalOf(args[1], ctx.literals) !== '0'
+          ? [render(args[1], ctx), '<mo>′</mo>']
+          : []),
+        ...(args[2] && literalOf(args[2], ctx.literals) !== '0'
+          ? [render(args[2], ctx), '<mo>″</mo>']
+          : []),
+      );
+    // d/dx f, o d/dx f evaluada en un punto: substitute(diff(f, x), x, a).
+    case 'diff':
+      if (args.length >= 2)
+        return row(
+          `<mfrac><mi>d</mi><mrow><mi>d</mi>${render(args[1], ctx)}</mrow></mfrac>`,
+          group(args[0], ctx),
+        );
+      break;
+    case 'substitute':
+      if (args.length === 3 && args[0].type === 'FunctionNode')
+        return row(
+          render(args[0], ctx),
+          `<msub><mo>|</mo>${row(render(args[1], ctx), '<mo>=</mo>', render(args[2], ctx))}</msub>`,
+        );
+      break;
+    // ∫ f dx, con extremos si es definida.
+    case 'integrate':
+      if (args.length >= 2) {
+        const sign =
+          args.length === 4
+            ? `<msubsup><mo>∫</mo>${render(args[2], ctx)}${render(args[3], ctx)}</msubsup>`
+            : '<mo>∫</mo>';
+        return row(sign, render(stripParens(args[0]), ctx), '<mi>d</mi>', render(args[1], ctx));
+      }
+      break;
+    // Σ: sum(f, x, a, b) con la variable y los extremos abajo y arriba.
+    case 'sum':
+      if (args.length === 4)
+        return row(
+          `<munderover><mo>∑</mo>${row(render(args[1], ctx), '<mo>=</mo>', render(args[2], ctx))}${render(args[3], ctx)}</munderover>`,
+          group(args[0], ctx),
+        );
+      break;
   }
   if (INVERSES[name])
     return row(
@@ -370,6 +415,13 @@ function latex(node: MathNode, ctx: Context): string {
         return `\\frac{${latex(stripParens(a), ctx)}}{${latex(stripParens(b), ctx)}}`;
       if (name === 'log' && b) return `\\log_{${latex(b, ctx)}}${paren(a)}`;
       if (name === 'log10' || name === 'log2') return `\\log_{${name.slice(3)}}${paren(a)}`;
+      if (name === 'dms') {
+        const [, m, s] = call.args;
+        const shown = (part?: MathNode) => part && literalOf(part, ctx.literals) !== '0';
+        return `${latex(a, ctx)}^\\circ${shown(m) ? ` ${latex(m, ctx)}'` : ''}${shown(s) ? ` ${latex(s, ctx)}''` : ''}`;
+      }
+      if (name === 'sum' && call.args.length === 4)
+        return `\\sum_{${latex(b, ctx)}=${latex(call.args[2], ctx)}}^{${latex(call.args[3], ctx)}}${paren(a)}`;
       if (INVERSES[name]) return `\\${INVERSES[name]}^{-1}${paren(a)}`;
       // El espacio separa el comando de una letra: \sin x, no \sinx.
       if (NAMED.has(name) && call.args.length === 1) return `\\${name} ${paren(a)}`;

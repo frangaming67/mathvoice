@@ -12,7 +12,8 @@ test('una herramienta visible, resultado antes del teclado y cambio explícito c
 }) => {
   const expression = page.getByLabel('Expresión matemática', { exact: true });
   await expect(expression).toBeFocused();
-  await expect(page.getByRole('button', { name: 'Siete', exact: true })).toHaveCount(0);
+  // El teclado de la calculadora es una sola parada de Tab.
+  await expect(page.locator('.calc-keys button[tabindex="0"]')).toHaveCount(1);
   await expect(page.getByRole('combobox', { name: 'Operación simbólica' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Vaciar historial' })).toHaveCount(0);
   await expression.fill('7*8');
@@ -24,7 +25,7 @@ test('una herramienta visible, resultado antes del teclado y cambio explícito c
       .evaluate(
         (result) =>
           !!(
-            result.compareDocumentPosition(document.getElementById('keypad-panel')!) &
+            result.compareDocumentPosition(document.querySelector('.calc-keys')!) &
             Node.DOCUMENT_POSITION_FOLLOWING
           ),
       ),

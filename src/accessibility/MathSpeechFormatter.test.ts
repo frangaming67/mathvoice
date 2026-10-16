@@ -133,3 +133,10 @@ describe('nivel de detalle', () => {
     expect(mathSpeech('sin(x)')).toBe('seno de equis');
   });
 });
+
+it('dice grados sexagesimales y sumatorias', () => {
+  expect(mathSpeech(`12°30'45"`)).toBe('12 grados 30 minutos 45 segundos');
+  expect(mathSpeech('sum(x^2, x, 1, 10)')).toBe(
+    'sumatoria para equis desde 1 hasta 10 de equis al cuadrado',
+  );
+});

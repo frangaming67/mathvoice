@@ -383,6 +383,20 @@ const TEMPLATES: Record<string, (a: Arg[], ctx: Context) => string | undefined> 
   exp: (a, ctx) => power(a[0].node, a[0].node, ctx, 'e'),
   mod: (a) => `${a[0].text} módulo ${a[1].text}`,
   _pct: (a) => `${a[0].text} por ciento`,
+  // 12°30'45" llega como dms(12, 30, 45).
+  dms: (a) =>
+    [
+      `${a[0].text} grados`,
+      a[1] && a[1].text !== '0' ? `${a[1].text} minutos` : '',
+      a[2] && a[2].text !== '0' ? `${a[2].text} segundos` : '',
+    ]
+      .filter(Boolean)
+      .join(' '),
+  // Σ: sum(f, x, a, b); con un solo dato sigue siendo la suma de una lista.
+  sum: (a) =>
+    a.length === 4
+      ? `sumatoria para ${a[1].text} desde ${a[2].text} hasta ${a[3].text} de ${a[0].text}`
+      : undefined,
   gcd: (a) => `máximo común divisor de ${list(a.map((x) => x.text))}`,
   lcm: (a) => `mínimo común múltiplo de ${list(a.map((x) => x.text))}`,
   max: (a) => `máximo entre ${list(a.map((x) => x.text))}`,

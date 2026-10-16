@@ -3,6 +3,7 @@ import type {
   AngleMode,
   CalculationResult,
   DecimalSeparator,
+  EvaluateOptions,
   HistoryEntry,
   Preferences,
 } from '../../types';
@@ -16,7 +17,23 @@ import { handleKeyboard } from '../../accessibility/KeyboardManager';
 import { Settings } from '../../components/Settings';
 import { History } from '../../components/History';
 import { Tools } from '../../components/Tools';
-import { Keypad } from '../../components/Keypad';
+import { CalculatorKeys } from '../../components/CalculatorKeys';
+import { LcdPanel, type LcdItem, type LcdPanelHandle } from '../../components/LcdPanel';
+import { KeyPrompt, type PromptRequest } from '../../components/KeyPrompt';
+import type { CalculatorKey, KeyFace, Layer } from '../../calculator/keys';
+import {
+  engineering,
+  engineeringStart,
+  factorExpression,
+  fillSeparators,
+  freeVariables,
+  mixedFraction,
+  readNumber,
+  toDms,
+} from '../../calculator/display';
+import { calculatorModes } from '../../calculator/modes';
+import { physicalConstants } from '../../services/PhysicalConstants';
+import { formatNumber, fractionName } from '../../accessibility/numberSpeech';
 import { AdvancedCalculator, type AdvancedHandle } from '../../components/AdvancedCalculator';
 import { describeElement, useAutomaticSpeech } from '../../accessibility/useAutomaticSpeech';
 import { FeatureHub } from '../../components/FeatureHub';
@@ -38,7 +55,6 @@ import { MathView } from '../../components/MathView';
 import { captureFocus, restoreFocus, type FocusSnapshot } from '../../keyboard/focusSnapshot';
 import { Dictation } from '../../components/Dictation';
 import { OfflineStatus } from '../../components/OfflineStatus';
-import { toggleSign } from '../../parser/toggleSign';
 import { convertSeparator } from '../../parser/expression';
 import { downloadHistory } from '../../services/ExportService';
 import { CalculationSteps } from '../../components/CalculationSteps';
@@ -97,6 +113,28 @@ export function Calculator() {
   );
   // Último resultado numérico, para «ans» o «resultado» dentro de una expresión.
   const lastAnswer = useRef<{ value: string; separator: DecimalSeparator } | null>(null);
+  // El resultado anterior a Ans, para PreAns.
+  const previousAnswer = useRef<{ value: string; separator: DecimalSeparator } | null>(null);
+  // Calculadora de mano: capa Shift o Alpha, STO pendiente, sobrescritura, pantalla apagada,
+  // otra forma del resultado (S⇔D, ENG, °′″, FACT, a b/c) y panel dentro de la pantalla.
+  const [layer, setLayer] = useState<Layer>('main');
+  const [storing, setStoring] = useState(false);
+  const [overwrite, setOverwrite] = useState(false);
+  const [off, setOff] = useState(false);
+  const [alternate, setAlternate] = useState<{
+    kind: 'sd' | 'eng' | 'dms' | 'fact' | 'mixed';
+    expression?: string;
+    mathml?: string;
+    spoken: string;
+    exponent?: number;
+  } | null>(null);
+  const [lcdPanel, setLcdPanel] = useState<null | 'menu' | 'constants' | 'variables' | 'reset'>(
+    null,
+  );
+  const [keyPrompt, setKeyPrompt] = useState<PromptRequest | null>(null);
+  const panelRef = useRef<LcdPanelHandle>(null);
+  // Posición al recorrer cálculos anteriores con la cruceta: -1 es la expresión propia.
+  const replay = useRef(-1);
   /** Un valor calculado antes, escrito con el separador que se usa ahora. */
   const reusable = (value: string, separator: DecimalSeparator = 'punto') =>
     convertSeparator(value, separator, preferences.decimalSeparator);
@@ -524,9 +562,12 @@ export function Calculator() {
     value = expression,
     angle: AngleMode = preferences.angle,
     scope = variables,
+    options: Partial<EvaluateOptions> = {},
   ) {
     if (computing.current) return;
     computing.current = true;
+    setAlternate(null);
+    replay.current = -1;
     const targetTool = view === 'history' ? 'basic' : calculationKey;
     lastCalculation.current[targetTool] = { value, angle, scope: { ...scope } };
     const focused = document.activeElement as HTMLElement | null;
@@ -557,14 +598,17 @@ export function Calculator() {
           ...numberOptions,
           angle,
           ans: answer ? reusable(answer.value, answer.separator) : undefined,
+          ...options,
         },
         scope,
       );
-      if (['Básico', 'Científico'].includes(calculated.kind) && !calculated.table)
+      if (['Básico', 'Científico'].includes(calculated.kind) && !calculated.table) {
+        previousAnswer.current = lastAnswer.current;
         lastAnswer.current = {
           value: calculated.value,
           separator: calculated.separator ?? 'punto',
         };
+      }
       if (calculated.assigned) {
         const next = { ...variables, [calculated.assigned.name]: calculated.assigned.value };
         setVariables(next);
@@ -589,6 +633,574 @@ export function Calculator() {
       setBusy(false);
     }
   }
+  // ---------- Calculadora de mano ----------
+  const argumentSeparator = preferences.decimalSeparator === 'coma' ? ';' : ',';
+  /**
+   * Escribe desde una tecla. Después de un resultado, un operador sigue con Ans (como la
+   * calculadora de mano) y cualquier otra tecla empieza una cuenta nueva. «after» queda a la
+   * derecha del cursor: si hay texto elegido, lo envuelve.
+   */
+  function deviceInsert(text: string, after = '', continues = true) {
+    automatic.cancel();
+    setError('');
+    setAlternate(null);
+    replay.current = -1;
+    const el = input.current;
+    editHistory.record(expression);
+    if (justCalculated.current) {
+      justCalculated.current = false;
+      const base = continues && !after && /^[+*/^%!-]/.test(text) ? 'ans' : '';
+      const next = base + text + after;
+      setExpression(next);
+      const caret = base.length + text.length;
+      requestAnimationFrame(() => el?.setSelectionRange(caret, caret));
+      return;
+    }
+    const start = el?.selectionStart ?? expression.length;
+    let end = el?.selectionEnd ?? start;
+    // INS: la tecla escribe encima de lo que sigue en vez de correrlo.
+    if (overwrite && end === start && !after)
+      end = Math.min(expression.length, start + text.length);
+    const selected = after ? expression.slice(start, end) : '';
+    const next = expression.slice(0, start) + text + selected + after + expression.slice(end);
+    setExpression(next);
+    const caret = start + text.length + selected.length;
+    requestAnimationFrame(() => el?.setSelectionRange(caret, caret));
+  }
+  function moveCaret(direction: 'left' | 'right') {
+    const el = input.current;
+    if (!el) return;
+    const caret = el.selectionStart ?? expression.length;
+    const next = Math.max(0, Math.min(expression.length, caret + (direction === 'left' ? -1 : 1)));
+    el.setSelectionRange(next, next);
+    justCalculated.current = false;
+    announce(speakCharAt(expression, next));
+  }
+  /** Arriba y abajo de la cruceta traen los cálculos del historial a la pantalla. */
+  function replayHistory(direction: 'previous' | 'next') {
+    const list = currentEntries.current;
+    const index = replay.current + (direction === 'previous' ? 1 : -1);
+    if (index < 0) {
+      replay.current = -1;
+      setExpression('');
+      justCalculated.current = false;
+      announce('Expresión nueva.');
+      return;
+    }
+    if (index >= list.length) {
+      announce(
+        list.length ? 'No hay cálculos más antiguos.' : 'Todavía no hay cálculos guardados.',
+      );
+      return;
+    }
+    replay.current = index;
+    const entry = list[index];
+    setExpression(entryExpression(entry));
+    justCalculated.current = false;
+    announce(
+      `Cálculo ${index + 1} de ${list.length}: ${mathSpeech(entry.expression, {
+        decimalSeparator: entry.separator ?? 'punto',
+      })}, igual a ${resultSpeech(entry, { ...speechOptions, decimalSeparator: entry.separator ?? 'punto' })}.`,
+    );
+  }
+  /** Número real del resultado actual (su forma decimal si es una fracción). */
+  function resultNumber() {
+    if (!result) return null;
+    return readNumber(result.decimal ?? result.value, result.separator ?? 'punto');
+  }
+  function showAlternate(next: NonNullable<typeof alternate>, title: string) {
+    setAlternate(next);
+    announce(`${title}: ${next.spoken}.`);
+  }
+  function backToResult() {
+    setAlternate(null);
+    if (resultView) announce(`Resultado: ${resultView.spoken}.`);
+  }
+  function toggleForm() {
+    if (!result) return announce('Todavía no hay un resultado.');
+    if (alternate?.kind === 'sd') return backToResult();
+    const other = result.decimal ?? result.exact;
+    if (!other) return announce('Este resultado no tiene otra forma.');
+    showAlternate(
+      {
+        kind: 'sd',
+        expression: other,
+        spoken: resultSpeech(
+          { ...result, value: other, decimal: undefined, exact: undefined },
+          speechOptions,
+        ),
+      },
+      result.decimal ? 'Decimal' : 'Forma exacta',
+    );
+  }
+  function showEngineering(direction: 1 | -1) {
+    const value = resultNumber();
+    if (value === null) return announce('ENG funciona con resultados numéricos reales.');
+    const exponent =
+      alternate?.kind === 'eng' && alternate.exponent !== undefined
+        ? alternate.exponent - 3 * direction
+        : engineeringStart(value);
+    const shown = engineering(value, exponent, preferences.decimalSeparator);
+    showAlternate(
+      {
+        kind: 'eng',
+        expression: shown.expression,
+        exponent,
+        spoken: mathSpeech(shown.expression, { decimalSeparator: preferences.decimalSeparator }),
+      },
+      'Notación de ingeniería',
+    );
+  }
+  /** °′″: con un número recién calculado lo muestra en grados, minutos y segundos; si no, los escribe. */
+  function degreesKey() {
+    const value = resultNumber();
+    if (justCalculated.current && value !== null) {
+      if (alternate?.kind === 'dms') return backToResult();
+      const dms = toDms(value, preferences.decimalSeparator);
+      return showAlternate(
+        {
+          kind: 'dms',
+          expression: dms.expression,
+          spoken: mathSpeech(dms.expression, { decimalSeparator: preferences.decimalSeparator }),
+        },
+        'Grados, minutos y segundos',
+      );
+    }
+    const before = expression.slice(0, input.current?.selectionStart ?? expression.length);
+    const mark = /°\s*[\d.,]+$/.test(before) ? "'" : /'\s*[\d.,]+$/.test(before) ? '"' : '°';
+    deviceInsert(mark, '', false);
+  }
+  function showFactors() {
+    const value = resultNumber();
+    const text = value !== null ? factorExpression(value) : null;
+    if (!text)
+      return announce('FACT descompone en primos un resultado entero entre 2 y un billón.');
+    showAlternate({ kind: 'fact', expression: text, spoken: mathSpeech(text) }, 'Factores primos');
+  }
+  function showMixed() {
+    if (!result) return announce('Todavía no hay un resultado.');
+    if (alternate?.kind === 'mixed') return backToResult();
+    const source = result.value.includes('/') ? result.value : result.exact;
+    const mixed = source ? mixedFraction(source) : null;
+    if (!mixed) return announce('La fracción mixta funciona con fracciones mayores que 1.');
+    const part = mixed.numerator
+      ? `<mfrac><mn>${mixed.numerator}</mn><mn>${mixed.denominator}</mn></mfrac>`
+      : '';
+    showAlternate(
+      {
+        kind: 'mixed',
+        mathml: `<math display="inline"><mrow>${mixed.negative ? '<mo>−</mo>' : ''}<mn>${mixed.whole}</mn>${part}</mrow></math>`,
+        spoken: `${mixed.negative ? 'menos ' : ''}${mixed.whole}${mixed.numerator ? ` enteros y ${fractionName(String(mixed.numerator), String(mixed.denominator))}` : ''}`,
+      },
+      'Fracción mixta',
+    );
+  }
+  /** STO y una variable: guarda Ans en esa variable (o en la memoria M). */
+  function store(name: string) {
+    setStoring(false);
+    const answer = lastAnswer.current;
+    if (!answer) return announce('Todavía no hay un resultado para guardar.');
+    if (name === 'M') {
+      const value = convertSeparator(answer.value, answer.separator, 'punto');
+      setMemory(value);
+      if (!storage.write('memory', value)) reportStorageFailure();
+      return announce(`Guardado en la memoria: ${mathSpeech(value)}.`);
+    }
+    void calculate(`${name}=ans`);
+  }
+  function solveExpression() {
+    const text = expression.trim();
+    if (!text) return announce('Escribí una ecuación en x, por ejemplo x^2-4=0, y después SOLVE.');
+    void calculate(text.includes('=') ? text : `${text}=0`);
+  }
+  /** CALC: pide un valor para cada variable y calcula con ellos. */
+  function calcWithValues() {
+    const text = expression.trim();
+    if (!text)
+      return announce('Escribí una expresión con variables, por ejemplo 3x+1, y después CALC.');
+    const names = freeVariables(text);
+    if (!names.length) return void calculate(text);
+    setKeyPrompt({
+      title: 'CALC: valores de las variables',
+      description: `Escribí un valor para ${names.join(', ')}. Se calcula ${text} con esos valores.`,
+      fields: names.map((name) => ({
+        id: name,
+        label: `Valor de ${name}`,
+        value: variables[name] !== undefined ? String(variables[name]) : '',
+      })),
+      submit: 'Calcular',
+      done: (values) => {
+        setKeyPrompt(null);
+        void (async () => {
+          const scope = { ...variables };
+          for (const name of names) {
+            try {
+              const value = await client.evaluate(values[name], {
+                ...numberOptions,
+                angle: preferences.angle,
+                resultForm: 'decimal',
+              });
+              const number = readNumber(value.value, value.separator ?? 'punto');
+              if (number === null) throw new Error();
+              scope[name] = number;
+            } catch {
+              announce(`El valor de ${name} tiene que ser un número real.`);
+              return;
+            }
+          }
+          await calculate(text, preferences.angle, scope);
+        })();
+      },
+    });
+  }
+  /** Teclas que piden datos: integral, derivada en un punto, sumatoria y entero al azar. */
+  function openKeyPrompt(kind: 'integral' | 'derivative' | 'sum' | 'random-int') {
+    const sep = `${argumentSeparator} `;
+    const body = expression.trim() && !expression.includes('=') ? expression.trim() : '';
+    const run = (text: string) => {
+      setKeyPrompt(null);
+      setExpression(text);
+      justCalculated.current = false;
+      void calculate(text);
+    };
+    if (kind === 'integral')
+      return setKeyPrompt({
+        title: 'Integral definida',
+        description: 'La integral de una función de x entre dos valores.',
+        fields: [
+          { id: 'f', label: 'Función de x', value: body },
+          { id: 'a', label: 'Desde x igual a' },
+          { id: 'b', label: 'Hasta x igual a' },
+        ],
+        submit: 'Calcular integral',
+        done: (v) => run(`integrate(${v.f}${sep}x${sep}${v.a}${sep}${v.b})`),
+      });
+    if (kind === 'derivative')
+      return setKeyPrompt({
+        title: 'Derivada',
+        description: 'La derivada de una función de x; con un punto, su valor en ese punto.',
+        fields: [
+          { id: 'f', label: 'Función de x', value: body },
+          { id: 'a', label: 'En x igual a (opcional)', required: false },
+        ],
+        submit: 'Calcular derivada',
+        done: (v) =>
+          run(
+            v.a.trim()
+              ? `substitute(diff(${v.f}${sep}x)${sep}x${sep}${v.a})`
+              : `diff(${v.f}${sep}x)`,
+          ),
+      });
+    if (kind === 'sum')
+      return setKeyPrompt({
+        title: 'Sumatoria',
+        description: 'Suma el término para x entero, desde un valor hasta otro.',
+        fields: [
+          { id: 'f', label: 'Término en x', value: body },
+          { id: 'a', label: 'Desde x igual a' },
+          { id: 'b', label: 'Hasta x igual a' },
+        ],
+        submit: 'Calcular sumatoria',
+        done: (v) => run(`sum(${v.f}${sep}x${sep}${v.a}${sep}${v.b})`),
+      });
+    setKeyPrompt({
+      title: 'Entero al azar',
+      description: 'Un número entero al azar entre dos valores, incluidos.',
+      fields: [
+        { id: 'a', label: 'Desde' },
+        { id: 'b', label: 'Hasta' },
+      ],
+      submit: 'Escribir número',
+      done: (v) => {
+        setKeyPrompt(null);
+        const low = readNumber(v.a, preferences.decimalSeparator),
+          high = readNumber(v.b, preferences.decimalSeparator);
+        if (low === null || high === null || !Number.isInteger(low) || !Number.isInteger(high))
+          return announce('Escribí dos números enteros.');
+        const [a, b] = low <= high ? [low, high] : [high, low];
+        const value = String(a + Math.floor(Math.random() * (b - a + 1)));
+        deviceInsert(value, '', false);
+        announce(`Número al azar: ${value}.`);
+      },
+    });
+  }
+  function closeKeyPrompt() {
+    setKeyPrompt(null);
+    requestAnimationFrame(() => input.current?.focus());
+  }
+  function resetCalculator() {
+    setMemory('0');
+    if (!storage.write('memory', '0')) reportStorageFailure();
+    setVariables({});
+    if (!variableService.save({})) reportStorageFailure();
+    lastAnswer.current = null;
+    previousAnswer.current = null;
+    clear();
+    announce(
+      'Calculadora reiniciada: memoria, variables y Ans en cero. El historial y la configuración se conservan.',
+    );
+  }
+  function closePanel() {
+    setLcdPanel(null);
+    requestAnimationFrame(() => input.current?.focus());
+  }
+  const panel = (() => {
+    const decimal = preferences.decimalSeparator;
+    switch (lcdPanel) {
+      case 'menu':
+        return {
+          title: 'Menú de modos',
+          columns: 4,
+          items: calculatorModes.map((mode): LcdItem => ({
+            id: mode.id,
+            label: mode.label,
+            icon: mode.icon,
+          })),
+        };
+      case 'constants':
+        return {
+          title: 'Constantes físicas',
+          columns: 1,
+          items: physicalConstants.map((constant): LcdItem => ({
+            id: constant.symbol,
+            label: constant.label,
+            detail: `${constant.symbol} = ${formatNumber(constant.value, { significant: 6, decimal })} ${constant.unit}`,
+          })),
+        };
+      case 'variables':
+        return {
+          title: 'Variables guardadas',
+          columns: 1,
+          items: [
+            ...['A', 'B', 'C', 'D', 'E', 'F', 'x', 'y'].map((name): LcdItem => ({
+              id: name,
+              label: name,
+              detail:
+                variables[name] === undefined
+                  ? 'sin valor'
+                  : `= ${formatNumber(variables[name], { significant: 10, decimal })}`,
+            })),
+            { id: 'M', label: 'M, memoria', detail: `= ${reusable(memory)}` },
+          ],
+        };
+      case 'reset':
+        return {
+          title: '¿Reiniciar la calculadora?',
+          columns: 1,
+          items: [
+            { id: 'yes', label: 'Sí: borrar memoria, variables y Ans' },
+            { id: 'no', label: 'No, volver' },
+          ],
+        };
+      default:
+        return null;
+    }
+  })();
+  function choosePanelItem(item: LcdItem) {
+    const kind = lcdPanel;
+    setLcdPanel(null);
+    if (kind === 'menu') {
+      const mode = calculatorModes.find((candidate) => candidate.id === item.id)!;
+      if (mode.tool === 'basic') navigate('basic');
+      else openTool(mode.tool);
+      announce(`Modo ${mode.label}.`);
+    } else if (kind === 'constants') {
+      deviceInsert(item.id, '', false);
+      requestAnimationFrame(() => input.current?.focus());
+      announce(`${item.label}: ${item.id}.`);
+    } else if (kind === 'variables') {
+      if (item.id === 'M') void memoryAction('recall');
+      else deviceInsert(item.id, '', false);
+      requestAnimationFrame(() => input.current?.focus());
+    } else if (kind === 'reset') {
+      if (item.id === 'yes') resetCalculator();
+      else announce('Reinicio cancelado.');
+      requestAnimationFrame(() => input.current?.focus());
+    }
+  }
+  /** Una tecla de la calculadora: resuelve su función con Shift, Alpha y STO. */
+  function pressKey(key: CalculatorKey, face: KeyFace) {
+    const action = face.action;
+    if (off && !(action.op === 'power' && action.on)) return;
+    // Con un menú en la pantalla, la cruceta, «=», los números y AC lo manejan.
+    if (lcdPanel && action.op !== 'layer') {
+      setLayer('main');
+      if (action.op === 'cursor') panelRef.current?.move(action.direction);
+      else if (action.op === 'replay')
+        panelRef.current?.move(action.direction === 'previous' ? 'up' : 'down');
+      else if (action.op === 'calculate') panelRef.current?.choose();
+      else if (/^k\d$/.test(key.id) && key.id !== 'k0')
+        panelRef.current?.choose(Number(key.id.slice(1)) - 1);
+      else if (['clear', 'menu', 'power', 'delete'].includes(action.op)) closePanel();
+      return;
+    }
+    if (action.op === 'layer') {
+      const next = layer === action.layer ? 'main' : action.layer;
+      setLayer(next);
+      announce(
+        next === 'main'
+          ? `${action.layer === 'shift' ? 'Shift' : 'Alpha'} desactivado.`
+          : `${next === 'shift' ? 'Shift' : 'Alpha'} activado: la próxima tecla cambia de función.`,
+      );
+      return;
+    }
+    setLayer('main');
+    if (storing && action.op !== 'variable') {
+      setStoring(false);
+      announce('Guardado cancelado.');
+      if (action.op === 'store') return;
+    }
+    if (
+      preferences.guided &&
+      ['insert', 'wrap', 'variable', 'negative', 'decimal'].includes(action.op)
+    )
+      speech.hablarAutomatico(face.name);
+    switch (action.op) {
+      case 'insert':
+        return deviceInsert(action.text);
+      case 'wrap':
+        return deviceInsert(
+          fillSeparators(action.before, preferences.decimalSeparator),
+          fillSeparators(action.after, preferences.decimalSeparator),
+        );
+      case 'negative':
+        return deviceInsert('-', '', false);
+      case 'variable':
+        return storing ? store(action.name) : deviceInsert(action.name, '', false);
+      case 'decimal':
+        return deviceInsert(preferences.decimalSeparator === 'coma' ? ',' : '.', '', false);
+      case 'separator':
+        return deviceInsert(argumentSeparator, '', false);
+      case 'calculate':
+        return void calculate(
+          expression,
+          preferences.angle,
+          variables,
+          action.form === 'decimal' ? { resultForm: 'decimal' } : {},
+        );
+      case 'delete':
+        setAlternate(null);
+        return erase();
+      case 'clear':
+        setAlternate(null);
+        return clear();
+      case 'undo': {
+        const value = editHistory.undo(expression);
+        if (value === undefined) return announce('No hay nada para deshacer.');
+        setExpression(value);
+        justCalculated.current = false;
+        return announce(`Deshecho. ${value ? mathSpeech(value) : 'La expresión quedó vacía.'}`);
+      }
+      case 'overwrite':
+        setOverwrite(!overwrite);
+        return announce(
+          overwrite
+            ? 'Modo insertar: lo que escribís se agrega.'
+            : 'Modo sobrescribir: lo que escribís reemplaza lo que sigue al cursor.',
+        );
+      case 'cursor':
+        return moveCaret(action.direction);
+      case 'replay':
+        return replayHistory(action.direction);
+      case 'memory':
+        return void memoryAction(action.action);
+      case 'menu':
+        return setLcdPanel('menu');
+      case 'setup':
+        return navigate('settings');
+      case 'options':
+        dialogOrigin.current = document.activeElement as HTMLElement;
+        dialogSelection.current = captureFocus();
+        return setPalette(true);
+      case 'power':
+        if (!action.on) {
+          setOff(true);
+          return announce('Pantalla apagada. ON la vuelve a encender.');
+        }
+        if (off) {
+          setOff(false);
+          return announce('Pantalla encendida.');
+        }
+        input.current?.focus();
+        return announce('Calculadora lista.');
+      case 'store':
+        if (!lastAnswer.current) return announce('Todavía no hay un resultado para guardar.');
+        setStoring(true);
+        return announce('STO: elegí la variable, de A a F, x, y o M.');
+      case 'recall':
+        return setLcdPanel('variables');
+      case 'toggle-form':
+        return toggleForm();
+      case 'mixed':
+        return showMixed();
+      case 'engineering':
+        return showEngineering(action.direction);
+      case 'dms':
+        return degreesKey();
+      case 'factor':
+        return showFactors();
+      case 'solve':
+        return solveExpression();
+      case 'calc':
+        return calcWithValues();
+      case 'prompt':
+        return openKeyPrompt(action.prompt);
+      case 'constants':
+        return setLcdPanel('constants');
+      case 'tool':
+        return openTool(action.tool);
+      case 'reset':
+        return setLcdPanel('reset');
+      case 'copy':
+        return void copy(
+          result ? `${result.expression} = ${result.value}` : expression,
+          'Cálculo copiado.',
+        );
+      case 'random': {
+        const value = (Math.floor(Math.random() * 1000) / 1000).toFixed(3);
+        deviceInsert(
+          preferences.decimalSeparator === 'coma' ? value.replace('.', ',') : value,
+          '',
+          false,
+        );
+        return announce(`Número al azar: ${value}.`);
+      }
+      case 'previous-answer': {
+        const previous = previousAnswer.current;
+        if (!previous) return announce('Todavía no hay un resultado previo al anterior.');
+        return deviceInsert(`(${reusable(previous.value, previous.separator)})`, '', false);
+      }
+    }
+  }
+  // Lo que muestra la pantalla: la expresión en forma de libro y el resultado (u otra forma).
+  const lcdNatural = useMemo(
+    () =>
+      expression.trim()
+        ? toMathML(expression, {
+            decimalSeparator: preferences.decimalSeparator,
+            display: 'inline',
+          })
+        : null,
+    [expression, preferences.decimalSeparator],
+  );
+  const lcdAnswer = useMemo(() => {
+    if (!result) return null;
+    if (alternate?.mathml) return { mathml: alternate.mathml, text: alternate.spoken };
+    const text = alternate?.expression ?? (result.table ? '' : result.value);
+    if (!text) return { mathml: null, text: 'Detalle en la tabla de abajo.' };
+    const decimal = alternate ? preferences.decimalSeparator : (result.separator ?? 'punto');
+    return { mathml: toMathML(text, { decimalSeparator: decimal, display: 'inline' }), text };
+  }, [result, alternate, preferences.decimalSeparator]);
+  const alternateLabel = alternate
+    ? {
+        sd: result?.decimal ? 'decimal' : 'exacta',
+        eng: 'ENG',
+        dms: '°′″',
+        fact: 'FACT',
+        mixed: 'a b/c',
+      }[alternate.kind]
+    : '';
+
   async function copy(text: string, done = 'Resultado copiado.') {
     try {
       await navigator.clipboard.writeText(text);
@@ -613,14 +1225,13 @@ export function Calculator() {
     const currentField = field?.getClientRects().length
       ? describeElement(field)
       : 'Ningún campo de edición enfocado';
-    const keypad = document.getElementById('keypad-panel') as HTMLDetailsElement | null;
     const draft = Array.from(
       document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
         '[data-expression], #expression',
       ),
     ).find((element) => element.getClientRects().length)?.value;
     announce(
-      `${section}. ${keyboard.mode === 'math' ? 'Modo teclado matemático' : 'Modo escritura'}. ${preferences.guided ? 'Guía por voz activada' : 'Lector de pantalla externo'}. Campo: ${currentField}. ${draft ? `Expresión: ${mathSpeech(draft)}.` : 'Sin expresión en esta sección.'} ${result ? `Hay resultado: ${resultSpeech(result, speechOptions)}.` : 'Sin resultado.'} ${error ? `Error: ${error}.` : 'Sin errores.'} Teclado de botones ${keypad?.open ? 'abierto' : 'cerrado'}.`,
+      `${section}. ${keyboard.mode === 'math' ? 'Modo teclado matemático' : 'Modo escritura'}. ${preferences.guided ? 'Guía por voz activada' : 'Lector de pantalla externo'}. Campo: ${currentField}. ${draft ? `Expresión: ${mathSpeech(draft)}.` : 'Sin expresión en esta sección.'} ${result ? `Hay resultado: ${resultSpeech(result, speechOptions)}.` : 'Sin resultado.'} ${error ? `Error: ${error}.` : 'Sin errores.'}${layer !== 'main' ? ` ${layer === 'shift' ? 'Shift' : 'Alpha'} activado.` : ''}${storing ? ' STO esperando una variable.' : ''}`,
     );
   }
 
@@ -967,6 +1578,184 @@ export function Calculator() {
     };
   });
 
+  const inCalculator = activeTool === 'basic' || activeTool === 'scientific';
+  const resultPanel = (
+    <section className="result panel" aria-labelledby="result-title">
+      <h2 id="result-title" tabIndex={-1}>
+        Resultado
+      </h2>
+      {result ? (
+        <>
+          <MathView
+            className="result-expression"
+            text={result.expression}
+            spoken={resultView!.expressionSpoken}
+            srMath={preferences.srMath}
+            decimalSeparator={preferences.decimalSeparator}
+          />
+          <div
+            className={`result-value ${result.table || result.matrix ? 'sr-only' : ['Álgebra', 'Cálculo'].includes(result.kind) ? 'symbolic-value' : ''}`}
+            data-speech={`Resultado: ${resultView!.spoken}`}
+          >
+            {result.table || result.matrix ? (
+              <code className="result-syntax" aria-hidden="true">
+                {result.value}
+              </code>
+            ) : (
+              <MathView
+                text={result.value}
+                spoken={resultView!.spoken}
+                srMath={preferences.srMath}
+                decimalSeparator={preferences.decimalSeparator}
+                approximate={result.approximate}
+                syntaxClassName="result-syntax"
+              />
+            )}
+          </div>
+          {!!result.warnings?.length && (
+            <div className="result-warnings">
+              {result.warnings.map((warning) => (
+                <p key={warning}>{warning}</p>
+              ))}
+            </div>
+          )}
+          {result.matrix && (
+            <div className="result-table">
+              <table className="data-table">
+                <caption>Matriz o vector resultado</caption>
+                <tbody>
+                  {result.matrix.map((row, i) => (
+                    <tr key={i}>
+                      {row.map((value, j) => (
+                        <td
+                          key={j}
+                          data-speech={`Fila ${i + 1}, columna ${j + 1}, ${mathSpeech(value)}`}
+                        >
+                          {value}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {result.table && (
+            <table className="data-table">
+              <caption>Detalle del resultado</caption>
+              <tbody>
+                {result.table.map((row) => (
+                  <tr key={row.label}>
+                    <th scope="row">{row.label}</th>
+                    <td data-speech={`${row.label}: ${mathSpeech(row.value)}`}>{row.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {result.unit && <p>Unidad: {result.unit}</p>}
+          {result.exact && (
+            <p>
+              Forma exacta: <strong>{result.exact}</strong>
+            </p>
+          )}
+          {result.decimal && (
+            <p>
+              Aproximación decimal: <strong>{result.decimal}</strong>
+            </p>
+          )}
+          <p className="hint">
+            {result.kind} · {angleNames[result.angleMode]}
+            <br />
+            {historySaved
+              ? 'Guardado en tu historial local.'
+              : 'Disponible en esta sesión. No se pudo guardar el historial; se perderán los cambios al cerrar.'}
+          </p>
+          <div className="actions">
+            <button
+              onClick={() => {
+                const origin = calculationOrigin.current[calculationKey];
+                if (!origin) return;
+                openTool(origin.tool);
+                requestAnimationFrame(() => {
+                  if (origin.field?.isConnected) origin.field.focus();
+                });
+              }}
+            >
+              Volver a editar el cálculo
+            </button>
+            <button onClick={() => explicitRead(`Resultado: ${resultView!.spoken}`)}>
+              Escuchar resultado
+            </button>
+            <button onClick={() => void copy(result.value)}>Copiar resultado</button>
+            {resultView?.latex && (
+              <button onClick={() => void copy(resultView.latex!, 'LaTeX copiado.')}>
+                Copiar como LaTeX
+              </button>
+            )}
+            {resultView?.mathml && (
+              <button onClick={() => void copy(resultView.mathml!, 'MathML copiado.')}>
+                Copiar como MathML
+              </button>
+            )}
+            <button
+              onClick={() =>
+                downloadHistory(
+                  [{ ...result, id: crypto.randomUUID(), date: new Date().toISOString() }],
+                  'txt',
+                )
+              }
+            >
+              Guardar resultado TXT
+            </button>
+            {result.graphable && !result.assigned && (
+              <button
+                onClick={() => {
+                  // Gráficos lee la función con el separador elegido.
+                  setGraphRequest({
+                    id: Date.now(),
+                    expression: reusable(result.value, result.separator),
+                  });
+                  openTool('graphs');
+                  announce(
+                    'Resultado cargado en Gráficos. Podés editar la función y pulsar Graficar funciones.',
+                  );
+                }}
+              >
+                Graficar resultado
+              </button>
+            )}
+            <button
+              onClick={() => {
+                updateCalculation({ explanation: !explanation });
+                if (preferences.guided && !explanation) speech.hablar(result.explanation);
+              }}
+              aria-expanded={explanation}
+            >
+              Explicar resultado
+            </button>
+          </div>
+          <CalculationSteps steps={result.steps} speak={explicitRead} />
+          {explanation && (
+            <div className="explanation">
+              <h3>Método de cálculo</h3>
+              <p>{result.explanation}</p>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="result-empty">
+          <span aria-hidden="true">=</span>
+          <p>Todo empieza con una expresión.</p>
+          <p className="hint">
+            El resultado aparecerá acá.
+            <br />
+            Podés escucharlo y volver a usarlo.
+          </p>
+        </div>
+      )}
+    </section>
+  );
   return (
     <CommandContext.Provider value={{ bus: commandBus, keyboard: keyboardManager }}>
       <div
@@ -1280,135 +2069,238 @@ export function Calculator() {
               </div>
             )}
             <div hidden={activeTool !== 'basic' && activeTool !== 'scientific'}>
-              <section className="calculator panel" aria-label="Escribir una operación">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void calculate();
-                  }}
-                >
-                  <label className="expression-label" htmlFor="expression">
-                    Expresión matemática
-                  </label>
-                  <input
-                    ref={input}
-                    id="expression"
-                    data-preserve-reading
-                    className="expression"
-                    value={expression}
-                    maxLength={10000}
-                    autoComplete="off"
-                    spellCheck={false}
-                    aria-describedby={
-                      error ? 'expression-hint calculation-error' : 'expression-hint'
-                    }
-                    aria-invalid={!!error}
-                    placeholder="Ej.: sqrt(25) + sin(pi/2)"
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const before = expression;
-                      setExpression(value);
-                      justCalculated.current = false;
-                      setError('');
-                      clearTimeout(typingTimer.current);
-                      const deleted = describeDeletion(before, value);
-                      if (deleted && preferences.guided) speech.hablarAutomatico(deleted);
-                      const caret = e.target.selectionStart ?? value.length;
-                      const closing =
-                        value.length === before.length + 1 ? describeClosing(value, caret) : '';
-                      if (closing) announce(closing);
-                      if (preferences.guided && preferences.readTyping)
-                        typingTimer.current = setTimeout(
-                          () => speech.hablarAutomatico(mathSpeech(value)),
-                          900,
-                        );
+              <section className="calculator" aria-label="Escribir una operación">
+                <div className="device-layout">
+                  <form
+                    id="calc-form"
+                    className="device-top"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void calculate();
                     }}
-                    onKeyDown={(e) => {
-                      if (keyboardManager.preservesReaderKeys(e.nativeEvent)) return;
-                      // Con la guía, mover el cursor dice qué quedó a su derecha (Ctrl: la palabra).
-                      if (
-                        preferences.guided &&
-                        ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) &&
-                        !e.shiftKey &&
-                        !e.altKey &&
-                        !e.metaKey
-                      ) {
-                        const field = e.currentTarget;
-                        const word = e.ctrlKey;
-                        requestAnimationFrame(() => {
-                          const caret = field.selectionStart ?? field.value.length;
-                          speech.hablarAutomatico(
-                            word
-                              ? (tokenAt(field.value, caret)?.speech ?? 'Final de la expresión.')
-                              : speakCharAt(field.value, caret),
-                          );
-                        });
-                        return;
-                      }
-                      if (
-                        preferences.guided &&
-                        preferences.readKeys &&
-                        e.key.length === 1 &&
-                        !e.ctrlKey &&
-                        !e.altKey
-                      )
-                        speech.hablarAutomatico(keySpeech(e.key));
-                    }}
-                  />
-                  <p className="hint" id="expression-hint">
-                    {preferences.decimalSeparator === 'coma'
-                      ? 'Enter para calcular · Coma para decimales · Punto y coma entre argumentos'
-                      : 'Enter para calcular · Punto para decimales · Paréntesis para agrupar'}
-                  </p>
-                  <div className="actions main-actions">
-                    <button type="submit" className="primary" aria-disabled={busy}>
-                      {busy ? 'Calculando…' : 'Calcular'} <span aria-hidden="true">↵</span>
-                    </button>
-                    <button type="button" disabled={!speech.available} onClick={readExpression}>
-                      Escuchar expresión
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        clear();
-                        input.current?.focus();
-                      }}
-                    >
-                      Limpiar
-                    </button>
+                  >
+                    <div className="device-head" aria-hidden="true">
+                      <span className="device-brand">
+                        <b>MathVoice</b>
+                        <span className="device-model">MV-100 · Científica</span>
+                        <span className="device-series">PARLANTE</span>
+                      </span>
+                      <span className="device-solar" />
+                    </div>
+                    <div className="lcd-frame">
+                      <div className="lcd" data-off={off || undefined}>
+                        <div className="lcd-status" aria-hidden="true">
+                          <span data-on={layer === 'shift' || undefined}>S</span>
+                          <span data-on={layer === 'alpha' || undefined}>A</span>
+                          <span data-on={memory !== '0' || undefined}>M</span>
+                          <span data-on={storing || undefined}>STO</span>
+                          <span data-on={overwrite || undefined}>INS</span>
+                          <span data-on={preferences.numberFormat !== 'normal' || undefined}>
+                            {preferences.numberFormat === 'fijo' ? 'FIX' : 'SCI'}
+                          </span>
+                          <span className="lcd-angle" data-on>
+                            {preferences.angle === 'deg'
+                              ? 'D'
+                              : preferences.angle === 'grad'
+                                ? 'G'
+                                : 'R'}
+                          </span>
+                        </div>
+                        <label className="sr-only" htmlFor="expression">
+                          Expresión matemática
+                        </label>
+                        <input
+                          ref={input}
+                          id="expression"
+                          data-preserve-reading
+                          className="expression lcd-input"
+                          value={expression}
+                          maxLength={10000}
+                          autoComplete="off"
+                          spellCheck={false}
+                          aria-describedby={
+                            error ? 'expression-hint calculation-error' : 'expression-hint'
+                          }
+                          aria-invalid={!!error}
+                          placeholder="Ej.: sqrt(25) + sin(pi/2)"
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            const before = expression;
+                            setExpression(value);
+                            replay.current = -1;
+                            setAlternate(null);
+                            justCalculated.current = false;
+                            setError('');
+                            clearTimeout(typingTimer.current);
+                            const deleted = describeDeletion(before, value);
+                            if (deleted && preferences.guided) speech.hablarAutomatico(deleted);
+                            const caret = e.target.selectionStart ?? value.length;
+                            const closing =
+                              value.length === before.length + 1
+                                ? describeClosing(value, caret)
+                                : '';
+                            if (closing) announce(closing);
+                            if (preferences.guided && preferences.readTyping)
+                              typingTimer.current = setTimeout(
+                                () => speech.hablarAutomatico(mathSpeech(value)),
+                                900,
+                              );
+                          }}
+                          onKeyDown={(e) => {
+                            if (keyboardManager.preservesReaderKeys(e.nativeEvent)) return;
+                            // INS: escribir reemplaza el carácter que sigue al cursor.
+                            if (
+                              overwrite &&
+                              e.key.length === 1 &&
+                              !e.ctrlKey &&
+                              !e.altKey &&
+                              !e.metaKey
+                            ) {
+                              const target = e.currentTarget;
+                              const at = target.selectionStart ?? 0;
+                              if (at === target.selectionEnd && at < target.value.length)
+                                target.setSelectionRange(at, at + 1);
+                            }
+                            // Con la guía, mover el cursor dice qué quedó a su derecha (Ctrl: la palabra).
+                            if (
+                              preferences.guided &&
+                              ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) &&
+                              !e.shiftKey &&
+                              !e.altKey &&
+                              !e.metaKey
+                            ) {
+                              const field = e.currentTarget;
+                              const word = e.ctrlKey;
+                              requestAnimationFrame(() => {
+                                const caret = field.selectionStart ?? field.value.length;
+                                speech.hablarAutomatico(
+                                  word
+                                    ? (tokenAt(field.value, caret)?.speech ??
+                                        'Final de la expresión.')
+                                    : speakCharAt(field.value, caret),
+                                );
+                              });
+                              return;
+                            }
+                            if (
+                              preferences.guided &&
+                              preferences.readKeys &&
+                              e.key.length === 1 &&
+                              !e.ctrlKey &&
+                              !e.altKey
+                            )
+                              speech.hablarAutomatico(keySpeech(e.key));
+                          }}
+                        />
+                        <div
+                          className="lcd-natural"
+                          aria-hidden="true"
+                          dangerouslySetInnerHTML={{ __html: lcdNatural ?? '' }}
+                        />
+                        <div
+                          className="lcd-answer"
+                          aria-hidden="true"
+                          data-error={(inCalculator && !!error) || undefined}
+                        >
+                          {inCalculator && error ? (
+                            'Error'
+                          ) : lcdAnswer ? (
+                            <>
+                              {result?.approximate && !alternate && '≈ '}
+                              {lcdAnswer.mathml ? (
+                                <span dangerouslySetInnerHTML={{ __html: lcdAnswer.mathml }} />
+                              ) : (
+                                lcdAnswer.text
+                              )}
+                              {alternateLabel && <small>{alternateLabel}</small>}
+                            </>
+                          ) : null}
+                        </div>
+                        {panel && (
+                          <LcdPanel
+                            ref={panelRef}
+                            title={panel.title}
+                            items={panel.items}
+                            columns={panel.columns}
+                            onChoose={choosePanelItem}
+                            onClose={closePanel}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </form>
+                  <div className="device-toolbar">
+                    <p className="hint" id="expression-hint">
+                      {preferences.decimalSeparator === 'coma'
+                        ? 'Enter para calcular · Coma para decimales · Punto y coma entre argumentos'
+                        : 'Enter para calcular · Punto para decimales · Paréntesis para agrupar'}
+                    </p>
+                    <div className="actions main-actions">
+                      <button
+                        type="submit"
+                        form="calc-form"
+                        className="primary"
+                        aria-disabled={busy}
+                      >
+                        {busy ? 'Calculando…' : 'Calcular'} <span aria-hidden="true">↵</span>
+                      </button>
+                      <button type="button" disabled={!speech.available} onClick={readExpression}>
+                        Escuchar expresión
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clear();
+                          input.current?.focus();
+                        }}
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+                    <label className="angle-label">
+                      Modo angular
+                      <select
+                        value={preferences.angle}
+                        onChange={(e) => {
+                          const angle = e.target.value as AngleMode;
+                          changePreferences({ ...preferences, angle });
+                          announce(`Modo angular: ${angleNames[angle]}.`);
+                        }}
+                      >
+                        <option value="rad">Radianes</option>
+                        <option value="deg">Grados</option>
+                        <option value="grad">Gradianes</option>
+                      </select>
+                    </label>
+                    {view === 'work' &&
+                      !help &&
+                      (activeTool === 'basic' || activeTool === 'scientific') && (
+                        <Dictation
+                          language={preferences.language}
+                          guided={preferences.guided}
+                          announce={announce}
+                          onListeningChange={setListening}
+                          confirm={(value, angle) => {
+                            const text = convertSeparator(
+                              value,
+                              'punto',
+                              preferences.decimalSeparator,
+                            );
+                            setExpression(text);
+                            if (angle) changePreferences({ ...preferences, angle });
+                            void calculate(text, angle ?? preferences.angle);
+                          }}
+                        />
+                      )}
                   </div>
-                  <label className="angle-label">
-                    Modo angular
-                    <select
-                      value={preferences.angle}
-                      onChange={(e) => {
-                        const angle = e.target.value as AngleMode;
-                        changePreferences({ ...preferences, angle });
-                        announce(`Modo angular: ${angleNames[angle]}.`);
-                      }}
-                    >
-                      <option value="rad">Radianes</option>
-                      <option value="deg">Grados</option>
-                      <option value="grad">Gradianes</option>
-                    </select>
-                  </label>
-                </form>
-                {view === 'work' &&
-                  !help &&
-                  (activeTool === 'basic' || activeTool === 'scientific') && (
-                    <Dictation
-                      language={preferences.language}
-                      guided={preferences.guided}
-                      announce={announce}
-                      onListeningChange={setListening}
-                      confirm={(value, angle) => {
-                        const text = convertSeparator(value, 'punto', preferences.decimalSeparator);
-                        setExpression(text);
-                        if (angle) changePreferences({ ...preferences, angle });
-                        void calculate(text, angle ?? preferences.angle);
-                      }}
-                    />
-                  )}
+                  {inCalculator && resultPanel}
+                  <CalculatorKeys
+                    layer={layer}
+                    storing={storing}
+                    decimal={preferences.decimalSeparator}
+                    onPress={pressKey}
+                  />
+                </div>
               </section>
             </div>
             <div hidden={activeTool !== 'scientific'}>
@@ -1442,205 +2334,8 @@ export function Calculator() {
                 announce(`Variable ${name} eliminada.`);
               }}
             />
-            <section className="result panel" aria-labelledby="result-title">
-              <h2 id="result-title" tabIndex={-1}>
-                Resultado
-              </h2>
-              {result ? (
-                <>
-                  <MathView
-                    className="result-expression"
-                    text={result.expression}
-                    spoken={resultView!.expressionSpoken}
-                    srMath={preferences.srMath}
-                    decimalSeparator={preferences.decimalSeparator}
-                  />
-                  <div
-                    className={`result-value ${result.table || result.matrix ? 'sr-only' : ['Álgebra', 'Cálculo'].includes(result.kind) ? 'symbolic-value' : ''}`}
-                    data-speech={`Resultado: ${resultView!.spoken}`}
-                  >
-                    {result.table || result.matrix ? (
-                      <code className="result-syntax" aria-hidden="true">
-                        {result.value}
-                      </code>
-                    ) : (
-                      <MathView
-                        text={result.value}
-                        spoken={resultView!.spoken}
-                        srMath={preferences.srMath}
-                        decimalSeparator={preferences.decimalSeparator}
-                        approximate={result.approximate}
-                        syntaxClassName="result-syntax"
-                      />
-                    )}
-                  </div>
-                  {!!result.warnings?.length && (
-                    <div className="result-warnings">
-                      {result.warnings.map((warning) => (
-                        <p key={warning}>{warning}</p>
-                      ))}
-                    </div>
-                  )}
-                  {result.matrix && (
-                    <div className="result-table">
-                      <table className="data-table">
-                        <caption>Matriz o vector resultado</caption>
-                        <tbody>
-                          {result.matrix.map((row, i) => (
-                            <tr key={i}>
-                              {row.map((value, j) => (
-                                <td
-                                  key={j}
-                                  data-speech={`Fila ${i + 1}, columna ${j + 1}, ${mathSpeech(value)}`}
-                                >
-                                  {value}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {result.table && (
-                    <table className="data-table">
-                      <caption>Detalle del resultado</caption>
-                      <tbody>
-                        {result.table.map((row) => (
-                          <tr key={row.label}>
-                            <th scope="row">{row.label}</th>
-                            <td data-speech={`${row.label}: ${mathSpeech(row.value)}`}>
-                              {row.value}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  {result.unit && <p>Unidad: {result.unit}</p>}
-                  {result.exact && (
-                    <p>
-                      Forma exacta: <strong>{result.exact}</strong>
-                    </p>
-                  )}
-                  {result.decimal && (
-                    <p>
-                      Aproximación decimal: <strong>{result.decimal}</strong>
-                    </p>
-                  )}
-                  <p className="hint">
-                    {result.kind} · {angleNames[result.angleMode]}
-                    <br />
-                    {historySaved
-                      ? 'Guardado en tu historial local.'
-                      : 'Disponible en esta sesión. No se pudo guardar el historial; se perderán los cambios al cerrar.'}
-                  </p>
-                  <div className="actions">
-                    <button
-                      onClick={() => {
-                        const origin = calculationOrigin.current[calculationKey];
-                        if (!origin) return;
-                        openTool(origin.tool);
-                        requestAnimationFrame(() => {
-                          if (origin.field?.isConnected) origin.field.focus();
-                        });
-                      }}
-                    >
-                      Volver a editar el cálculo
-                    </button>
-                    <button onClick={() => explicitRead(`Resultado: ${resultView!.spoken}`)}>
-                      Escuchar resultado
-                    </button>
-                    <button onClick={() => void copy(result.value)}>Copiar resultado</button>
-                    {resultView?.latex && (
-                      <button onClick={() => void copy(resultView.latex!, 'LaTeX copiado.')}>
-                        Copiar como LaTeX
-                      </button>
-                    )}
-                    {resultView?.mathml && (
-                      <button onClick={() => void copy(resultView.mathml!, 'MathML copiado.')}>
-                        Copiar como MathML
-                      </button>
-                    )}
-                    <button
-                      onClick={() =>
-                        downloadHistory(
-                          [{ ...result, id: crypto.randomUUID(), date: new Date().toISOString() }],
-                          'txt',
-                        )
-                      }
-                    >
-                      Guardar resultado TXT
-                    </button>
-                    {result.graphable && !result.assigned && (
-                      <button
-                        onClick={() => {
-                          // Gráficos lee la función con el separador elegido.
-                          setGraphRequest({
-                            id: Date.now(),
-                            expression: reusable(result.value, result.separator),
-                          });
-                          openTool('graphs');
-                          announce(
-                            'Resultado cargado en Gráficos. Podés editar la función y pulsar Graficar funciones.',
-                          );
-                        }}
-                      >
-                        Graficar resultado
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        updateCalculation({ explanation: !explanation });
-                        if (preferences.guided && !explanation) speech.hablar(result.explanation);
-                      }}
-                      aria-expanded={explanation}
-                    >
-                      Explicar resultado
-                    </button>
-                  </div>
-                  <CalculationSteps steps={result.steps} speak={explicitRead} />
-                  {explanation && (
-                    <div className="explanation">
-                      <h3>Método de cálculo</h3>
-                      <p>{result.explanation}</p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="result-empty">
-                  <span aria-hidden="true">=</span>
-                  <p>Todo empieza con una expresión.</p>
-                  <p className="hint">
-                    El resultado aparecerá acá.
-                    <br />
-                    Podés escucharlo y volver a usarlo.
-                  </p>
-                </div>
-              )}
-            </section>
+            {!inCalculator && resultPanel}
             <div hidden={activeTool !== 'basic' && activeTool !== 'scientific'}>
-              <details className="panel" id="keypad-panel">
-                <summary>Teclado de botones y memoria</summary>
-                <p className="hint">
-                  Abrí este teclado si preferís calcular con botones. Si escribís con tu teclado
-                  físico, podés dejarlo cerrado.
-                </p>
-                <Keypad
-                  insert={keypadInsert}
-                  erase={erase}
-                  clear={clear}
-                  sign={() => {
-                    setExpression(toggleSign(expression));
-                    justCalculated.current = false;
-                  }}
-                  calculate={() => void calculate()}
-                  busy={busy}
-                  memory={reusable(memory)}
-                  onMemory={(action) => void memoryAction(action)}
-                  decimal={preferences.decimalSeparator}
-                />
-              </details>
               <details className="panel">
                 <summary>Ejemplos de operaciones</summary>
                 <div className="examples">
@@ -1722,6 +2417,7 @@ export function Calculator() {
               announce={announce}
             />
           )}
+          {keyPrompt && <KeyPrompt request={keyPrompt} close={closeKeyPrompt} />}
           {functionPrompt && (
             <FunctionPrompt
               key={functionPrompt.id}

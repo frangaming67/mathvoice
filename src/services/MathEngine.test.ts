@@ -447,3 +447,19 @@ describe('unidades, estadística y marcas del resultado', () => {
     expect(engine.evaluate('solve(x^2=4,x)').graphable).toBeUndefined();
   });
 });
+
+describe('teclas de la calculadora científica', () => {
+  it('lee grados sexagesimales en cualquier modo angular', () => {
+    expect(engine.evaluate('sin(30°)', opts({ angle: 'rad' })).value).toBe('0.5');
+    expect(engine.evaluate('sin(30°)', opts({ angle: 'deg' })).value).toBe('0.5');
+    expect(engine.evaluate(`12°30'45"`, opts({ angle: 'deg' })).value).toBe('12.5125');
+    expect(engine.evaluate('90°', opts({ angle: 'grad' })).value).toBe('100');
+  });
+  it('suma una serie, deriva en un punto y toma la parte entera', () => {
+    expect(engine.evaluate('sum(x^2, x, 1, 10)', opts()).value).toBe('385');
+    expect(engine.evaluate('sum([1, 2, 3])', opts()).value).toBe('6');
+    expect(() => engine.evaluate('sum(x, x, 1, 2.5)', opts())).toThrow('enteros');
+    expect(engine.evaluate('substitute(diff(x^3, x), x, 2)', opts()).value).toBe('12');
+    expect(engine.evaluate('fix(-2.7)', opts()).value).toBe('-2');
+  });
+});

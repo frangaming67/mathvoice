@@ -368,6 +368,15 @@ export function createExtensionFunctions(context: ExtensionContext = {}): Record
         [`Argumento en ${angleUnitName[angle]}`]: fromRadians(Number(math.arg(input)), angle),
       };
     },
+    // 12°30'45": grados sexagesimales llevados a la unidad angular elegida.
+    dms: (d: unknown, m: unknown = 0, s: unknown = 0) => {
+      const degrees = real(d) + real(m) / 60 + real(s) / 3600;
+      return angle === 'deg'
+        ? degrees
+        : angle === 'grad'
+          ? (degrees * 10) / 9
+          : (degrees * Math.PI) / 180;
+    },
     rect: (r: unknown, theta: unknown) => {
       const radius = real(r);
       if (radius < 0) throw fail('El módulo no puede ser negativo.');

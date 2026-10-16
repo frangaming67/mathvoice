@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { openKeypad, openTool, resultValue } from './navigation';
+import { openTool, pressKey, resultValue } from './navigation';
 async function mockSpeech(page: Page) {
   await page.addInitScript(() => {
     const spoken: string[] = [];
@@ -22,25 +22,26 @@ const spoken = (page: Page) =>
 test('teclado completo, continuidad del resultado, borrar y memoria', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Usar mi lector de pantalla' }).click();
-  await openKeypad(page);
-  for (const key of ['Dos', 'Sumar', 'Tres', 'Igual, calcular'])
-    await page.getByRole('button', { name: key, exact: true }).click();
+  const expression = page.getByLabel('Expresión matemática', { exact: true });
+  for (const key of ['Dos', 'Sumar', 'Tres', 'Igual, calcular']) await pressKey(page, key);
   await expect(resultValue(page, '5')).toBeVisible();
-  await page.getByRole('button', { name: 'Sumar resultado a memoria', exact: true }).click();
-  await expect(page.locator('.memory-bar span')).toHaveText('M: 5');
-  for (const key of ['Multiplicar', 'Dos', 'Igual, calcular'])
-    await page.getByRole('button', { name: key, exact: true }).click();
+  await pressKey(page, 'Sumar resultado a memoria');
+  // Después de un resultado, un operador sigue con Ans, como en la calculadora de mano.
+  for (const key of ['Multiplicar', 'Dos']) await pressKey(page, key);
+  await expect(expression).toHaveValue('ans*2');
+  await pressKey(page, 'Igual, calcular');
   await expect(resultValue(page, '10')).toBeVisible();
-  await page.getByRole('button', { name: 'Borrar toda la expresión' }).click();
-  await page.getByRole('button', { name: 'Recuperar memoria' }).click();
-  await expect(page.getByLabel('Expresión matemática', { exact: true })).toHaveValue('(5)');
+  await pressKey(page, 'Borrar toda la expresión');
+  await pressKey(page, 'Recuperar memoria', 'Alpha');
+  await expect(expression).toHaveValue('(5)');
   await page.reload();
-  await openKeypad(page);
-  await expect(page.locator('.memory-bar span')).toHaveText('M: 5');
-  await page.getByRole('button', { name: 'Uno', exact: true }).click();
-  await page.getByRole('button', { name: 'Dos', exact: true }).click();
-  await page.getByRole('button', { name: 'Borrar último carácter' }).click();
-  await expect(page.getByLabel('Expresión matemática', { exact: true })).toHaveValue('1');
+  await pressKey(page, 'Borrar toda la expresión');
+  await pressKey(page, 'Recuperar memoria', 'Alpha');
+  await expect(expression).toHaveValue('(5)');
+  await pressKey(page, 'Uno');
+  await pressKey(page, 'Dos');
+  await pressKey(page, 'Borrar último carácter');
+  await expect(expression).toHaveValue('(5)1');
 });
 test('hover anuncia, no repite al moverse dentro, foco anuncia y Escape cancela pendientes', async ({
   page,
@@ -49,7 +50,6 @@ test('hover anuncia, no repite al moverse dentro, foco anuncia y Escape cancela 
   await page.goto('/');
   // Primera visita: la bienvenida pregunta cómo escuchar.
   await page.getByRole('button', { name: 'Activar guía por voz', exact: true }).click();
-  await openKeypad(page);
   const seven = page.getByRole('button', { name: 'Siete', exact: true });
   await seven.hover();
   await expect.poll(() => spoken(page)).toContain('Siete');

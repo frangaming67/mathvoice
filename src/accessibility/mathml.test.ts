@@ -94,3 +94,16 @@ describe('toLatex', () => {
     expect(toMathML('max(1, 2)')).toContain('<mo>,</mo>');
   });
 });
+
+describe('notación de la calculadora científica', () => {
+  it('muestra grados, sumatorias, derivadas e integrales como en el libro', () => {
+    expect(toMathML(`12°30'45"`)).toContain('<mn>12</mn><mo>°</mo><mn>30</mn><mo>′</mo>');
+    expect(toMathML('sum(x^2, x, 1, 10)')).toContain('<munderover><mo>∑</mo>');
+    expect(toMathML('integrate(x^2, x, 0, 3)')).toContain(
+      '<msubsup><mo>∫</mo><mn>0</mn><mn>3</mn>',
+    );
+    expect(toMathML('diff(x^3, x)')).toContain('<mfrac><mi>d</mi><mrow><mi>d</mi><mi>x</mi>');
+    expect(toLatex('sum(x^2, x, 1, 10)')).toBe(String.raw`\sum_{x=1}^{10}\left({x}^{2}\right)`);
+    expect(toLatex('30°')).toBe(String.raw`30^\circ`);
+  });
+});

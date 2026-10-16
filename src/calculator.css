@@ -1,0 +1,548 @@
+/* Calculadora científica con forma de calculadora de mano: cuerpo oscuro con borde plateado,
+   pantalla LCD y teclas con funciones Shift (doradas) y Alpha (rojas). */
+
+.device-layout {
+  --body: #26272b;
+  --body-shade: #1b1c1f;
+  --rim: #cdd2d8;
+  --lcd-bg: #c2ccb3;
+  --lcd-ink: #1c2717;
+  --lcd-dim: rgba(28, 39, 23, 0.4);
+  --key-dark: #3c3d43;
+  --key-dark-shade: #1f2024;
+  --key-dark-ink: #f4f4f4;
+  --key-light: #fbfbf8;
+  --key-light-shade: #dcdcd6;
+  --key-light-ink: #17171a;
+  --key-blue: #3369e6;
+  --key-blue-shade: #2148b3;
+  --key-silver: #eef0f3;
+  --key-silver-shade: #9ba1a9;
+  --legend-shift: #f0b649;
+  --legend-alpha: #ff6b97;
+  --legend-ink: #f4f4f4;
+  --device-focus: #ffd84d;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.device-layout > .device-top,
+.device-layout > .calc-keys {
+  width: min(100%, 27.5rem);
+  align-self: center;
+  background-color: var(--body);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 7px);
+  border: 6px solid var(--rim);
+  color: var(--legend-ink);
+}
+.device-top {
+  order: 1;
+  border-bottom: 0 !important;
+  border-radius: 30px 30px 0 0;
+  padding: 18px 18px 6px;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.18);
+}
+.device-layout > .calc-keys {
+  order: 2;
+  border-top: 0;
+  border-radius: 0 0 46px 46px;
+  padding: 8px 16px 28px;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
+}
+.device-toolbar {
+  order: 3;
+  width: min(100%, 27.5rem);
+  align-self: center;
+  margin-top: 16px;
+}
+.device-layout > .result {
+  order: 4;
+  margin-top: 18px;
+}
+
+/* Cabecera: marca, modelo y panel solar. */
+.device-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.device-brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.device-brand b {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff;
+}
+.device-model {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: #e5e5e5;
+  letter-spacing: 0.04em;
+}
+.device-series {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  color: var(--legend-alpha);
+}
+.device-solar {
+  flex: 0 1 7.5rem;
+  min-width: 3.5rem;
+  height: 2.1rem;
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 23%, rgba(0, 0, 0, 0.45) 23% 24%),
+    linear-gradient(160deg, #4a3229, #241612);
+  box-shadow: inset 0 0 0 2px #120b09;
+}
+
+/* Pantalla LCD. */
+.lcd-frame {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #101114;
+  box-shadow: inset 0 0 0 2px #000;
+}
+.lcd {
+  position: relative;
+  min-height: 10rem;
+  padding: 6px 10px 10px;
+  border-radius: 6px;
+  background: var(--lcd-bg);
+  color: var(--lcd-ink);
+  box-shadow: inset 0 3px 9px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+.lcd:focus-within {
+  outline: 3px solid var(--device-focus);
+  outline-offset: 4px;
+}
+.lcd-status {
+  display: flex;
+  gap: 10px;
+  min-height: 1rem;
+  font:
+    700 0.68rem/1 ui-monospace,
+    'Consolas',
+    monospace;
+  letter-spacing: 0.05em;
+}
+.lcd-status span:not([data-on]) {
+  visibility: hidden;
+}
+.lcd-status .lcd-angle {
+  margin-left: auto;
+}
+.lcd .lcd-input {
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--lcd-ink);
+  font:
+    600 1.2rem/1.4 ui-monospace,
+    'Consolas',
+    'Courier New',
+    monospace;
+  box-shadow: none;
+  caret-color: var(--lcd-ink);
+}
+.lcd .lcd-input:focus,
+.lcd .lcd-input:focus-visible {
+  outline: none;
+}
+.lcd .lcd-input::placeholder {
+  color: var(--lcd-dim);
+}
+.lcd-natural {
+  min-height: 2.4rem;
+  padding: 2px 0;
+  font-size: 1.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.lcd-answer {
+  margin-top: auto;
+  min-height: 2.6rem;
+  text-align: right;
+  font:
+    600 1.75rem/1.25 ui-monospace,
+    'Consolas',
+    monospace;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.lcd-answer math {
+  font-size: 1.6rem;
+}
+.lcd-answer[data-error] {
+  font-size: 1.05rem;
+  text-align: left;
+  white-space: normal;
+}
+.lcd-answer small {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: right;
+}
+.lcd[data-off] > :not(.lcd-panel) {
+  visibility: hidden;
+}
+
+/* Menús y listas dentro de la pantalla. */
+.lcd-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px 8px;
+  border-radius: 6px;
+  background: var(--lcd-bg);
+  color: var(--lcd-ink);
+}
+.lcd-panel-title {
+  margin: 0 0 4px;
+  font:
+    700 0.75rem/1.2 ui-monospace,
+    'Consolas',
+    monospace;
+}
+.lcd-panel-items {
+  display: grid;
+  gap: 4px;
+  overflow-y: auto;
+  flex: 1;
+}
+.lcd-panel[data-columns='1'] .lcd-panel-items {
+  align-content: start;
+}
+.lcd .lcd-panel-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 2.3rem;
+  padding: 3px 6px;
+  border: 2px solid var(--lcd-ink);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--lcd-ink);
+  font:
+    600 0.85rem/1.2 ui-monospace,
+    'Consolas',
+    monospace;
+  text-align: left;
+  box-shadow: none;
+}
+.lcd-panel[data-columns='4'] .lcd-panel-item {
+  justify-content: center;
+}
+.lcd .lcd-panel-item:focus,
+.lcd .lcd-panel-item:hover {
+  background: var(--lcd-ink);
+  color: var(--lcd-bg);
+  outline: none;
+}
+.lcd-panel-hotkey {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  font-size: 0.62rem;
+}
+.lcd-panel[data-columns='1'] .lcd-panel-hotkey {
+  position: static;
+  min-width: 1.1rem;
+}
+.lcd-panel-text small {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.lcd-panel-caption {
+  margin: 4px 0 0;
+  font:
+    700 1rem/1.2 ui-monospace,
+    'Consolas',
+    monospace;
+}
+
+/* Teclas. */
+.calc-keys .key-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.key-legends {
+  display: flex;
+  justify-content: space-between;
+  gap: 2px;
+  min-height: 0.85rem;
+  margin-bottom: 2px;
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.legend-shift {
+  color: var(--legend-shift);
+}
+.legend-alpha {
+  color: var(--legend-alpha);
+}
+.calc-keys[data-layer='shift'] .legend-shift,
+.calc-keys[data-layer='alpha'] .legend-alpha {
+  text-shadow: 0 0 6px currentColor;
+}
+.calc-keys .calc-key {
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1;
+  transition: transform 60ms ease;
+}
+.calc-keys .calc-key:active {
+  transform: translateY(2px);
+}
+.calc-keys .calc-key:focus-visible {
+  outline: 3px solid var(--device-focus);
+  outline-offset: 2px;
+}
+.keys-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'shift alpha dpad menu on'
+    'optn calc dpad integral x';
+  gap: 8px 10px;
+  align-items: end;
+}
+.calc-keys .calc-key-round {
+  height: 1.5rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 40% 30%,
+    #fff,
+    var(--key-silver) 45%,
+    var(--key-silver-shade)
+  );
+  box-shadow: 0 2px 0 #55595f;
+  font-size: 0;
+}
+.calc-keys .calc-key-round[aria-pressed='true'] {
+  box-shadow:
+    0 0 0 3px var(--legend-shift),
+    0 2px 0 #55595f;
+}
+.calc-keys [data-key='alpha'][aria-pressed='true'] {
+  box-shadow:
+    0 0 0 3px var(--legend-alpha),
+    0 2px 0 #55595f;
+}
+.round-legend {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+.round-legend-shift {
+  color: var(--legend-shift);
+}
+.round-legend-alpha {
+  color: var(--legend-alpha);
+}
+.dpad {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  grid-template-areas:
+    '. up .'
+    'left . right'
+    '. down .';
+  align-self: stretch;
+  min-height: 5.6rem;
+  border-radius: 50%;
+  border: 3px solid #50535a;
+  background: radial-gradient(ellipse at 50% 45%, #43454b 25%, #232428 70%);
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.12),
+    0 3px 0 #0e0e10;
+}
+.dpad .key-cell {
+  justify-content: center;
+}
+.calc-keys .calc-key-arrow {
+  height: 100%;
+  min-height: 1.5rem;
+  background: transparent;
+  color: #d9dce1;
+  font-size: 0.8rem;
+}
+.calc-keys .calc-key-function {
+  height: 1.95rem;
+  border-radius: 12px / 14px;
+  background: linear-gradient(#4a4b52, var(--key-dark-shade));
+  color: var(--key-dark-ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+  box-shadow:
+    0 2px 0 #08080a,
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.keys-functions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px 7px;
+  margin-top: 10px;
+}
+.keys-numbers {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px 10px;
+  margin-top: 14px;
+}
+.calc-keys .calc-key-number {
+  height: 2.75rem;
+  border-radius: 10px;
+  background: linear-gradient(var(--key-light), var(--key-light-shade));
+  color: var(--key-light-ink);
+  font-size: 1.3rem;
+  font-weight: 600;
+  box-shadow: 0 3px 0 #9d9d97;
+}
+.calc-keys .calc-key-blue {
+  height: 2.75rem;
+  border-radius: 10px;
+  background: linear-gradient(#4d7ef0, var(--key-blue-shade));
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  box-shadow: 0 3px 0 #15306f;
+}
+.calc-keys sup,
+.calc-keys sub {
+  font-size: 0.62em;
+  line-height: 0;
+}
+.glyph-fraction {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.72em;
+  line-height: 0.95;
+}
+.glyph-fraction > span:first-child {
+  border-bottom: 1.5px solid currentColor;
+}
+
+/* Pantallas angostas: el cuerpo se achica, las teclas siguen tocables. */
+@media (max-width: 380px) {
+  .device-layout > .device-top,
+  .device-layout > .calc-keys {
+    border-width: 4px;
+  }
+  .device-top {
+    padding: 14px 10px 4px;
+  }
+  .device-layout > .calc-keys {
+    padding: 6px 8px 22px;
+  }
+  .keys-functions {
+    gap: 5px 4px;
+  }
+  .keys-numbers {
+    gap: 7px 6px;
+  }
+  .key-legends {
+    font-size: 0.5rem;
+  }
+  .calc-keys .calc-key-function {
+    font-size: 0.78rem;
+  }
+}
+
+/* Temas de alto contraste: sin texturas, bordes marcados y tinta pareja. */
+:root[data-theme='contrast'] .device-layout,
+:root[data-theme='mono'] .device-layout {
+  --body: #000;
+  --rim: #fff;
+  --lcd-bg: #fff;
+  --lcd-ink: #000;
+  --lcd-dim: #444;
+  --key-light: #fff;
+  --key-light-shade: #fff;
+  --key-light-ink: #000;
+  --key-dark-shade: #000;
+  --legend-shift: #ffd84d;
+  --legend-alpha: #ff9ec0;
+  --device-focus: #ffd84d;
+}
+:root[data-theme='mono'] .device-layout {
+  --legend-shift: #fff;
+  --legend-alpha: #fff;
+  --device-focus: #fff;
+}
+:root[data-theme='yellow'] .device-layout {
+  --body: #000;
+  --rim: #ffe600;
+  --lcd-bg: #000;
+  --lcd-ink: #ffe600;
+  --lcd-dim: #b3a100;
+  --key-light: #000;
+  --key-light-shade: #000;
+  --key-light-ink: #ffe600;
+  --key-dark-shade: #000;
+  --legend-shift: #ffe600;
+  --legend-alpha: #ffe600;
+  --legend-ink: #ffe600;
+  --device-focus: #fff;
+}
+:root[data-theme='contrast'] .calc-keys .calc-key,
+:root[data-theme='mono'] .calc-keys .calc-key,
+:root[data-theme='yellow'] .calc-keys .calc-key {
+  border: 2px solid var(--rim);
+  box-shadow: none;
+  background-image: none;
+}
+:root[data-theme='contrast'] .calc-keys .calc-key-function,
+:root[data-theme='mono'] .calc-keys .calc-key-function,
+:root[data-theme='yellow'] .calc-keys .calc-key-function,
+:root[data-theme='contrast'] .calc-keys .calc-key-blue,
+:root[data-theme='mono'] .calc-keys .calc-key-blue,
+:root[data-theme='yellow'] .calc-keys .calc-key-blue {
+  background: #000;
+  color: var(--legend-ink, #fff);
+}
+:root[data-theme='contrast'] .device-layout > .device-top,
+:root[data-theme='contrast'] .device-layout > .calc-keys,
+:root[data-theme='mono'] .device-layout > .device-top,
+:root[data-theme='mono'] .device-layout > .calc-keys,
+:root[data-theme='yellow'] .device-layout > .device-top,
+:root[data-theme='yellow'] .device-layout > .calc-keys {
+  background-image: none;
+}
+@media (forced-colors: active) {
+  .calc-keys .calc-key {
+    border: 1px solid ButtonText;
+  }
+  .lcd {
+    border: 1px solid CanvasText;
+  }
+}

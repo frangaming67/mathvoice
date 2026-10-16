@@ -1581,6 +1581,16 @@ export class SymbolicEngine {
   }
 
   private substitute(args: string[], v: string): Outcome {
+    // d/dx en un punto: substitute(diff(f, x), x, a) deriva primero y después reemplaza.
+    const nested = parseCommand(args[0].trim());
+    if (nested?.name === 'diff' && nested.args.length >= 2) {
+      const derivative = this.derive(nested.args, variable(nested.args[1]));
+      const outcome = this.substitute([derivative.value, ...args.slice(1)], v);
+      return {
+        ...outcome,
+        explanation: `Se deriva ${nested.args[0]} respecto de ${variable(nested.args[1])}: ${derivative.value}. ${outcome.explanation}`,
+      };
+    }
     const body = toCas(args[0]);
     const replacement = toCas(args[2]);
     const raw = resolved(casText(substitute(body, v, replacement)));

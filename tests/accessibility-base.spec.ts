@@ -53,7 +53,6 @@ test('orientación anuncia sección, borrador, resultado, error y teclado sin mo
     'Calculadora. Modo escritura. Lector de pantalla externo',
   );
   await expect(page.getByRole('status')).toContainText('Hay resultado: 5');
-  await expect(page.getByRole('status')).toContainText('Teclado de botones cerrado');
   await expect(expression).toHaveValue('2+3');
   await openTool(page, 'Álgebra y cálculo');
   await page.getByLabel('Función o ecuación', { exact: true }).fill('x^3');

@@ -8,8 +8,11 @@ export async function openTool(page: Page, label: string) {
   await page.getByRole('button', { name: label, exact: true }).click();
 }
 
-export async function openKeypad(page: Page) {
-  await page.getByText('Teclado de botones y memoria', { exact: true }).click();
+/** Una tecla de la calculadora; con Shift o Alpha, primero se pulsa esa tecla. */
+export async function pressKey(page: Page, name: string, layer?: 'Shift' | 'Alpha') {
+  const keys = page.getByRole('group', { name: 'Teclado de la calculadora' });
+  if (layer) await keys.getByRole('button', { name: layer, exact: true }).click();
+  await keys.getByRole('button', { name, exact: true }).click();
 }
 
 const exactly = (text: string) => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);

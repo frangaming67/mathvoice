@@ -36,7 +36,7 @@ import { MathInputError, translateRuntimeError, translateSyntaxError } from './m
 
 const symbolic = new SymbolicEngine();
 const functions = new Set(
-  'sin cos tan cot sec csc asin acos atan sinh cosh tanh asinh acosh atanh log ln log10 log2 exp sqrt cbrt nthRoot factorial gamma mod floor ceil round abs sign gcd lcm fraction det inv transpose trace add subtract multiply dot cross norm conj re im arg complex lusolve mean median mode min max variance std sum prod combinations permutations _pct'.split(
+  'sin cos tan cot sec csc asin acos atan sinh cosh tanh asinh acosh atanh log ln log10 log2 exp sqrt cbrt nthRoot factorial gamma mod floor ceil fix round abs sign gcd lcm fraction det inv transpose trace add subtract multiply dot cross norm conj re im arg complex lusolve mean median mode min max variance std sum prod combinations permutations _pct'.split(
     ' ',
   ),
 );
@@ -668,6 +668,10 @@ export class MathEngine {
     });
     if (mapped.issues.length) throw mapped.issues[0];
     const expression = mapped.text;
+    if (/^sum\s*\(/.test(expression)) {
+      const total = this.summation(trimmed(mapped), input, settings, variables);
+      if (total) return total;
+    }
     if (symbolic.supports(expression)) {
       if (input.length > 500)
         throw new MathInputError(
@@ -694,6 +698,78 @@ export class MathEngine {
       return this.solveEquation(mapped, equals[0], input, settings, variables);
     }
     return this.compute(trimmed(mapped), input, settings, variables).result;
+  }
+
+  /**
+   * Σ: sum(f, x, a, b) suma f para x entero desde a hasta b. sum([…]) sigue sumando una lista:
+   * con otra forma devuelve null y el cálculo sigue el camino normal.
+   */
+  private summation(
+    mapped: MappedExpression,
+    input: string,
+    settings: Settings,
+    variables: Record<string, number>,
+  ): CalculationResult | null {
+    let node: MathNode;
+    try {
+      node = userMath().parse(mapped.text);
+    } catch {
+      return null;
+    }
+    if (node.type !== 'FunctionNode') return null;
+    const call = node as FunctionNode;
+    if (call.fn.name !== 'sum' || call.args.length !== 4) return null;
+    const [body, index, from, to] = call.args;
+    if (index.type !== 'SymbolNode')
+      throw new MathInputError(
+        'En la sumatoria, el segundo dato es la variable: sum(x^2, x, 1, 10).',
+        'argumentos',
+      );
+    const name = (index as SymbolNode).name;
+    const scope = buildScope(settings, variables, settings.numberMode === 'complejo');
+    const bound = (arg: MathNode) => {
+      validate(arg, variables, mapped);
+      const value = Number(arg.compile().evaluate(scope));
+      if (!Number.isInteger(value))
+        throw new MathInputError(
+          'Los extremos de la sumatoria tienen que ser números enteros.',
+          'argumentos',
+        );
+      return value;
+    };
+    const first = bound(from),
+      last = bound(to);
+    if (last - first >= 100000)
+      throw new MathInputError('La sumatoria admite hasta 100 000 términos.', 'argumentos');
+    validate(body, { ...variables, [name]: 0 }, mapped);
+    const notes = new Set<string>();
+    const term = prepare(body, notes).compile();
+    let total = 0;
+    for (let k = first; k <= last; k++) {
+      scope.set(name, k);
+      let value: number;
+      try {
+        value = Number(term.evaluate(scope));
+      } catch (error) {
+        throw translateRuntimeError(error);
+      }
+      if (!Number.isFinite(value))
+        throw new MathInputError(
+          `El término para ${name} = ${k} no da un número real finito.`,
+          'dominio',
+        );
+      total += value;
+    }
+    const count = Math.max(0, last - first + 1);
+    return {
+      expression: input,
+      value: formatReal(total, formatOf(settings)),
+      kind: 'Científico',
+      angleMode: settings.angle,
+      variables,
+      explanation: `Se sumó el término para ${name} entero desde ${first} hasta ${last}: ${count} ${count === 1 ? 'término' : 'términos'}.`,
+      ...(notes.size && { warnings: [...notes] }),
+    };
   }
 
   private symbolicResult(result: CalculationResult, settings: Settings): CalculationResult {

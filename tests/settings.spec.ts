@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { openTool, resultValue } from './navigation';
+import { openTool, pressKey, resultValue } from './navigation';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -11,9 +11,6 @@ async function choose(page: Page, name: string, value: string) {
   await page.getByRole('link', { name: 'Configuración', exact: true }).click();
   await page.getByRole('combobox', { name, exact: true }).selectOption(value);
   await page.getByRole('link', { name: 'Calculadora', exact: true }).click();
-}
-async function openKeypad(page: Page) {
-  await page.locator('#keypad-panel').evaluate((panel: HTMLDetailsElement) => (panel.open = true));
 }
 async function calculate(page: Page, text: string) {
   const expression = page.getByLabel('Expresión matemática', { exact: true });
@@ -29,19 +26,19 @@ test('la coma decimal llega al cálculo, al teclado, a la memoria y a «ans»', 
   await expect(resultValue(page, '7')).toBeVisible();
   await calculate(page, 'log(8; 2)');
   await expect(resultValue(page, '3')).toBeVisible();
-  // El teclado en pantalla escribe la coma y la memoria se muestra con coma.
-  await openKeypad(page);
+  // La tecla decimal escribe la coma y la memoria se recupera con coma.
   await expect(page.getByRole('button', { name: 'Coma decimal', exact: true })).toHaveText(',');
   await calculate(page, '1,5');
-  await page.getByRole('button', { name: 'Sumar resultado a memoria', exact: true }).click();
-  await expect(page.getByText('M: 1,5')).toBeVisible();
+  await pressKey(page, 'Sumar resultado a memoria');
+  const expression = page.getByLabel('Expresión matemática', { exact: true });
+  await expression.fill('');
+  await pressKey(page, 'Recuperar memoria', 'Alpha');
+  await expect(expression).toHaveValue('(1,5)');
   // Al volver al punto, la memoria y el último resultado se reutilizan sin errores.
   await choose(page, 'Separador decimal', 'punto');
-  await openKeypad(page);
-  await expect(page.getByText('M: 1.5')).toBeVisible();
-  await page.getByLabel('Expresión matemática', { exact: true }).fill('');
-  await page.getByRole('button', { name: 'Recuperar memoria', exact: true }).click();
-  await expect(page.getByLabel('Expresión matemática', { exact: true })).toHaveValue('(1.5)');
+  await expression.fill('');
+  await pressKey(page, 'Recuperar memoria', 'Alpha');
+  await expect(expression).toHaveValue('(1.5)');
   await calculate(page, 'ans+1');
   await expect(resultValue(page, '2.5')).toBeVisible();
 });

@@ -110,6 +110,11 @@ function identEnd(text: string, i: number, end: number) {
   while (i < end && isIdentChar(text[i])) i++;
   return i;
 }
+// Grados, minutos y segundos: 30°, 12°30', 12°30'45" (también con ′ y ″).
+const DMS_POINT =
+  /^(\d+(?:\.\d+)?)\s*°(?:\s*(\d+(?:\.\d+)?)\s*['′])?(?:\s*(\d+(?:\.\d+)?)\s*["″])?/;
+const DMS_COMMA =
+  /^(\d+(?:[.,]\d+)?)\s*°(?:\s*(\d+(?:[.,]\d+)?)\s*['′])?(?:\s*(\d+(?:[.,]\d+)?)\s*["″])?/;
 function numberEnd(text: string, i: number, end: number, comma: boolean) {
   while (i < end && isDigit(text[i])) i++;
   if ((text[i] === '.' || (comma && text[i] === ',')) && isDigit(text[i + 1])) {
@@ -192,6 +197,14 @@ export function normalizeWithMap(source: string, options: NormalizeOptions = {})
       continue;
     }
     if (isDigit(c) || (c === '.' && isDigit(source[i + 1]))) {
+      // Grados sexagesimales: 12°30'45" pasa a dms(12,30,45) y el motor lo lleva al modo angular.
+      const dms = (comma ? DMS_COMMA : DMS_POINT).exec(source.slice(i, end));
+      if (dms) {
+        const part = (value?: string) => (value ?? '0').replace(',', '.');
+        emit(`dms(${part(dms[1])},${part(dms[2])},${part(dms[3])})`, i);
+        i += dms[0].length;
+        continue;
+      }
       const j = numberEnd(source, i, end, comma);
       for (let k = i; k < j; k++) emit(source[k] === ',' ? '.' : source[k], k);
       i = j;

@@ -161,3 +161,14 @@ describe('convertSeparator', () => {
     expect(convertSeparator('[1, 2]', 'punto', 'punto')).toBe('[1, 2]');
   });
 });
+
+describe('grados sexagesimales', () => {
+  it.each([
+    ['30°', 'dms(30,0,0)'],
+    [`12°30'45"`, 'dms(12,30,45)'],
+    ['sin(45°)', 'sin(dms(45,0,0))'],
+    ['12° 30′', 'dms(12,30,0)'],
+  ])('%s → %s', (input, expected) => expect(normalizeExpression(input)).toBe(expected));
+  it('con coma decimal acepta 12,5°', () =>
+    expect(normalizeExpression('12,5°', { decimalSeparator: 'coma' })).toBe('dms(12.5,0,0)'));
+});
