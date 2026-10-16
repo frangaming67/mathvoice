@@ -440,6 +440,8 @@ const TEMPLATES: Record<string, (a: Arg[], ctx: Context) => string | undefined> 
     `densidad normal en ${a[0].text}${a.length > 2 ? ` con media ${a[1].text} y desvío ${a[2].text}` : ''}`,
   normalcdf: (a) =>
     `probabilidad normal acumulada hasta ${a[0].text}${a.length > 2 ? ` con media ${a[1].text} y desvío ${a[2].text}` : ''}`,
+  invnorm: (a) =>
+    `normal inversa del área ${a[0].text}${a.length > 2 ? ` con media ${a[1].text} y desvío ${a[2].text}` : ''}`,
   binomialpdf: (a) =>
     `probabilidad binomial de ${a[0].text} éxitos en ${a[1]?.text} ensayos con probabilidad ${a[2]?.text}`,
   binomialcdf: (a) =>

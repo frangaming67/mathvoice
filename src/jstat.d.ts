@@ -3,6 +3,7 @@ declare module 'jstat' {
     normal: {
       pdf(x: number, mean: number, sd: number): number;
       cdf(x: number, mean: number, sd: number): number;
+      inv(p: number, mean: number, sd: number): number;
     };
     binomial: {
       pdf(k: number, n: number, p: number): number;

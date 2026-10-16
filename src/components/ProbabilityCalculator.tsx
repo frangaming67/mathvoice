@@ -24,6 +24,11 @@ const configs: Record<string, { label: string; fields: string[]; defaults: strin
     fields: ['x', 'Media', 'Desviación estándar'],
     defaults: ['0', '0', '1'],
   },
+  invnorm: {
+    label: 'Normal inversa: x con P(X ≤ x) igual al área',
+    fields: ['Área a la izquierda', 'Media', 'Desviación estándar'],
+    defaults: ['0.975', '0', '1'],
+  },
   poissonpdf: { label: 'Poisson: P(X = k)', fields: ['k', 'Media lambda'], defaults: ['2', '3'] },
   poissoncdf: { label: 'Poisson: P(X ≤ k)', fields: ['k', 'Media lambda'], defaults: ['2', '3'] },
 };

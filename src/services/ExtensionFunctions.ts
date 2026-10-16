@@ -439,6 +439,13 @@ export function createExtensionFunctions(context: ExtensionContext = {}): Record
       jStat.normal.pdf(real(x), real(mu), positive(sigma)),
     normalcdf: (x: unknown, mu: unknown, sigma: unknown) =>
       jStat.normal.cdf(real(x), real(mu), positive(sigma)),
+    // Normal inversa: el x que deja esa área a su izquierda.
+    invnorm: (area: unknown, mu: unknown, sigma: unknown) => {
+      const p = probability(area);
+      if (p === 0 || p === 1)
+        throw fail('El área de la normal inversa tiene que estar entre 0 y 1, sin incluirlos.');
+      return jStat.normal.inv(p, real(mu), positive(sigma));
+    },
     binomialpdf: (k: unknown, n: unknown, p: unknown) => {
       const events = integer(k),
         trials = integer(n),

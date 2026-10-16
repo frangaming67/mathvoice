@@ -134,6 +134,8 @@ test('herramientas abiertas: accesibilidad y reflow móvil', async ({ page }) =>
     'Probabilidad',
     'Variables',
     'Conversores',
+    'Tabla de valores',
+    'Proporciones',
     'Gráficos',
   ]) {
     await openTool(page, name);

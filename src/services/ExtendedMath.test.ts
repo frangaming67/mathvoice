@@ -10,6 +10,8 @@ it.each([
   ['abs(3+4*i)', '5'],
   ['combinations(5,2)', '10'],
   ['normalcdf(0,0,1)', '0.5'],
+  ['invnorm(0.975,0,1)', '1.959963985'],
+  ['invnorm(0.5,100,15)', '100'],
   ['binomialpdf(2,5,0.5)', '0.3125'],
   ['base("FF",16,10)', '255'],
 ])('%s → %s', (e, v) => expect(engine.evaluate(e).value).toBe(v));
@@ -47,6 +49,8 @@ it.each([
   'normalize([0,0])',
   'correlation([1,1],[2,3])',
   'normalcdf(0,0,0)',
+  'invnorm(1,0,1)',
+  'invnorm(0.5,0,0)',
   'binomialpdf(1,4,2)',
   'stats([1],1)',
   'convert(1,"m","kg")',

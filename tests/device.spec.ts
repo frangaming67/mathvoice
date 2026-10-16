@@ -195,3 +195,15 @@ test('MENU abre los modos Tabla y Proporción, como en la calculadora de mano', 
   await page.getByRole('button', { name: 'Calcular X' }).click();
   await expect(page.getByRole('region', { name: 'Resultado', exact: true })).toContainText('X = 6');
 });
+
+test('MENU 7, Distribución: la normal inversa da el x de un área', async ({ page }) => {
+  await pressKey(page, 'Menú de modos');
+  await page.keyboard.press('7');
+  await expect(page.getByRole('heading', { name: 'Probabilidad', level: 1 })).toBeVisible();
+  await page
+    .getByLabel('Distribución u operación')
+    .selectOption({ label: 'Normal inversa: x con P(X ≤ x) igual al área' });
+  await expect(page.getByLabel('Área a la izquierda')).toHaveValue('0.975');
+  await page.getByRole('button', { name: 'Calcular probabilidad' }).click();
+  await expect(resultValue(page, '1.959963985')).toBeVisible();
+});

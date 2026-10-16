@@ -117,6 +117,7 @@ const arities: Record<string, number[]> = {
   regression: [2],
   normalpdf: [3],
   normalcdf: [3],
+  invnorm: [3],
   binomialpdf: [3],
   binomialcdf: [3],
   poissonpdf: [2],

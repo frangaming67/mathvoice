@@ -308,6 +308,7 @@ for (const [operation, name, shortcut] of [
   ['binomialcdf', 'Probabilidad binomial acumulada', ''],
   ['normalcdf', 'Probabilidad normal acumulada', 'N'],
   ['normalpdf', 'Densidad normal', ''],
+  ['invnorm', 'Normal inversa', ''],
   ['poissonpdf', 'Probabilidad de Poisson puntual', 'O'],
   ['poissoncdf', 'Probabilidad de Poisson acumulada', ''],
 ])
