@@ -30,6 +30,8 @@ Usá punto para decimales y coma entre argumentos. `log` es base 10; `ln` es nat
 
 La pantalla principal es una calculadora científica como las de mano: pantalla LCD con la expresión en forma de libro y el resultado, cruceta, **SHIFT** (funciones impresas en dorado) y **ALPHA** (variables en rojo). El teclado es una sola parada de Tab y se recorre con las flechas; cada tecla dice su nombre, también con Shift o Alpha activos.
 
+Es una sola calculadora para todo: al elegir un modo con **MENU** (o desde Herramientas), la herramienta aparece en la pantalla, debajo del LCD, y el teclado escribe en ella. Los números y las funciones van al campo donde estás, **=** calcula, **DEL** y **AC** borran, ◀ ▶ mueven el cursor y ▲ ▼ pasan de un campo a otro. En pantallas anchas, la pantalla y el teclado quedan uno al lado del otro; en el celular, uno debajo del otro.
+
 - **S⇔D** alterna fracción y decimal; **ENG** y **←** recorren la notación de ingeniería; **°′″** pasa a grados, minutos y segundos; **FACT** descompone en primos; **a b/c** muestra la fracción mixta.
 - **STO** guarda el resultado en A–F, x, y o M; **RECALL** muestra las variables; **M+** y **M−** usan la memoria; **Ans** y **PreAns** traen los resultados anteriores.
 - **CALC** pregunta el valor de cada variable; **SOLVE** resuelve la ecuación escrita; **∫**, **d/dx** y **Σ** piden sus datos en un diálogo.

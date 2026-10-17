@@ -23,6 +23,10 @@ Para verla funcionando: `npm install` y después `npm run dev`; se abre en <http
 
 **Por qué importa.** Quien aprendió con una calculadora de mano encuentra todo donde lo espera, y todo es accesible: cada tecla tiene nombre propio que cambia con Shift o Alpha («Seno», «Arco seno», «Variable D»), el teclado entero es una sola parada de Tab y se recorre con las flechas, escribir números con el foco en el teclado también funciona, el resultado está antes del teclado en el orden de lectura, y los menús de la pantalla son menús accesibles. Se adapta a celulares de 320 píxeles y a los temas de alto contraste.
 
+**Una sola calculadora para todo.** Las herramientas ya no se abren en otra página: al elegir un modo con MENU (o desde Herramientas), aparecen dentro de la misma calculadora, en la pantalla, debajo del LCD, que dice en qué modo estás. La calculadora es más grande: en pantallas anchas, la pantalla con su herramienta queda a la izquierda y el teclado a la derecha, así todo está a la vista; en el celular, uno debajo del otro. El teclado escribe en la herramienta: los números y las funciones van al campo donde estás, «=» calcula, DEL y AC borran, ◀ ▶ mueven el cursor y ▲ ▼ pasan de un campo a otro. Las teclas que solo tienen sentido en Calcular (SOLVE, CALC, ∫…) lo avisan.
+
+![El modo Tabla dentro de la calculadora: la tabla en la pantalla y el teclado al lado](capturas/modo-tabla.png)
+
 **Detalles de la pantalla.** Los números de la pantalla son grandes, como en la ClassWiz. En el menú de la pantalla solo se invierte la opción elegida (el puntero apenas la remarca), y con el alto contraste de Windows se ven el foco y Shift/Alpha activos.
 
 ## 2. MENU: los modos de la calculadora de mano

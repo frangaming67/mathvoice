@@ -195,6 +195,8 @@ export function Calculator() {
             : toolName(activeTool);
   // Basic and scientific are two views of the same expression form.
   const calculationKey = activeTool === 'scientific' ? 'basic' : activeTool;
+  // Calcular (y Funciones) usa la pantalla LCD; los demás modos muestran su herramienta.
+  const inCalculator = activeTool === 'basic' || activeTool === 'scientific';
   const { result, error, explanation } = calculations[calculationKey] ?? emptyCalculation;
   function updateCalculation(patch: Partial<ToolCalculationState>, tool = calculationKey) {
     setCalculations((previous) => ({
@@ -236,6 +238,8 @@ export function Calculator() {
   const automatic = useAutomaticSpeech(preferences, listening || !!practice);
   const cancelAutomatic = automatic.cancel;
   const input = useRef<HTMLInputElement>(null);
+  /** La parte de la pantalla donde se muestra la herramienta del modo elegido. */
+  const appArea = useRef<HTMLDivElement>(null);
   const helpButton = useRef<HTMLAnchorElement>(null);
   const welcomeDialog = useRef<HTMLDialogElement>(null);
   const welcomeSpoken = useRef(false);
@@ -527,7 +531,8 @@ export function Calculator() {
   async function memoryAction(action: 'clear' | 'recall' | 'add' | 'subtract') {
     automatic.cancel();
     if (action === 'recall') {
-      keypadInsert(`(${reusable(memory)})`);
+      if (inCalculator) keypadInsert(`(${reusable(memory)})`);
+      else fieldInsert(`(${reusable(memory)})`);
       return;
     }
     if (memoryBusy.current) return;
@@ -658,6 +663,7 @@ export function Calculator() {
    * derecha del cursor: si hay texto elegido, lo envuelve.
    */
   function deviceInsert(text: string, after = '', continues = true) {
+    if (!inCalculator) return fieldInsert(text, after);
     automatic.cancel();
     setError('');
     setAlternate(null);
@@ -692,6 +698,108 @@ export function Calculator() {
     el.setSelectionRange(next, next);
     justCalculated.current = false;
     announce(speakCharAt(expression, next));
+  }
+  // ---------- Los demás modos: el teclado escribe en la herramienta de la pantalla ----------
+  const isTextField = (
+    element: Element | null | undefined,
+  ): element is HTMLInputElement | HTMLTextAreaElement =>
+    (element instanceof HTMLTextAreaElement ||
+      (element instanceof HTMLInputElement &&
+        ['text', 'search', 'number'].includes(element.type))) &&
+    !element.disabled &&
+    !element.readOnly &&
+    !!element.getClientRects().length;
+  const toolFields = () =>
+    Array.from(appArea.current?.querySelectorAll('input, textarea') ?? []).filter(isTextField);
+  /** Donde escribe el teclado: el último campo usado de la herramienta, o el primero. */
+  function toolField() {
+    const last = lastField.current;
+    return last && appArea.current?.contains(last) && isTextField(last)
+      ? last
+      : (toolFields()[0] ?? null);
+  }
+  /** Cambia el valor como si se hubiera tecleado, así la herramienta se entera del cambio. */
+  function typeInto(field: HTMLInputElement | HTMLTextAreaElement, value: string, caret?: number) {
+    const prototype =
+      field instanceof HTMLTextAreaElement
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(prototype, 'value')?.set?.call(field, value);
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    if (caret !== undefined && field.type !== 'number') field.setSelectionRange(caret, caret);
+  }
+  // Un campo numérico borra «1.» mientras se escribe 1.5: lo pendiente se guarda aparte.
+  const numberDraft = useRef(new WeakMap<HTMLInputElement | HTMLTextAreaElement, string>());
+  function fieldInsert(text: string, after = '') {
+    const field = toolField();
+    if (!field) return announce('Este modo no tiene un campo para escribir.');
+    lastField.current = field;
+    if (field.type === 'number') {
+      const next =
+        (numberDraft.current.get(field) ?? field.value) + (text + after).replace(',', '.');
+      if (/^-?\d*\.?\d+(e-?\d+)?$/i.test(next)) {
+        numberDraft.current.delete(field);
+        typeInto(field, next);
+      } else numberDraft.current.set(field, next);
+      return;
+    }
+    const start = field.selectionStart ?? field.value.length;
+    const end = field.selectionEnd ?? start;
+    const selected = after ? field.value.slice(start, end) : '';
+    typeInto(
+      field,
+      field.value.slice(0, start) + text + selected + after + field.value.slice(end),
+      start + text.length + selected.length,
+    );
+  }
+  function fieldErase(all = false) {
+    const field = toolField();
+    if (!field) return announce('Este modo no tiene un campo para borrar.');
+    numberDraft.current.delete(field);
+    if (all || field.type === 'number') {
+      typeInto(field, all ? '' : field.value.slice(0, -1), 0);
+      if (all) announce('Campo vacío.');
+      return;
+    }
+    const start = field.selectionStart ?? field.value.length;
+    const end = field.selectionEnd ?? start;
+    const from = start === end ? Math.max(0, start - 1) : start;
+    typeInto(field, field.value.slice(0, from) + field.value.slice(end), from);
+  }
+  function fieldCaret(direction: 'left' | 'right') {
+    const field = toolField();
+    if (!field || field.type === 'number') return;
+    const caret = field.selectionStart ?? field.value.length;
+    const next = Math.max(0, Math.min(field.value.length, caret + (direction === 'left' ? -1 : 1)));
+    field.setSelectionRange(next, next);
+    announce(speakCharAt(field.value, next));
+  }
+  /** ▲ y ▼ en una herramienta: el campo anterior o el siguiente. */
+  function fieldStep(step: number) {
+    const fields = toolFields();
+    if (!fields.length) return announce('Este modo no tiene campos para recorrer.');
+    const current = toolField();
+    const index = Math.max(
+      0,
+      Math.min(fields.length - 1, (current ? fields.indexOf(current) : -1) + step),
+    );
+    lastField.current = fields[index];
+    if (appArea.current?.contains(document.activeElement)) fields[index].focus();
+    announce(describeElement(fields[index]));
+  }
+  /** «=» en una herramienta: lo mismo que su botón para calcular. */
+  function submitTool() {
+    const form =
+      toolField()?.form ??
+      Array.from(appArea.current?.querySelectorAll('form') ?? []).find(
+        (candidate) => candidate.getClientRects().length,
+      );
+    if (!form) return announce('En este modo no hay nada para calcular con igual.');
+    form.requestSubmit();
+  }
+  /** Después de un menú o un diálogo, el foco vuelve a donde se escribe en el modo actual. */
+  function focusEntry() {
+    requestAnimationFrame(() => (inCalculator ? input.current : toolField())?.focus());
   }
   /** Arriba y abajo de la cruceta traen los cálculos del historial a la pantalla. */
   function replayHistory(direction: 'previous' | 'next') {
@@ -943,7 +1051,7 @@ export function Calculator() {
   }
   function closeKeyPrompt() {
     setKeyPrompt(null);
-    requestAnimationFrame(() => input.current?.focus());
+    focusEntry();
   }
   function resetCalculator() {
     setMemory('0');
@@ -959,7 +1067,7 @@ export function Calculator() {
   }
   function closePanel() {
     setLcdPanel(null);
-    requestAnimationFrame(() => input.current?.focus());
+    focusEntry();
   }
   const panel = (() => {
     const decimal = preferences.decimalSeparator;
@@ -1023,16 +1131,16 @@ export function Calculator() {
       announce(`Modo ${mode.label}.`);
     } else if (kind === 'constants') {
       deviceInsert(item.id, '', false);
-      requestAnimationFrame(() => input.current?.focus());
+      focusEntry();
       announce(`${item.label}: ${item.id}.`);
     } else if (kind === 'variables') {
       if (item.id === 'M') void memoryAction('recall');
       else deviceInsert(item.id, '', false);
-      requestAnimationFrame(() => input.current?.focus());
+      focusEntry();
     } else if (kind === 'reset') {
       if (item.id === 'yes') resetCalculator();
       else announce('Reinicio cancelado.');
-      requestAnimationFrame(() => input.current?.focus());
+      focusEntry();
     }
   }
   /** Una tecla de la calculadora: resuelve su función con Shift, Alpha y STO. */
@@ -1072,6 +1180,28 @@ export function Calculator() {
       ['insert', 'wrap', 'variable', 'negative', 'decimal'].includes(action.op)
     )
       speech.hablarAutomatico(face.name);
+    // En los demás modos, la edición va al campo de la herramienta y «=» la calcula.
+    if (!inCalculator)
+      switch (action.op) {
+        case 'delete':
+          return fieldErase();
+        case 'clear':
+          return fieldErase(true);
+        case 'cursor':
+          return fieldCaret(action.direction);
+        case 'replay':
+          return fieldStep(action.direction === 'previous' ? -1 : 1);
+        case 'calculate':
+          return submitTool();
+        case 'undo':
+        case 'overwrite':
+        case 'solve':
+        case 'calc':
+          return announce('Esa tecla es del modo Calcular: MENU y 1 vuelven a Calcular.');
+        case 'prompt':
+          if (action.prompt !== 'random-int')
+            return announce('Esa tecla es del modo Calcular: MENU y 1 vuelven a Calcular.');
+      }
     switch (action.op) {
       case 'insert':
         return deviceInsert(action.text);
@@ -1138,7 +1268,7 @@ export function Calculator() {
           setOff(false);
           return announce('Pantalla encendida.');
         }
-        input.current?.focus();
+        focusEntry();
         return announce('Calculadora lista.');
       case 'store':
         if (!lastAnswer.current) return announce('Todavía no hay un resultado para guardar.');
@@ -1204,7 +1334,7 @@ export function Calculator() {
     if (!result) return null;
     if (alternate?.mathml) return { mathml: alternate.mathml, text: alternate.spoken };
     const text = alternate?.expression ?? (result.table || result.headers ? '' : result.value);
-    if (!text) return { mathml: null, text: 'Detalle en la tabla de abajo.' };
+    if (!text) return { mathml: null, text: 'Ver abajo ▼' };
     const decimal = alternate ? preferences.decimalSeparator : (result.separator ?? 'punto');
     return { mathml: toMathML(text, { decimalSeparator: decimal, display: 'inline' }), text };
   }, [result, alternate, preferences.decimalSeparator]);
@@ -1595,7 +1725,6 @@ export function Calculator() {
     };
   });
 
-  const inCalculator = activeTool === 'basic' || activeTool === 'scientific';
   const resultPanel = (
     <section className="result panel" aria-labelledby="result-title">
       <h2 id="result-title" tabIndex={-1}>
@@ -1821,7 +1950,7 @@ export function Calculator() {
           <nav aria-label="Secciones">
             <a
               href="#expression"
-              aria-current={!help && view === 'work' && activeTool === 'basic' ? 'page' : undefined}
+              aria-current={!help && view === 'work' ? 'page' : undefined}
               onClick={(event) => {
                 event.preventDefault();
                 navigate('basic');
@@ -1831,11 +1960,7 @@ export function Calculator() {
             </a>
             <a
               href="#view-title"
-              aria-current={
-                !help && (view === 'tools' || (view === 'work' && activeTool !== 'basic'))
-                  ? 'page'
-                  : undefined
-              }
+              aria-current={!help && view === 'tools' ? 'page' : undefined}
               onClick={(event) => {
                 event.preventDefault();
                 navigate('tools');
@@ -1985,8 +2110,10 @@ export function Calculator() {
                   Resultado, donde podés escucharlo, copiarlo o explicarlo.
                 </li>
                 <li>
-                  Abrí Herramientas para álgebra, matrices, gráficos, estadística y más. Tus datos
-                  se conservan al cambiar de herramienta.
+                  La tecla MENU elige el modo: álgebra, matrices, gráficos, estadística, tabla, hoja
+                  de cálculo y más. Todos se usan dentro de la calculadora: la herramienta aparece
+                  en la pantalla y el teclado escribe en ella. Tus datos se conservan al cambiar de
+                  modo.
                 </li>
                 <li>
                   El historial guarda tus cálculos en este dispositivo para escucharlos, editarlos o
@@ -2093,44 +2220,44 @@ export function Calculator() {
                 </p>
               </div>
             )}
-            <div hidden={activeTool !== 'basic' && activeTool !== 'scientific'}>
-              <section className="calculator" aria-label="Escribir una operación">
-                <div className="device-layout">
-                  <form
-                    id="calc-form"
-                    className="device-top"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void calculate();
-                    }}
-                  >
-                    <div className="device-head" aria-hidden="true">
-                      <span className="device-brand">
-                        <b>MathVoice</b>
-                        <span className="device-model">MV-100 · Científica</span>
-                        <span className="device-series">PARLANTE</span>
-                      </span>
-                      <span className="device-solar" />
-                    </div>
-                    <div className="lcd-frame">
-                      <div className="lcd" data-off={off || undefined}>
-                        <div className="lcd-status" aria-hidden="true">
-                          <span data-on={layer === 'shift' || undefined}>S</span>
-                          <span data-on={layer === 'alpha' || undefined}>A</span>
-                          <span data-on={memory !== '0' || undefined}>M</span>
-                          <span data-on={storing || undefined}>STO</span>
-                          <span data-on={overwrite || undefined}>INS</span>
-                          <span data-on={preferences.numberFormat !== 'normal' || undefined}>
-                            {preferences.numberFormat === 'fijo' ? 'FIX' : 'SCI'}
-                          </span>
-                          <span className="lcd-angle" data-on>
-                            {preferences.angle === 'deg'
-                              ? 'D'
-                              : preferences.angle === 'grad'
-                                ? 'G'
-                                : 'R'}
-                          </span>
-                        </div>
+            <section className="calculator" aria-label="Calculadora">
+              <div className="device-layout" data-mode={inCalculator ? 'calc' : 'tool'}>
+                <div className="device-head" aria-hidden="true">
+                  <span className="device-brand">
+                    <b>MathVoice</b>
+                    <span className="device-model">MV-100 · Científica</span>
+                    <span className="device-series">PARLANTE</span>
+                  </span>
+                  <span className="device-solar" />
+                </div>
+                <form
+                  id="calc-form"
+                  className="device-screen"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void calculate();
+                  }}
+                >
+                  <div className="lcd-frame">
+                    <div className="lcd" data-off={off || undefined}>
+                      <div className="lcd-status" aria-hidden="true">
+                        <span data-on={layer === 'shift' || undefined}>S</span>
+                        <span data-on={layer === 'alpha' || undefined}>A</span>
+                        <span data-on={memory !== '0' || undefined}>M</span>
+                        <span data-on={storing || undefined}>STO</span>
+                        <span data-on={overwrite || undefined}>INS</span>
+                        <span data-on={preferences.numberFormat !== 'normal' || undefined}>
+                          {preferences.numberFormat === 'fijo' ? 'FIX' : 'SCI'}
+                        </span>
+                        <span className="lcd-angle" data-on>
+                          {preferences.angle === 'deg'
+                            ? 'D'
+                            : preferences.angle === 'grad'
+                              ? 'G'
+                              : 'R'}
+                        </span>
+                      </div>
+                      <div className="lcd-entry" hidden={!inCalculator}>
                         <label className="sr-only" htmlFor="expression">
                           Expresión matemática
                         </label>
@@ -2222,39 +2349,46 @@ export function Calculator() {
                           aria-hidden="true"
                           dangerouslySetInnerHTML={{ __html: lcdNatural ?? '' }}
                         />
-                        <div
-                          className="lcd-answer"
-                          aria-hidden="true"
-                          data-error={(inCalculator && !!error) || undefined}
-                        >
-                          {inCalculator && error ? (
-                            'Error'
-                          ) : lcdAnswer ? (
-                            <>
-                              {result?.approximate && !alternate && '≈ '}
-                              {lcdAnswer.mathml ? (
-                                <span dangerouslySetInnerHTML={{ __html: lcdAnswer.mathml }} />
-                              ) : (
-                                lcdAnswer.text
-                              )}
-                              {alternateLabel && <small>{alternateLabel}</small>}
-                            </>
-                          ) : null}
-                        </div>
-                        {panel && (
-                          <LcdPanel
-                            ref={panelRef}
-                            title={panel.title}
-                            items={panel.items}
-                            columns={panel.columns}
-                            onChoose={choosePanelItem}
-                            onClose={closePanel}
-                          />
-                        )}
                       </div>
+                      {!inCalculator && (
+                        <p className="lcd-mode" aria-hidden="true">
+                          {toolName(activeTool)}
+                        </p>
+                      )}
+                      <div
+                        className="lcd-answer"
+                        aria-hidden="true"
+                        data-error={(inCalculator && !!error) || undefined}
+                      >
+                        {inCalculator && error ? (
+                          'Error'
+                        ) : lcdAnswer ? (
+                          <>
+                            {result?.approximate && !alternate && '≈ '}
+                            {lcdAnswer.mathml ? (
+                              <span dangerouslySetInnerHTML={{ __html: lcdAnswer.mathml }} />
+                            ) : (
+                              lcdAnswer.text
+                            )}
+                            {alternateLabel && <small>{alternateLabel}</small>}
+                          </>
+                        ) : null}
+                      </div>
+                      {panel && (
+                        <LcdPanel
+                          ref={panelRef}
+                          title={panel.title}
+                          items={panel.items}
+                          columns={panel.columns}
+                          onChoose={choosePanelItem}
+                          onClose={closePanel}
+                        />
+                      )}
                     </div>
-                  </form>
-                  <div className="device-toolbar">
+                  </div>
+                </form>
+                <div className="device-app" ref={appArea}>
+                  <div className="device-toolbar" hidden={!inCalculator}>
                     <p className="hint" id="expression-hint">
                       {preferences.decimalSeparator === 'coma'
                         ? 'Enter para calcular · Coma para decimales · Punto y coma entre argumentos'
@@ -2319,70 +2453,69 @@ export function Calculator() {
                       )}
                   </div>
                   {inCalculator && resultPanel}
-                  <CalculatorKeys
-                    layer={layer}
-                    storing={storing}
-                    decimal={preferences.decimalSeparator}
-                    onPress={pressKey}
-                  />
-                </div>
-              </section>
-            </div>
-            <div hidden={activeTool !== 'scientific'}>
-              <Tools insert={insert} />
-            </div>
-            <div hidden={activeTool !== 'advanced'}>
-              <AdvancedCalculator
-                ref={advanced}
-                busy={busy}
-                calculate={(value) => void calculate(value)}
-              />
-            </div>
-            <FeatureHub
-              active={view === 'work' && !help ? activeTool : null}
-              visited={visited}
-              graphRequest={graphRequest}
-              busy={busy}
-              variables={variables}
-              angle={preferences.angle}
-              decimalSeparator={preferences.decimalSeparator}
-              announce={announce}
-              evaluate={evaluateCell}
-              calculate={(value) => {
-                void calculate(value);
-              }}
-              insert={insert}
-              removeVariable={(name) => {
-                const next = { ...variables };
-                delete next[name];
-                setVariables(next);
-                if (!variableService.save(next)) reportStorageFailure();
-                announce(`Variable ${name} eliminada.`);
-              }}
-            />
-            {!inCalculator && resultPanel}
-            <div hidden={activeTool !== 'basic' && activeTool !== 'scientific'}>
-              <details className="panel">
-                <summary>Ejemplos de operaciones</summary>
-                <div className="examples">
-                  <span>Probá un ejemplo</span>
-                  <div className="actions">
-                    {['1/3 + 1/6', 'sqrt(144)', '2^10'].map((example) => (
-                      <button
-                        key={example}
-                        onClick={() => {
-                          justCalculated.current = false;
-                          setExpression(example);
-                          input.current?.focus();
-                        }}
-                      >
-                        {example}
-                      </button>
-                    ))}
+                  <div hidden={activeTool !== 'scientific'}>
+                    <Tools insert={insert} />
                   </div>
+                  <div hidden={activeTool !== 'advanced'}>
+                    <AdvancedCalculator
+                      ref={advanced}
+                      busy={busy}
+                      calculate={(value) => void calculate(value)}
+                    />
+                  </div>
+                  <FeatureHub
+                    active={view === 'work' && !help ? activeTool : null}
+                    visited={visited}
+                    graphRequest={graphRequest}
+                    busy={busy}
+                    variables={variables}
+                    angle={preferences.angle}
+                    decimalSeparator={preferences.decimalSeparator}
+                    announce={announce}
+                    evaluate={evaluateCell}
+                    calculate={(value) => {
+                      void calculate(value);
+                    }}
+                    insert={insert}
+                    removeVariable={(name) => {
+                      const next = { ...variables };
+                      delete next[name];
+                      setVariables(next);
+                      if (!variableService.save(next)) reportStorageFailure();
+                      announce(`Variable ${name} eliminada.`);
+                    }}
+                  />
+                  {/* La hoja y los gráficos muestran lo suyo: no usan el panel de resultado. */}
+                  {!inCalculator && !['sheet', 'graphs'].includes(activeTool) && resultPanel}
+                  <details className="panel" hidden={!inCalculator}>
+                    <summary>Ejemplos de operaciones</summary>
+                    <div className="examples">
+                      <span>Probá un ejemplo</span>
+                      <div className="actions">
+                        {['1/3 + 1/6', 'sqrt(144)', '2^10'].map((example) => (
+                          <button
+                            key={example}
+                            onClick={() => {
+                              justCalculated.current = false;
+                              setExpression(example);
+                              input.current?.focus();
+                            }}
+                          >
+                            {example}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
                 </div>
-              </details>
-            </div>
+                <CalculatorKeys
+                  layer={layer}
+                  storing={storing}
+                  decimal={preferences.decimalSeparator}
+                  onPress={pressKey}
+                />
+              </div>
+            </section>
           </div>
           <div
             role="status"

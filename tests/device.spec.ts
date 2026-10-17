@@ -308,3 +308,42 @@ test('en los temas de alto contraste cada tecla se lee sobre su propio fondo', a
     expect(unreadable, theme).toEqual([]);
   }
 });
+
+test('las herramientas están dentro de la calculadora y el teclado escribe en ellas', async ({
+  page,
+}) => {
+  await pressKey(page, 'Menú de modos');
+  await page.keyboard.press('9');
+  // Es la misma calculadora: el LCD dice el modo y la herramienta está en la pantalla.
+  await expect(page.locator('.lcd-mode')).toHaveText('Tabla de valores');
+  await expect(page.locator('.device-app').getByLabel('f(x) =')).toBeVisible();
+  const f = page.getByLabel('f(x) =');
+  await f.focus();
+  await pressKey(page, 'Borrar toda la expresión');
+  await expect(f).toHaveValue('');
+  for (const key of ['Variable equis', 'Elevar al cuadrado']) await pressKey(page, key);
+  await expect(f).toHaveValue('x^2');
+  // ▼ pasa al campo siguiente; «=» calcula la herramienta.
+  await pressKey(page, 'Cálculo siguiente');
+  const g = page.getByLabel('g(x) = (opcional)');
+  await expect(g).toBeFocused();
+  for (const key of ['Dos', 'Multiplicar', 'Variable equis']) await pressKey(page, key);
+  await expect(g).toHaveValue('2*x');
+  await pressKey(page, 'Igual, calcular');
+  const table = page.getByRole('grid', { name: 'Tabla de valores' });
+  await expect(table.getByRole('row').nth(1).getByRole('gridcell')).toHaveText(['9', '-6']);
+  // En un campo numérico, el punto decimal espera la cifra siguiente.
+  await pressKey(page, 'Menú de modos');
+  await page.keyboard.press('7');
+  await page.getByLabel('Distribución u operación').selectOption({ label: 'Normal: P(X ≤ x)' });
+  const x = page.getByLabel('x', { exact: true });
+  await x.focus();
+  await pressKey(page, 'Borrar toda la expresión');
+  for (const key of ['Uno', 'Punto decimal', 'Nueve', 'Seis']) await pressKey(page, key);
+  await expect(x).toHaveValue('1.96');
+  await pressKey(page, 'Igual, calcular');
+  await expect(resultValue(page, '0.9750021049')).toBeVisible();
+  // Las teclas que solo tienen sentido en Calcular lo dicen.
+  await pressKey(page, 'Resolver la ecuación', 'Shift');
+  await expect(status(page)).toContainText('Esa tecla es del modo Calcular');
+});

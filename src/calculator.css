@@ -1,5 +1,6 @@
 /* Calculadora científica con forma de calculadora de mano: cuerpo oscuro con borde plateado,
-   pantalla LCD y teclas con funciones Shift (doradas) y Alpha (rojas). */
+   pantalla LCD y teclas con funciones Shift (doradas) y Alpha (rojas). Es una sola calculadora
+   para todos los modos: debajo del LCD, la pantalla muestra la herramienta del modo elegido. */
 
 .device-layout {
   --body: #26272b;
@@ -22,44 +23,85 @@
   --legend-alpha: #ff6b97;
   --legend-ink: #f4f4f4;
   --device-focus: #ffd84d;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-.device-layout > .device-top,
-.device-layout > .calc-keys {
-  width: min(100%, 27.5rem);
-  align-self: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'head' 'screen' 'keys' 'app';
+  gap: 14px;
+  width: min(100%, 32rem);
+  margin-inline: auto;
+  padding: 18px 16px 28px;
+  border: 6px solid var(--rim);
+  border-radius: 30px 30px 46px 46px;
   background-color: var(--body);
   background-image:
     repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 7px),
     repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 7px);
-  border: 6px solid var(--rim);
   color: var(--legend-ink);
-}
-.device-top {
-  order: 1;
-  border-bottom: 0 !important;
-  border-radius: 30px 30px 0 0;
-  padding: 18px 18px 6px;
-  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.18);
-}
-.device-layout > .calc-keys {
-  order: 2;
-  border-top: 0;
-  border-radius: 0 0 46px 46px;
-  padding: 8px 16px 28px;
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
 }
-.device-toolbar {
-  order: 3;
-  width: min(100%, 27.5rem);
-  align-self: center;
-  margin-top: 16px;
+/* Fuera de Calcular, la herramienta va antes del teclado: es lo que se usa en ese modo. */
+.device-layout[data-mode='tool'] {
+  grid-template-areas: 'head' 'screen' 'app' 'keys';
 }
-.device-layout > .result {
-  order: 4;
-  margin-top: 18px;
+.device-head {
+  grid-area: head;
+}
+.device-screen {
+  grid-area: screen;
+  min-width: 0;
+}
+.device-layout > .calc-keys {
+  grid-area: keys;
+  min-width: 0;
+}
+/* La parte de la pantalla donde aparece la herramienta: clara, como una pantalla a color. */
+.device-app {
+  grid-area: app;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  padding: 18px;
+  border: 3px solid #0b0c0e;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.device-app .panel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.device-app .result {
+  padding-top: 16px;
+}
+/* En pantallas anchas, todo a la vista: la pantalla y su herramienta a la izquierda, el teclado
+   a la derecha. */
+@media (min-width: 1000px) {
+  .device-layout,
+  .device-layout[data-mode='tool'] {
+    width: 100%;
+    max-width: 78rem;
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 28rem);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'head head'
+      'screen keys'
+      'app keys';
+    column-gap: 30px;
+    padding: 24px 28px 34px;
+    border-radius: 40px;
+  }
+  .device-layout > .calc-keys {
+    align-self: start;
+  }
+  /* Con la pantalla grande entran los quince modos del menú sin desplazarse. */
+  .device-layout .lcd {
+    min-height: 15.75rem;
+  }
 }
 
 /* Cabecera: marca, modelo y panel solar. */
@@ -105,7 +147,6 @@
 
 /* Pantalla LCD. */
 .lcd-frame {
-  margin-top: 14px;
   padding: 12px;
   border-radius: 14px;
   background: #101114;
@@ -113,7 +154,7 @@
 }
 .lcd {
   position: relative;
-  min-height: 10rem;
+  min-height: 12.5rem;
   padding: 6px 10px 10px;
   border-radius: 6px;
   background: var(--lcd-bg);
@@ -150,7 +191,7 @@
   background: transparent;
   color: var(--lcd-ink);
   font:
-    600 1.2rem/1.4 ui-monospace,
+    600 1.35rem/1.4 ui-monospace,
     'Consolas',
     'Courier New',
     monospace;
@@ -165,9 +206,9 @@
   color: var(--lcd-dim);
 }
 .lcd-natural {
-  min-height: 2.4rem;
+  min-height: 2.6rem;
   padding: 2px 0;
-  font-size: 1.45rem;
+  font-size: 1.7rem;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -183,7 +224,15 @@
   overflow: hidden;
 }
 .lcd-answer math {
-  font-size: 2.2rem;
+  font-size: 2.6rem;
+}
+/* Fuera de Calcular, el LCD dice en qué modo estás; la herramienta está debajo. */
+.lcd-mode {
+  margin: 10px 0 0;
+  font:
+    700 1.6rem/1.2 ui-monospace,
+    'Consolas',
+    monospace;
 }
 .lcd-answer[data-error] {
   font-size: 1.05rem;
@@ -291,9 +340,9 @@
   display: flex;
   justify-content: space-between;
   gap: 2px;
-  min-height: 0.85rem;
+  min-height: 0.9rem;
   margin-bottom: 2px;
-  font-size: 0.56rem;
+  font-size: 0.6rem;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -336,7 +385,7 @@
   align-items: end;
 }
 .calc-keys .calc-key-round {
-  height: 1.5rem;
+  height: 1.75rem;
   border-radius: 50%;
   background: radial-gradient(
     circle at 40% 30%,
@@ -380,7 +429,7 @@
     'left . right'
     '. down .';
   align-self: stretch;
-  min-height: 5.6rem;
+  min-height: 6.4rem;
   border-radius: 50%;
   border: 3px solid #50535a;
   background: radial-gradient(ellipse at 50% 45%, #43454b 25%, #232428 70%);
@@ -399,11 +448,11 @@
   font-size: 0.8rem;
 }
 .calc-keys .calc-key-function {
-  height: 1.95rem;
+  height: 2.25rem;
   border-radius: 12px / 14px;
   background: linear-gradient(#4a4b52, var(--key-dark-shade));
   color: var(--key-dark-ink);
-  font-size: 0.86rem;
+  font-size: 0.95rem;
   font-weight: 600;
   box-shadow:
     0 2px 0 #08080a,
@@ -422,20 +471,20 @@
   margin-top: 14px;
 }
 .calc-keys .calc-key-number {
-  height: 2.75rem;
+  height: 3.1rem;
   border-radius: 10px;
   background: linear-gradient(var(--key-light), var(--key-light-shade));
   color: var(--key-light-ink);
-  font-size: 1.3rem;
+  font-size: 1.45rem;
   font-weight: 600;
   box-shadow: 0 3px 0 #9d9d97;
 }
 .calc-keys .calc-key-blue {
-  height: 2.75rem;
+  height: 3.1rem;
   border-radius: 10px;
   background: linear-gradient(#4d7ef0, var(--key-blue-shade));
   color: #fff;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 700;
   box-shadow: 0 3px 0 #15306f;
 }
@@ -457,15 +506,12 @@
 
 /* Pantallas angostas: el cuerpo se achica, las teclas siguen tocables. */
 @media (max-width: 380px) {
-  .device-layout > .device-top,
-  .device-layout > .calc-keys {
+  .device-layout {
+    padding: 14px 8px 22px;
     border-width: 4px;
   }
-  .device-top {
-    padding: 14px 10px 4px;
-  }
-  .device-layout > .calc-keys {
-    padding: 6px 8px 22px;
+  .device-app {
+    padding: 12px;
   }
   .keys-functions {
     gap: 5px 4px;
@@ -556,13 +602,16 @@
   background: #000;
   color: var(--legend-ink, #fff);
 }
-:root[data-theme='contrast'] .device-layout > .device-top,
-:root[data-theme='contrast'] .device-layout > .calc-keys,
-:root[data-theme='mono'] .device-layout > .device-top,
-:root[data-theme='mono'] .device-layout > .calc-keys,
-:root[data-theme='yellow'] .device-layout > .device-top,
-:root[data-theme='yellow'] .device-layout > .calc-keys {
+:root[data-theme='contrast'] .device-layout,
+:root[data-theme='mono'] .device-layout,
+:root[data-theme='yellow'] .device-layout {
   background-image: none;
+}
+:root[data-theme='contrast'] .device-app,
+:root[data-theme='mono'] .device-app,
+:root[data-theme='yellow'] .device-app {
+  border-color: var(--rim);
+  box-shadow: none;
 }
 @media (forced-colors: active) {
   .calc-keys .calc-key {

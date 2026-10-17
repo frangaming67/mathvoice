@@ -771,9 +771,10 @@ footer {
   text-align: left;
   vertical-align: top;
 }
+/* La calculadora ocupa todo el ancho disponible: adentro están todas las herramientas. */
 .workspace {
   display: block;
-  max-width: 960px;
+  max-width: 78rem;
   margin-inline: auto;
 }
 .workspace .result {
