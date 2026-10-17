@@ -524,6 +524,29 @@
   box-shadow: none;
   background-image: none;
 }
+/* Sin degradés, cada tecla necesita su propio relleno: si no, la tinta queda sobre el cuerpo negro. */
+:root[data-theme='contrast'] .calc-keys .calc-key-number,
+:root[data-theme='mono'] .calc-keys .calc-key-number,
+:root[data-theme='yellow'] .calc-keys .calc-key-number,
+:root[data-theme='contrast'] .calc-keys .calc-key-round,
+:root[data-theme='mono'] .calc-keys .calc-key-round,
+:root[data-theme='yellow'] .calc-keys .calc-key-round {
+  background: var(--key-light);
+  color: var(--key-light-ink);
+}
+:root[data-theme='contrast'] .dpad,
+:root[data-theme='mono'] .dpad,
+:root[data-theme='yellow'] .dpad {
+  border-color: var(--rim);
+  background: #000;
+  box-shadow: none;
+}
+:root[data-theme='contrast'] .device-solar,
+:root[data-theme='mono'] .device-solar,
+:root[data-theme='yellow'] .device-solar {
+  background: #000;
+  box-shadow: inset 0 0 0 2px var(--rim);
+}
 :root[data-theme='contrast'] .calc-keys .calc-key-function,
 :root[data-theme='mono'] .calc-keys .calc-key-function,
 :root[data-theme='yellow'] .calc-keys .calc-key-function,

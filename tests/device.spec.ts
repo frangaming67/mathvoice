@@ -276,3 +276,35 @@ test('MENU C, Hoja de cálculo: se escribe sobre la celda, fórmulas, rangos y c
   await page.keyboard.press('C');
   await expect(cell('A4')).toHaveText('6');
 });
+
+test('en los temas de alto contraste cada tecla se lee sobre su propio fondo', async ({ page }) => {
+  for (const theme of ['contrast', 'mono', 'yellow']) {
+    await page.evaluate((value) => (document.documentElement.dataset.theme = value), theme);
+    // Contraste de la tinta de cada tecla contra el fondo que de verdad queda detrás de ella.
+    const unreadable = await page.evaluate(() => {
+      const rgb = (color: string) => (color.match(/[\d.]+/g) ?? []).map(Number);
+      const channel = (value: number) => {
+        const v = value / 255;
+        return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+      };
+      const luminance = ([r, g, b]: number[]) =>
+        0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+      const behind = (element: Element | null): number[] => {
+        for (let node = element; node; node = node.parentElement) {
+          const color = rgb(getComputedStyle(node).backgroundColor);
+          if (color.length < 4 || color[3] > 0) return color.slice(0, 3);
+        }
+        return [255, 255, 255];
+      };
+      return [...document.querySelectorAll<HTMLElement>('.calc-keys .calc-key')]
+        .filter((key) => key.textContent?.trim() && parseFloat(getComputedStyle(key).fontSize) > 0)
+        .map((key) => {
+          const [a, b] = [luminance(rgb(getComputedStyle(key).color)), luminance(behind(key))];
+          const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+          return { key: key.getAttribute('aria-label'), ratio: Math.round(ratio * 10) / 10 };
+        })
+        .filter(({ ratio }) => ratio < 4.5);
+    });
+    expect(unreadable, theme).toEqual([]);
+  }
+});
