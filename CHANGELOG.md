@@ -1,5 +1,16 @@
 # Cambios
 
+## 0.5.0 — en preparación
+
+La explicación completa, cosa por cosa, está en [Qué cambió en MathVoice 0.5](docs/CAMBIOS-0.5.md).
+
+- La calculadora tiene forma de calculadora científica de mano: pantalla LCD con forma de libro, SHIFT y ALPHA, cruceta y todas las teclas de la ClassWiz, accesibles y en una sola parada de Tab.
+- MENU con quince modos, entre ellos Tabla, Proporción, Hoja de cálculo y la normal inversa; desigualdades sueltas hasta grado 4 y verificación de igualdades.
+- Motor numérico exacto y con errores claros, álgebra verificada numéricamente, opciones de números (coma decimal, formato, modo complejo) que llegan a cada cálculo.
+- Lectura en voz inequívoca, MathML para lectores de pantalla y braille, LaTeX para compartir, y ayudas para editar sin mirar.
+- Dictado que no inventa, páginas organizadas para no perderse, teclado y atajos confiables con lector de pantalla y en Mac.
+- Estadística, matrices, gráficos, historial y configuración más robustos y accesibles; temas de alto contraste con todas las teclas legibles.
+
 ## 0.4.0 — 2026-09-20
 
 - Procedimientos con fórmulas y valores del cálculo: ecuaciones lineales/cuadráticas, sustitución de raíces, derivadas sucesivas, integrales, Taylor y análisis de signos de desigualdades.

@@ -128,8 +128,12 @@ export const calculatorModes: CalculatorMode[] = [
     id: 'hoja',
     label: 'Hoja de cálculo',
     tool: 'sheet',
+    // Como la tabla, pero con más columnas y una celda elegida.
     icon: icon(
-      <path d="M3 3 H29 V21 H3 Z M3 9 H29 M3 15 H29 M11 3 V21 M20 3 V21" strokeWidth="1.5" />,
+      <>
+        <path d="M3 3 H29 V21 H3 Z M3 9 H29 M3 15 H29 M11 3 V21 M20 3 V21" strokeWidth="1.5" />
+        <rect x="11" y="9" width="9" height="6" fill="currentColor" stroke="none" />
+      </>,
     ),
   },
   {
