@@ -21,6 +21,8 @@ import { CalculatorKeys } from '../../components/CalculatorKeys';
 import { ValueTable } from '../../components/ValueTable';
 import { LcdPanel, type LcdItem, type LcdPanelHandle } from '../../components/LcdPanel';
 import { KeyPrompt, type PromptRequest } from '../../components/KeyPrompt';
+import { ExpressionExplorer, type ExplorerRequest } from '../../components/ExpressionExplorer';
+import { explorerTree } from '../../accessibility/expressionExplorer';
 import type { CalculatorKey, KeyFace, Layer } from '../../calculator/keys';
 import {
   engineering,
@@ -133,6 +135,9 @@ export function Calculator() {
     null,
   );
   const [keyPrompt, setKeyPrompt] = useState<PromptRequest | null>(null);
+  const [explorer, setExplorer] = useState<ExplorerRequest | null>(null);
+  const explorerOrigin = useRef<HTMLElement | null>(null);
+  const explorerSelected = useRef(false);
   const panelRef = useRef<LcdPanelHandle>(null);
   // Posición al recorrer cálculos anteriores con la cruceta: -1 es la expresión propia.
   const replay = useRef(-1);
@@ -1430,6 +1435,49 @@ export function Calculator() {
     );
   }
   /** Campo de expresión y cursor sobre los que actúan las ayudas de edición. */
+  /** Recorre una expresión por partes; la que se escribe puede llevar el cursor a una parte. */
+  function explore(
+    text: string,
+    title: string,
+    separator: DecimalSeparator,
+    field?: HTMLInputElement | HTMLTextAreaElement,
+  ) {
+    const tree = explorerTree(text, { decimalSeparator: separator, speech: speechOptions });
+    if (!tree)
+      return explicitRead('No pude separarla en partes: revisá que la expresión esté completa.');
+    explorerOrigin.current = document.activeElement as HTMLElement | null;
+    explorerSelected.current = false;
+    setExplorer({
+      title,
+      tree,
+      ...(field && {
+        select: ([start, end]: [number, number]) => {
+          explorerSelected.current = true;
+          field.focus();
+          field.setSelectionRange(start, end);
+          announce(
+            `Elegido en la expresión: ${mathSpeech(field.value.slice(start, end), speechOptions)}.`,
+          );
+        },
+      }),
+    });
+  }
+  function exploreExpression() {
+    const target = editingTarget();
+    if (!target?.text.trim()) return explicitRead('No hay una expresión para explorar.');
+    explore(target.text, 'Explorar la expresión', preferences.decimalSeparator, target.field);
+  }
+  function exploreResult() {
+    if (!result) return explicitRead('Todavía no hay un resultado para explorar.');
+    explore(result.value, 'Explorar el resultado', result.separator ?? 'punto');
+  }
+  function closeExplorer() {
+    setExplorer(null);
+    if (!explorerSelected.current)
+      requestAnimationFrame(() => {
+        if (explorerOrigin.current?.isConnected) explorerOrigin.current.focus();
+      });
+  }
   function editingTarget() {
     const expressionField = (element: Element | null | undefined) =>
       element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement
@@ -1549,6 +1597,12 @@ export function Calculator() {
         case 'read-message':
           explicitRead(status || 'No hay un mensaje anterior.');
           backToField();
+          break;
+        case 'explore-expression':
+          exploreExpression();
+          break;
+        case 'explore-result':
+          exploreResult();
           break;
         case 'read-tool':
           explicitRead(`Herramienta actual: ${toolName(activeTool)}.`);
@@ -1842,6 +1896,7 @@ export function Calculator() {
               Escuchar resultado
             </button>
             <button onClick={() => void copy(result.value)}>Copiar resultado</button>
+            {!result.headers && <button onClick={exploreResult}>Explorar resultado</button>}
             {resultView?.latex && (
               <button onClick={() => void copy(resultView.latex!, 'LaTeX copiado.')}>
                 Copiar como LaTeX
@@ -2406,6 +2461,9 @@ export function Calculator() {
                       <button type="button" disabled={!speech.available} onClick={readExpression}>
                         Escuchar expresión
                       </button>
+                      <button type="button" onClick={exploreExpression}>
+                        Explorar expresión
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -2577,6 +2635,9 @@ export function Calculator() {
             />
           )}
           {keyPrompt && <KeyPrompt request={keyPrompt} close={closeKeyPrompt} />}
+          {explorer && (
+            <ExpressionExplorer request={explorer} announce={announce} close={closeExplorer} />
+          )}
           {functionPrompt && (
             <FunctionPrompt
               key={functionPrompt.id}
@@ -2615,6 +2676,9 @@ export function Calculator() {
                 speechOptions={speechOptions}
                 srMath={preferences.srMath}
                 edit={edit}
+                explore={(entry) =>
+                  explore(entry.value, 'Explorar el resultado guardado', entry.separator ?? 'punto')
+                }
                 recalculate={(entry) => {
                   edit(entry);
                   void calculate(

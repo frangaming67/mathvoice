@@ -84,6 +84,8 @@ Las desigualdades se escriben sueltas, como una ecuación: `x^2-4>0` da «desde 
 - **Guía por voz más tranquila y confiable.** No lee lo que pasa bajo un puntero quieto al desplazar la página; al escribir se cancela la lectura pendiente; en iPhone arranca bien (Safari exige que la primera locución sea dentro del toque) y la bienvenida no pide puntero en pantallas táctiles.
 - **Editar sin mirar.** Con la guía, las flechas dicen el carácter a la derecha del cursor y Retroceso dice qué se borró; al cerrar un paréntesis se avisa qué cierra y cuántos quedan abiertos. Comandos nuevos: «; K» lee bajo el cursor, «; F» desde el cursor hasta el final, «; O» dice dónde está el cursor, «; P» va al paréntesis pareja y «; B» revisa los paréntesis.
 
+- **Explorar una expresión por partes.** Como la navegación de MathCAT: **Explorar expresión** (o «; X») abre la fórmula que se escribe, **Explorar resultado** (o «; Z») el resultado, y **Explorar** (o X) un cálculo del historial. Izquierda y derecha van a la parte anterior o la siguiente, abajo entra (al numerador, al exponente, a un término, a un argumento) y arriba sale; cada movimiento dice el papel de la parte: «Denominador, resta: 2 equis menos 3». R resume la parte («Resta de 2 partes: el término 1 es un producto y el término 2, un número»), P dice dónde estás («el término 1, dentro del denominador») y, en la expresión que se escribe, Enter deja elegida esa parte en el campo para corregirla. Con el dedo o el ratón, los botones hacen lo mismo.
+
 ## 5. Teclado y atajos
 
 - Gestor central de comandos con modo escritura y modo matemático, perfiles, secuencias y personalización; paleta de comandos (buscador de funciones) y práctica de teclas.
@@ -125,6 +127,6 @@ Si en un navegador la calculadora se ve en blanco y negro, es porque ese navegad
 
 ## Qué falta para la 0.5.0
 
-- El explorador de la estructura de una expresión (recorrer una fórmula por partes) y el tutorial «Primeros pasos».
+- El tutorial «Primeros pasos».
 - La revisión final: versión 0.5.0, documentación de accesibilidad y hoja de ruta actualizadas.
 - Validar con personas ciegas y con lectores de pantalla reales: las pruebas automáticas no reemplazan esa evaluación.

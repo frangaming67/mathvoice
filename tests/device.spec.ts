@@ -347,3 +347,57 @@ test('las herramientas están dentro de la calculadora y el teclado escribe en e
   await pressKey(page, 'Resolver la ecuación', 'Shift');
   await expect(status(page)).toContainText('Esa tecla es del modo Calcular');
 });
+
+test('el explorador recorre la expresión por partes y lleva el cursor a la elegida', async ({
+  page,
+}) => {
+  const field = expression(page);
+  await field.fill('(x^2+1)/(2x-3)');
+  await page.getByRole('button', { name: 'Explorar expresión', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Explorar la expresión' });
+  await expect(dialog.getByRole('application', { name: 'Explorar la expresión' })).toBeFocused();
+  // Con lector de pantalla, cada movimiento llega a la región de estado del diálogo.
+  const said = dialog.getByRole('status');
+  await expect(said).toContainText('Expresión completa, fracción');
+  await page.keyboard.press('ArrowDown');
+  await expect(said).toHaveText('Numerador, suma: equis al cuadrado más 1');
+  await page.keyboard.press('ArrowRight');
+  await expect(said).toHaveText('Denominador, resta: 2 equis menos 3');
+  await page.keyboard.press('ArrowRight');
+  await expect(said).toHaveText('Es la última parte.');
+  await page.keyboard.press('r');
+  await expect(said).toHaveText(
+    'Resta de 2 partes: el término 1 es un producto y el término 2, un número.',
+  );
+  await page.keyboard.press('ArrowDown');
+  await expect(said).toHaveText('Término 1, producto: 2 equis');
+  await page.keyboard.press('p');
+  await expect(said).toHaveText('Estás en el término 1, dentro del denominador.');
+  // Enter cierra y deja elegida esa parte en el campo, lista para corregirla.
+  await page.keyboard.press('Enter');
+  await expect(dialog).toBeHidden();
+  await expect(field).toBeFocused();
+  expect(
+    await field.evaluate((input: HTMLInputElement) =>
+      input.value.slice(input.selectionStart!, input.selectionEnd!),
+    ),
+  ).toBe('2x');
+  // El resultado también se explora; Escape vuelve a donde se estaba.
+  await calculate(page, 'diff(x^3*sin(x), x)');
+  await expect(page.getByRole('region', { name: 'Resultado', exact: true })).toContainText('cos');
+  const button = page.getByRole('button', { name: 'Explorar resultado', exact: true });
+  await button.click();
+  const result = page.getByRole('dialog', { name: 'Explorar el resultado' });
+  await expect(result.getByRole('status')).toContainText('Expresión completa, suma');
+  await page.keyboard.press('Escape');
+  await expect(result).toBeHidden();
+  await expect(button).toBeFocused();
+});
+
+test('el explorador pasa axe', async ({ page }) => {
+  await expression(page).fill('sqrt(x^2+1) - 3/4');
+  await page.getByRole('button', { name: 'Explorar expresión', exact: true }).click();
+  await page.keyboard.press('ArrowDown');
+  const results = await new AxeBuilder({ page }).include('dialog.explorer').analyze();
+  expect(results.violations).toEqual([]);
+});

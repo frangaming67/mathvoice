@@ -67,6 +67,8 @@ Es una sola calculadora para todo: al elegir un modo con **MENU** (o desde Herra
 
 En **Gráficos**, ingresá hasta cuatro funciones de `x`, una por línea. Configurá los rangos y pulsá **Graficar funciones**. En **Explorar gráfico**, las flechas izquierda y derecha avanzan por el paso elegido; Inicio y Fin van a los extremos. Hay coordenadas habladas, tabla de valores, eventos aproximados y un recorrido sonoro. Escape detiene el audio.
 
+**Explorar expresión** recorre la fórmula por partes, como la navegación de MathCAT: izquierda y derecha van a las partes vecinas, abajo entra (numerador, exponente, término, argumento), arriba sale, R resume y P dice dónde estás; Enter deja elegida esa parte en el campo. **Explorar resultado** y **Explorar** en el historial hacen lo mismo con los resultados.
+
 **Dictar expresión** abre una revisión editable: el cálculo solo se ejecuta con **Confirmar y calcular**. El reconocimiento disponible depende del navegador y puede procesar audio en servidores de su proveedor. La interpretación de frases es limitada; revisá siempre lo entendido.
 
 ## Alcance matemático

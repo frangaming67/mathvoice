@@ -345,7 +345,16 @@ export function historyNeighbor(entries: HistoryEntry[], id: string): string | n
 }
 
 export type HistoryKeyAction =
-  'edit' | 'listen' | 'copy' | 'recalculate' | 'remove' | 'previous' | 'next' | 'first' | 'last';
+  | 'edit'
+  | 'listen'
+  | 'copy'
+  | 'explore'
+  | 'recalculate'
+  | 'remove'
+  | 'previous'
+  | 'next'
+  | 'first'
+  | 'last';
 /** Teclas de una entrada enfocada. Las combinaciones con Ctrl, Alt o Cmd se dejan pasar. */
 export function historyKeyAction(
   event: Pick<KeyboardEvent, 'key' | 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey'>,
@@ -355,6 +364,7 @@ export function historyKeyAction(
     Enter: 'edit',
     ' ': 'listen',
     c: 'copy',
+    x: 'explore',
     r: 'recalculate',
     Delete: 'remove',
     ArrowUp: 'previous',

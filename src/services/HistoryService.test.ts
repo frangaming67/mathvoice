@@ -187,5 +187,6 @@ it('las teclas de una entrada no capturan combinaciones del navegador', () => {
   expect(key('ArrowDown')).toBe('next');
   expect(key('c', { ctrlKey: true })).toBeNull();
   expect(key('Enter', { shiftKey: true })).toBeNull();
-  expect(key('x')).toBeNull();
+  expect(key('x')).toBe('explore');
+  expect(key('q')).toBeNull();
 });

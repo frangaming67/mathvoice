@@ -31,6 +31,7 @@ export function History({
   speechOptions,
   srMath,
   edit,
+  explore,
   recalculate,
   remove,
   clear,
@@ -41,6 +42,8 @@ export function History({
   speechOptions: ResultSpeechOptions;
   srMath: ScreenReaderMath;
   edit: (e: HistoryEntry) => void;
+  /** Recorre el resultado por partes. */
+  explore: (e: HistoryEntry) => void;
   recalculate: (e: HistoryEntry) => void;
   remove: (id: string) => void;
   clear: () => void;
@@ -111,6 +114,8 @@ export function History({
         return copy(entry.value);
       case 'recalculate':
         return recalculate(entry);
+      case 'explore':
+        return explore(entry);
       case 'remove':
         return removeEntry(entry);
       case 'previous':
@@ -202,7 +207,8 @@ export function History({
         <>
           <p className="hint" id="history-keys">
             Flechas arriba y abajo recorren los cálculos; Inicio y Fin van al primero y al último.
-            Enter edita, Espacio escucha, C copia el resultado, R recalcula y Suprimir elimina.
+            Enter edita, Espacio escucha, C copia el resultado, X lo explora por partes, R recalcula
+            y Suprimir elimina.
           </p>
           <p id="history-count">
             {visible.length === filtered.length
@@ -264,6 +270,9 @@ export function History({
                     </button>
                     <button tabIndex={-1} onClick={() => edit(e)}>
                       Editar
+                    </button>
+                    <button tabIndex={-1} onClick={() => explore(e)}>
+                      Explorar
                     </button>
                     <button tabIndex={-1} onClick={() => recalculate(e)}>
                       Recalcular

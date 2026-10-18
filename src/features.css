@@ -142,3 +142,45 @@
     text-align: center;
   }
 }
+
+/* Explorador de expresiones: la expresión entera arriba y, debajo, la parte en la que se está. */
+dialog.explorer {
+  width: min(44rem, calc(100vw - 32px));
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  padding: 24px;
+}
+dialog.explorer::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+.explorer-whole {
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 1.3rem;
+  overflow-x: auto;
+}
+.explorer-area {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+}
+.explorer-area:focus-visible {
+  outline-offset: 2px;
+}
+.explorer-path {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.explorer-part {
+  font-size: 1.6rem;
+  overflow-x: auto;
+}
+.explorer-kind {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}

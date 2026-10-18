@@ -105,6 +105,8 @@ for (const [id, name, shortcut] of [
   ['caret-where', 'Decir dónde está el cursor', '; O'],
   ['caret-pair', 'Ir al paréntesis pareja', '; P'],
   ['caret-balance', 'Revisar paréntesis', '; B'],
+  ['explore-expression', 'Explorar la expresión por partes', '; X'],
+  ['explore-result', 'Explorar el resultado por partes', '; Z'],
   ['undo', 'Deshacer edición matemática', 'Ctrl+Z'],
   ['redo', 'Rehacer edición matemática', 'Ctrl+Y'],
   ['settings', 'Abrir configuración', ''],
