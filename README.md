@@ -1,6 +1,6 @@
 # MathVoice
 
-**Calculadora científica parlante, en español, pensada para personas ciegas o con baja visión.** Tiene forma de calculadora de mano (como una Casio ClassWiz) y se usa entera con el teclado, con la voz propia de MathVoice o con un lector de pantalla (NVDA, JAWS, VoiceOver). Calcula desde una suma hasta derivadas, integrales, matrices, estadística, gráficos que se escuchan y una hoja de cálculo. Funciona en el navegador, sin cuenta y también sin conexión.
+**Calculadora científica parlante, en español, pensada para personas ciegas o con baja visión.** Tiene forma de calculadora científica de mano y se usa entera con el teclado, con la voz propia de MathVoice o con un lector de pantalla (NVDA, JAWS, VoiceOver). Calcula desde una suma hasta derivadas, integrales, matrices, estadística, gráficos que se escuchan y una hoja de cálculo. Funciona en el navegador, sin cuenta y también sin conexión.
 
 ![MathVoice: la calculadora con su pantalla LCD a la izquierda y el teclado a la derecha](docs/capturas/calculadora.png)
 
@@ -387,3 +387,7 @@ Estructura principal:
 - [Protocolo de accesibilidad](docs/ACCESSIBILITY.md)
 - [Validación](docs/VALIDATION.md)
 - [Hoja de ruta](docs/ROADMAP.md)
+
+## Licencia
+
+MathVoice es software libre bajo la [licencia MIT](LICENSE): se puede usar, copiar, modificar y compartir, también con fines comerciales, conservando el aviso de copyright. Se ofrece tal cual, sin garantía.

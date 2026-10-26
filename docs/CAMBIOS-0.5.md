@@ -8,7 +8,7 @@ Para verla funcionando: `npm install` y después `npm run dev`; se abre en <http
 
 ![MathVoice con forma de calculadora científica](capturas/calculadora.png)
 
-**Qué cambió.** La pantalla principal ya no es un formulario con un teclado desplegable: es una calculadora como las Casio ClassWiz. Tiene cuerpo oscuro con borde plateado, marca, panel solar y una pantalla LCD verde donde se ve la expresión escrita, la misma expresión en forma de libro (fracciones, raíces, potencias, ∫, Σ, d/dx) y el resultado alineado a la derecha. Arriba de la pantalla aparecen los indicadores de la calculadora real: S (Shift), A (Alpha), M (memoria), STO, INS, FIX o SCI y el modo angular (R, D o G).
+**Qué cambió.** La pantalla principal ya no es un formulario con un teclado desplegable: es una calculadora científica de mano. Tiene cuerpo oscuro con borde plateado, marca, panel solar y una pantalla LCD verde donde se ve la expresión escrita, la misma expresión en forma de libro (fracciones, raíces, potencias, ∫, Σ, d/dx) y el resultado alineado a la derecha. Arriba de la pantalla aparecen los indicadores de la calculadora real: S (Shift), A (Alpha), M (memoria), STO, INS, FIX o SCI y el modo angular (R, D o G).
 
 **Cómo se usa.** Cada tecla hace lo mismo que en la calculadora de mano:
 
@@ -27,13 +27,13 @@ Para verla funcionando: `npm install` y después `npm run dev`; se abre en <http
 
 ![El modo Tabla dentro de la calculadora: la tabla en la pantalla y el teclado al lado](capturas/modo-tabla.png)
 
-**Detalles de la pantalla.** Los números de la pantalla son grandes, como en la ClassWiz. En el menú de la pantalla solo se invierte la opción elegida (el puntero apenas la remarca), y con el alto contraste de Windows se ven el foco y Shift/Alpha activos.
+**Detalles de la pantalla.** Los números de la pantalla son grandes, como en una calculadora de mano. En el menú de la pantalla solo se invierte la opción elegida (el puntero apenas la remarca), y con el alto contraste de Windows se ven el foco y Shift/Alpha activos.
 
 ## 2. MENU: los modos de la calculadora de mano
 
 ![El menú de modos dentro de la pantalla](capturas/menu.png)
 
-**MENU** abre los modos dentro de la pantalla, con íconos como en la ClassWiz. Se eligen con las teclas 1–9 y A–F, con la cruceta o con «=». Son quince: Calcular, Complejos, Base-N, Matriz, Vector, Estadística, Distribución, Gráficos, Tabla, Ecuaciones y cálculo, Proporción, Hoja de cálculo, Funciones y constantes, Variables y Conversiones. Los nuevos:
+**MENU** abre los modos dentro de la pantalla, con íconos, como en una calculadora de mano. Se eligen con las teclas 1–9 y A–F, con la cruceta o con «=». Son quince: Calcular, Complejos, Base-N, Matriz, Vector, Estadística, Distribución, Gráficos, Tabla, Ecuaciones y cálculo, Proporción, Hoja de cálculo, Funciones y constantes, Variables y Conversiones. Los nuevos:
 
 ### Tabla (MENU 9)
 
@@ -50,7 +50,7 @@ La regla de tres: «A es a B como X es a D» o «A es a B como C es a X». Se re
 
 ### Hoja de cálculo (MENU C)
 
-Cinco columnas (A a E) y 45 filas, como en la ClassWiz:
+Cinco columnas (A a E) y 45 filas, como en una calculadora de mano:
 
 - Cada celda guarda un número o una fórmula: `A1*2`, `suma(A1:A5)`, `promedio(B1:B10)`, `mínimo`, `máximo` o cualquier cuenta de la calculadora.
 - Escribir sobre una celda la edita en la línea de abajo, como en la pantalla real; Enter guarda y baja a la siguiente, Escape cancela y Suprimir la vacía.
