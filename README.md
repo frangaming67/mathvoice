@@ -1,102 +1,295 @@
 # MathVoice
 
-Calculadora matemática en español con lectura por voz, navegación por teclado y herramientas para trabajar sin depender del gráfico visual.
+**Calculadora científica parlante, en español, pensada para personas ciegas o con baja visión.** Tiene forma de calculadora de mano (como una Casio ClassWiz) y se usa entera con el teclado, con la voz propia de MathVoice o con un lector de pantalla (NVDA, JAWS, VoiceOver). Calcula desde una suma hasta derivadas, integrales, matrices, estadística, gráficos que se escuchan y una hoja de cálculo. Funciona en el navegador, sin cuenta y también sin conexión.
 
-La entrega **0.3** incorpora herramientas de las cinco fases del [requisito original](docs/REQUISITOS-ORIGINALES.txt): cálculo básico y científico; álgebra y cálculo simbólico; matrices, vectores, complejos y estadística; gráficos explorables; dictado, conversores, exportaciones y uso sin conexión. El [plan por fases](docs/ROADMAP.md) distingue lo implementado de las limitaciones y validaciones pendientes.
+![MathVoice: la calculadora con su pantalla LCD a la izquierda y el teclado a la derecha](docs/capturas/calculadora.png)
 
 Repositorio: [frangaming67/mathvoice](https://github.com/frangaming67/mathvoice) (privado).
 
-La versión **0.4** amplía las fases 2 y 4: procedimientos con fórmulas, lectura de pasos y eventos de gráficos refinados. Los procedimientos se guardan con cada cálculo y se incluyen en las exportaciones.
+## Índice
 
-## Empezar
+1. [Qué hace](#qué-hace)
+2. [Instalación](#instalación)
+3. [Primeros pasos](#primeros-pasos)
+4. [Cómo se usa](#cómo-se-usa)
+5. [Todas las funciones](#todas-las-funciones)
+6. [Atajos de teclado](#atajos-de-teclado)
+7. [Ejemplos](#ejemplos)
+8. [Alcance y límites](#alcance-y-límites)
+9. [Privacidad](#privacidad)
+10. [Desarrollo y pruebas](#desarrollo-y-pruebas)
+11. [Más documentación](#más-documentación)
 
-Después de calcular una ecuación, derivada, integral, Taylor o desigualdad, abrí **Procedimiento paso a paso** en el resultado o el historial. Podés escuchar cada paso, escuchar todos o pasar el puntero sobre su texto y fórmula con la voz automática activa. Para ecuaciones lineales y cuadráticas se muestra el despeje o la fórmula; otras ecuaciones muestran la transformación y las verificaciones disponibles.
+## Qué hace
 
-En **Puntos importantes y descripción textual** del gráfico, **Ir a este punto** selecciona la curva, ubica la coordenada y lleva el foco a **Explorar gráfico**. Las intersecciones nombran ambas funciones. Los rangos de Y informados describen las muestras, no los extremos globales de la función.
+- **Una calculadora de mano en la pantalla.** Pantalla LCD con la expresión en forma de libro y el resultado, cruceta, SHIFT, ALPHA, MENU y todas las teclas de una calculadora científica. Cada tecla dice su nombre.
+- **Todo dentro de la misma calculadora.** Con **MENU** se elige el modo (matrices, estadística, gráficos, tabla, hoja de cálculo…) y la herramienta aparece en la pantalla; el teclado escribe en ella.
+- **Habla matemática en español claro.** «2 a la equis más 1» no se confunde con «2 elevado a equis más 1»; las fracciones se dicen con su nombre («tres cuartos») y los decimales periódicos como tales.
+- **Funciona con lectores de pantalla.** Los resultados llegan como MathML (NVDA con MathCAT, JAWS y VoiceOver los leen como matemática y los pasan a braille) y se pueden copiar como LaTeX para un docente.
+- **Recorre fórmulas por partes**, como la navegación de MathCAT: entrar al numerador, salir del exponente, ir al segundo término.
+- **Muestra el procedimiento** de ecuaciones, derivadas, integrales y más, paso a paso y en voz.
+- **Gráficos que se escuchan y se describen**, y que se descargan para imprimir en relieve.
+- **Dictado por voz** con revisión obligatoria antes de calcular.
+- **Historial** que se recorre con flechas y se exporta (TXT, CSV, JSON y un informe HTML para entregar).
+- **Sin conexión y sin cuenta.** Todo se calcula en tu dispositivo.
 
-En Configuración podés ampliar toda la interfaz entre 100% y 200%; se conserva al volver a abrir la aplicación. Si hay una actualización de la PWA, aparece **Aplicar actualización y recargar**. El botón **Graficar resultado** carga una expresión compatible en el panel de gráficos. **Guardar resultado TXT** descarga el resultado actual.
+## Instalación
 
-En la primera visita se abre un diálogo de bienvenida con el foco adentro: **Activar guía por voz** hace que MathVoice lea cada control y cada resultado; **Usar mi lector de pantalla** deja la lectura a NVDA, JAWS o VoiceOver para no escuchar dos voces. Como el navegador necesita un gesto para habilitar el audio, la primera tecla que presiones en ese diálogo explica las opciones en voz alta. En las visitas siguientes el foco arranca directamente en el campo de expresión.
+### Para usarla
 
-Todas las pantallas tienen la misma estructura: **Saltar al contenido**, el menú **Secciones** (Calculadora, Herramientas, Historial, Configuración y Ayuda) y el grupo **Voz y orientación** (el interruptor **Guía por voz**, **¿Dónde estoy?** y **Detener voz**). El título principal y el de la pestaña dicen siempre dónde estás. **Herramientas** es una lista que se recorre con las flechas y se abre con Enter; dentro de cada herramienta, la ubicación «Herramientas › Matrices» permite volver. **Ayuda** (F1) reúne los atajos esenciales en una tabla, la paleta de comandos, el modo teclado matemático y **Teclado y atajos**, con la referencia completa en tablas por categoría. Escape cancela la voz y las lecturas pendientes. Configuración permite ajustar idioma y voz, velocidad, tono, volumen, lectura de foco y lectura de puntero.
+MathVoice es una aplicación web: no hace falta instalar nada. Abrí la dirección donde esté publicada en Chrome, Edge, Firefox o Safari.
 
-Escribí una expresión o usá el teclado numérico. Un operador después del resultado continúa la cuenta; un número inicia otra. MC, MR, M+ y M− guardan memoria local. Los enlaces a herramientas abren sus formularios. El historial permite escuchar, copiar, editar, recalcular, eliminar y exportar TXT, CSV o JSON.
+Para tenerla como aplicación y usarla sin conexión:
 
-Usá punto para decimales y coma entre argumentos. `log` es base 10; `ln` es natural. Los modos radianes, grados y gradianes afectan la calculadora numérica y los gráficos. El cálculo simbólico usa radianes.
+- **Computadora (Chrome o Edge):** en la barra de direcciones, el ícono **Instalar** (o el menú › _Instalar MathVoice_).
+- **Android (Chrome):** menú › _Agregar a la pantalla principal_.
+- **iPhone o iPad (Safari):** botón _Compartir_ › _Agregar a pantalla de inicio_.
 
-## Calculadora de mano
+Después de la primera carga completa, los cálculos, las matrices, el álgebra y los gráficos funcionan sin internet. Las voces del sistema y el dictado pueden necesitar conexión según el navegador. Cuando hay una versión nueva aparece **Aplicar actualización y recargar**.
 
-![MathVoice con forma de calculadora científica: pantalla LCD, cruceta y teclado](docs/capturas/calculadora.png)
+### Para correrla en tu computadora
 
-La pantalla principal es una calculadora científica como las de mano: pantalla LCD con la expresión en forma de libro y el resultado, cruceta, **SHIFT** (funciones impresas en dorado) y **ALPHA** (variables en rojo). El teclado es una sola parada de Tab y se recorre con las flechas; cada tecla dice su nombre, también con Shift o Alpha activos.
+Necesitás [Node.js](https://nodejs.org) 22.12 o posterior y [Git](https://git-scm.com).
 
-Es una sola calculadora para todo: al elegir un modo con **MENU** (o desde Herramientas), la herramienta aparece en la pantalla, debajo del LCD, y el teclado escribe en ella. Los números y las funciones van al campo donde estás, **=** calcula, **DEL** y **AC** borran, ◀ ▶ mueven el cursor y ▲ ▼ pasan de un campo a otro. En pantallas anchas, la pantalla y el teclado quedan uno al lado del otro; en el celular, uno debajo del otro.
+```sh
+git clone https://github.com/frangaming67/mathvoice.git
+cd mathvoice
+npm ci
+npm run dev
+```
 
-- **S⇔D** alterna fracción y decimal; **ENG** y **←** recorren la notación de ingeniería; **°′″** pasa a grados, minutos y segundos; **FACT** descompone en primos; **a b/c** muestra la fracción mixta.
-- **STO** guarda el resultado en A–F, x, y o M; **RECALL** muestra las variables; **M+** y **M−** usan la memoria; **Ans** y **PreAns** traen los resultados anteriores.
-- **CALC** pregunta el valor de cada variable; **SOLVE** resuelve la ecuación escrita; **∫**, **d/dx** y **Σ** piden sus datos en un diálogo.
-- La cruceta trae cálculos anteriores (▲ ▼) y mueve el cursor (◀ ▶); **INS**, **UNDO**, **DEL** y **AC** editan; **OFF** apaga la pantalla y **ON** la enciende.
-- **MENU** abre los modos dentro de la pantalla (con las teclas 1–9 y A–F, o con la cruceta): Calcular, Complejos, Base-N, Matriz, Vector, Estadística, Distribución, Gráficos, Tabla, Ecuaciones y cálculo, Proporción, Hoja de cálculo, Funciones y constantes, Variables y Conversiones.
+Abrí <http://127.0.0.1:5173> en el navegador.
 
-**Tabla** calcula f(x) y g(x) desde un x hasta otro con un paso; la tabla se recorre con las flechas y cada celda se dice con su x. **Proporción** resuelve la regla de tres (A : B = X : D). **Hoja de cálculo** tiene cinco columnas y 45 filas: escribí sobre una celda un número o una fórmula (`A1*2`, `suma(A1:A5)`, `promedio(B1:B10)`) y Enter la guarda; **Copiar hacia abajo** corre las referencias de fila, salvo las fijadas con `$`. **Distribución** incluye la normal inversa. Las desigualdades se escriben sueltas (`x^2-4>0`) hasta grado 4, y una igualdad o desigualdad sin letras se verifica: `sqrt(2) > 1.4` da Verdadero.
+Para generar la versión de producción (la que se publica y funciona sin conexión):
+
+```sh
+npm run build
+npm run preview
+```
+
+La carpeta `dist/` es un sitio estático: se puede publicar en cualquier servidor con HTTPS (GitHub Pages, Netlify, Vercel, un servidor propio). El modo sin conexión necesita HTTPS o `localhost`.
+
+## Primeros pasos
+
+La primera vez se abre un diálogo de bienvenida con dos opciones:
+
+- **Activar guía por voz:** MathVoice lee cada control, cada tecla y cada resultado con su propia voz. Es la opción si no usás lector de pantalla.
+- **Usar mi lector de pantalla:** la lectura queda a cargo de NVDA, JAWS o VoiceOver, para no escuchar dos voces.
+
+Marcá **Hacer el recorrido de primeros pasos** para un tutorial de seis pasos cortos: cada paso se cumple haciendo la acción de verdad (calcular, usar el teclado, abrir MENU, explorar una fórmula) y avanza solo. Se puede volver a hacer desde **Ayuda** (F1) › **Primeros pasos**.
+
+Para empezar ya: escribí `2+3` y presioná **Enter**. El resultado se dice y aparece en la pantalla.
+
+## Cómo se usa
+
+### La página
+
+Todas las pantallas tienen la misma estructura: **Saltar al contenido**, el menú **Secciones** (Calculadora, Herramientas, Historial, Configuración, Ayuda) y el grupo **Voz y orientación** (**Guía por voz**, **¿Dónde estoy?** y **Detener voz**). El título principal y el de la pestaña dicen siempre dónde estás. **Escape** detiene la voz.
+
+### Escribir y calcular
+
+Escribí la operación en el campo **Expresión matemática** (está dentro de la pantalla LCD) y presioná **Enter**. **Control + Enter** la lee antes de calcular. Se escribe como en cualquier calculadora:
+
+- `2+3*4`, `(1+2)/3`, `2^10`, `sqrt(16)`, `sin(30)`, `log(100)`, `ln(e)`, `5!`, `25%`.
+- Alias en castellano: `raiz(16)`, `sen(30)`, `tg(45)`, `arcsen(1)`, `mcd(12,18)`, `mcm(4,6)`.
+- Símbolos: `√`, `∛`, `²`, `³`, `×`, `÷`, `π`.
+- `ans` (o `resultado`) es el resultado anterior. Un operador después de un resultado sigue la cuenta; un número empieza otra.
+- Punto decimal y coma entre argumentos (`log(8, 2)`). En Configuración se puede elegir **coma decimal**; entonces los argumentos se separan con `;`.
+
+### El teclado de la calculadora
+
+El teclado es **una sola parada de Tab**: las flechas recorren las teclas y cada una dice su nombre.
+
+- **SHIFT** activa las funciones impresas en dorado y **ALPHA** las letras en rojo; se apagan solas después de una tecla, y los nombres de las teclas cambian mientras están activas.
+- Las plantillas (fracción, raíz, potencia, logaritmo en base…) dejan el cursor adentro.
+- **S⇔D** alterna fracción y decimal; **ENG** la notación de ingeniería; **°′″** grados, minutos y segundos; **FACT** factores primos; **a b/c** fracción mixta.
+- **STO** guarda el resultado en A–F, x, y o M; **RECALL** muestra las variables; **M+** y **M−** usan la memoria; **Ans** y **PreAns** traen resultados anteriores.
+- **CALC** pide el valor de cada variable; **SOLVE** resuelve la ecuación escrita; **∫**, **d/dx** y **Σ** piden sus datos en un diálogo.
+- La cruceta: **◀ ▶** mueven el cursor y dicen el carácter; **▲ ▼** traen cálculos anteriores.
+- **DEL**, **INS**, **UNDO** y **AC** editan; **OFF** apaga la pantalla y **ON** la enciende; **CONST** constantes físicas; **CONV** conversiones; **OPTN** buscador de funciones; **QR** copia el cálculo; **CONFIG** configuración.
+
+### MENU: los modos
+
+**MENU** muestra los quince modos dentro de la pantalla. Se eligen con las teclas 1–9 y A–F o con la cruceta:
+
+| Tecla | Modo                   | Qué hace                                                                                         |
+| ----- | ---------------------- | ------------------------------------------------------------------------------------------------ |
+| 1     | Calcular               | La calculadora científica.                                                                       |
+| 2     | Complejos              | Números complejos: forma polar y rectangular, conjugado, raíces.                                 |
+| 3     | Base-N                 | Binario, octal, decimal, hexadecimal y operaciones de bits.                                      |
+| 4     | Matriz                 | Matrices de hasta 6 × 6: determinante, inversa, autovalores, sistemas.                           |
+| 5     | Vector                 | Módulo, productos punto y cruz, ángulos y distancias.                                            |
+| 6     | Estadística            | Media, mediana, desvío, cuartiles, correlación y regresión.                                      |
+| 7     | Distribución           | Normal (también inversa), binomial y Poisson; combinaciones.                                     |
+| 8     | Gráficos               | Hasta cuatro funciones para explorar con flechas, voz y sonido.                                  |
+| 9     | Tabla                  | Valores de f(x) y g(x) desde un x hasta otro con un paso.                                        |
+| A     | Ecuaciones y cálculo   | Ecuaciones, sistemas, desigualdades, derivadas, integrales, límites y Taylor, con procedimiento. |
+| B     | Proporción             | La regla de tres: A es a B como X es a D.                                                        |
+| C     | Hoja de cálculo        | Cinco columnas y 45 filas con números y fórmulas.                                                |
+| D     | Funciones y constantes | Todas las funciones y las constantes físicas para insertar.                                      |
+| E     | Variables              | Valores con nombre para usar en otros cálculos.                                                  |
+| F     | Conversiones           | Unidades de 12 categorías.                                                                       |
+
+En cada modo la herramienta aparece en la pantalla y **el teclado escribe en ella**: los números y las funciones van al campo donde estás, **=** calcula, **DEL** y **AC** borran, **◀ ▶** mueven el cursor y **▲ ▼** pasan de un campo a otro. También se llega a cada modo desde **Herramientas**.
+
+### El resultado
+
+Debajo de la pantalla está **Resultado**: la operación y el valor (como MathML para el lector de pantalla), la forma exacta o decimal, los avisos y los botones **Escuchar resultado**, **Copiar resultado**, **Copiar como LaTeX**, **Copiar como MathML**, **Explorar resultado**, **Explicar resultado**, **Graficar resultado** (si es una función de x) y **Guardar resultado TXT**. En ecuaciones, derivadas, integrales, Taylor y desigualdades, **Procedimiento paso a paso** muestra y lee cada paso.
+
+### Explorar una fórmula por partes
+
+**Explorar expresión** (o `; X`) abre la fórmula que estás escribiendo; **Explorar resultado** (o `; Z`) el resultado; **Explorar** (o la tecla X) un cálculo del historial.
+
+- **Izquierda / Derecha:** la parte anterior o la siguiente.
+- **Abajo:** entrar (al numerador, al exponente, a un término, a un argumento). **Arriba:** salir.
+- **Inicio / Fin:** la primera o la última parte. **Espacio** repite.
+- **R** resume la parte («Resta de 2 partes: el término 1 es un producto y el término 2, un número»). **P** dice dónde estás («el término 1, dentro del denominador»).
+- **Enter** (en la expresión que escribís) deja elegida esa parte en el campo para corregirla. **Escape** cierra.
+
+Con el dedo o el ratón, los botones del explorador hacen lo mismo.
+
+### Ayudas para editar sin mirar
+
+Con la guía por voz, las flechas dicen el carácter a la derecha del cursor y Retroceso dice qué se borró. Al cerrar un paréntesis se avisa qué cierra y cuántos quedan abiertos. `; K` lee bajo el cursor, `; F` desde el cursor hasta el final, `; O` dice dónde está el cursor, `; P` va al paréntesis pareja y `; B` revisa los paréntesis.
+
+### Gráficos
+
+En **Gráficos** escribí hasta cuatro funciones de `x`, una por línea, elegí los rangos y presioná **Graficar funciones**.
+
+- **Explorar gráfico** es un deslizador: las flechas recorren la curva y dicen cada punto; avisa los ceros, máximos, mínimos e intersecciones que cruza. `Z`, `M`, `Shift+M` e `I` saltan al siguiente; `+` y `−` cambian el paso; `S` suena el recorrido y `Espacio` lo pausa; `D` describe el gráfico.
+- Debajo del dibujo hay una **descripción en palabras** (dominio, cortes con los ejes, crecimiento, asíntotas, saltos) y una tabla de valores.
+- **Ajustar Y a la curva**, acercar y alejar alrededor del punto.
+- **Descargar para relieve (SVG):** negro sobre blanco con trazos gruesos, para papel microcapsulado.
+
+### Tabla, Proporción y Hoja de cálculo
+
+- **Tabla:** escribí f(x) (y si querés g(x)), desde, hasta y paso. La tabla se recorre con flechas y cada celda se dice con su x («g de equis en equis igual a 0: no definida»).
+- **Proporción:** elegí la forma (A : B = X : D o A : B = C : X) y escribí los tres valores.
+- **Hoja de cálculo:** escribí sobre una celda un número o una fórmula (`A1*2`, `suma(A1:A5)`, `promedio(B1:B10)`, `mínimo`, `máximo` o cualquier cuenta) y Enter la guarda y baja. **Copiar hacia abajo** corre las referencias de fila, salvo las fijadas con `$`. La hoja queda guardada.
+
+### Dictado
+
+**Dictar expresión** escucha una frase («derivada de x al cubo», «tres cuartos más un medio») y la muestra para revisarla: solo se calcula con **Confirmar y calcular**. Lo que no entiende queda marcado. El dictado depende del navegador y puede enviar el audio a servidores de su proveedor.
+
+### Historial
+
+Guarda los cálculos en el dispositivo. Es una sola parada de Tab: **flechas** recorren, **Enter** edita, **Espacio** escucha, **C** copia, **X** explora, **R** recalcula y **Suprimir** elimina. Se exporta como TXT, CSV, JSON o un **informe HTML** con las fórmulas y su lectura, para imprimir o entregar.
+
+### Configuración
+
+- **Voz:** idioma, voz, velocidad, tono, volumen, leer al recibir foco y al pasar el puntero.
+- **Números:** separador decimal (punto o coma), forma del resultado (automática, decimal, exacta o ambas), formato normal, fijo o científico, cifras, modo real o complejo, modo angular.
+- **Presentación:** tema (claro, oscuro, alto contraste, negro y blanco, amarillo sobre negro), tamaño de texto, interlineado, escala general y **modo de máxima accesibilidad**.
+- **Lector de pantalla:** matemática como MathML o como texto hablado.
+- **Sonidos:** tonos de realimentación con su volumen.
+
+Si en un navegador la calculadora se ve en blanco y negro, es porque tiene elegido un tema de alto contraste: se cambia en **Configuración › Presentación › Tema**.
+
+## Todas las funciones
+
+- **Aritmética:** fracciones exactas, decimales periódicos, porcentaje, potencias, raíces, factorial, valor absoluto, redondeo, parte entera, MCD, MCM, números mixtos.
+- **Científica:** trigonometría e inversas en radianes, grados o gradianes; hiperbólicas; logaritmos en cualquier base; exponencial; grados sexagesimales; constantes físicas (NIST/CODATA 2022).
+- **Álgebra:** ecuaciones (polinomios de cualquier grado con raíces complejas, trigonométricas), sistemas lineales de 2 a 5 ecuaciones, desigualdades de hasta grado 4, simplificar, factorizar, expandir, fracciones parciales. Una igualdad o desigualdad sin letras se verifica (Verdadero o Falso).
+- **Cálculo:** derivadas (también en un punto y de orden hasta 10), integrales indefinidas y definidas, límites (también laterales y al infinito), series de Taylor, sumatorias.
+- **Matrices y vectores:** determinante, inversa, traspuesta, rango, autovalores, sistemas; producto punto y cruz, módulo, ángulo, distancia.
+- **Complejos:** forma binómica y polar, conjugado, argumento, raíces n-ésimas.
+- **Estadística y probabilidad:** media, mediana, moda, desvío, varianza, cuartiles, percentiles, covarianza, correlación, regresión lineal; normal (densidad, acumulada e inversa), binomial y Poisson; combinaciones y permutaciones.
+- **Tablas, proporciones y hoja de cálculo.**
+- **Conversiones:** 12 categorías de unidades, bases numéricas y operaciones de bits.
+- **Gráficos:** hasta cuatro funciones, eventos, descripción textual, sonificación y relieve.
+
+Todos los resultados simbólicos se comprueban numéricamente antes de mostrarse; si algo no se puede confirmar, se explica en lugar de mostrar un resultado dudoso.
+
+## Atajos de teclado
+
+| Atajo                 | Acción                                                                |
+| --------------------- | --------------------------------------------------------------------- |
+| F1                    | Ayuda                                                                 |
+| Enter                 | Calcular                                                              |
+| Control + Enter       | Escuchar la expresión                                                 |
+| Escape                | Detener la voz                                                        |
+| Alt + Shift + C       | Ir a la calculadora                                                   |
+| Alt + Shift + R       | Ir al resultado y leerlo                                              |
+| Alt + Shift + H       | Historial                                                             |
+| Alt + Shift + G       | Gráficos                                                              |
+| Alt + Shift + M       | Matrices                                                              |
+| Alt + Shift + V       | Dictado                                                               |
+| Alt + Shift + E       | ¿Dónde estoy?                                                         |
+| Alt + Shift + P       | Paleta de comandos (buscar cualquier función)                         |
+| Alt + Shift + K       | Teclado y atajos (referencia completa)                                |
+| F2                    | Cambiar entre escritura y teclado matemático                          |
+| `; R` / `; X` / `; Z` | Escuchar el resultado / explorar la expresión / explorar el resultado |
+| G T / G P / G H       | Ir a Tabla / Proporciones / Hoja de cálculo                           |
+
+La referencia completa, con práctica de teclas y personalización, está en **Ayuda › Teclado y atajos**.
 
 ## Ejemplos
 
-| Herramienta                   | Expresión                                     |
-| ----------------------------- | --------------------------------------------- |
-| Fracciones exactas            | `fraction(1,3)+fraction(1,6)`                 |
-| Número mixto                  | `mixed(fraction(7,3))` o `mixedNumber(2,1,3)` |
-| Ecuación                      | `solve(x^2-4=0,x)`                            |
-| Sistema lineal                | `system(x+y=10,x-y=4)`                        |
-| Desigualdad                   | `inequality(x^2-4<=0,x)`                      |
-| Derivada de orden 2           | `diff(x^5,x,2)`                               |
-| Integral definida             | `integrate(sin(x),x,0,pi)`                    |
-| Límite                        | `limit(sin(x)/x,x,0)`                         |
-| Taylor de orden 4             | `series(exp(x),x,0,4)`                        |
-| Determinante                  | `det([[1,2],[3,4]])`                          |
-| Producto vectorial            | `cross([1,0,0],[0,1,0])`                      |
-| Raíces complejas              | `nthRoots(-1,2)`                              |
-| Resumen estadístico muestral  | `stats([1,2,3,4,5],1)`                        |
-| Distribución normal acumulada | `normalcdf(1.96,0,1)`                         |
-| Normal inversa                | `invnorm(0.975,0,1)`                          |
-| Tabla de valores              | `tabla(x^2,-3,3,1)`                           |
-| Desigualdad de grado 4        | `x^4-5x^2+4<0`                                |
-| Variable persistente          | `radio=7`, después `pi*radio^2`               |
-| Temperatura                   | `convert(25,"degC","degF")`                   |
-| Base numérica                 | `base("255",10,16)`                           |
+| Qué                        | Escribí                                          |
+| -------------------------- | ------------------------------------------------ |
+| Fracciones exactas         | `1/3 + 1/6`                                      |
+| Ecuación                   | `x^2 - 4 = 0` o `solve(x^2-4=0, x)`              |
+| Sistema lineal             | `system(x+y=10, x-y=4)`                          |
+| Desigualdad                | `x^4 - 5x^2 + 4 < 0`                             |
+| Verificar                  | `sqrt(8) = 2*sqrt(2)`                            |
+| Derivada de orden 2        | `diff(x^5, x, 2)`                                |
+| Integral definida          | `integrate(sin(x), x, 0, pi)`                    |
+| Límite                     | `limit(sin(x)/x, x, 0)`                          |
+| Taylor de orden 4          | `series(exp(x), x, 0, 4)`                        |
+| Sumatoria                  | `sum(x^2, x, 1, 10)`                             |
+| Determinante               | `det([[1,2],[3,4]])`                             |
+| Producto vectorial         | `cross([1,0,0], [0,1,0])`                        |
+| Raíces complejas           | `nthRoots(-1, 2)`                                |
+| Resumen estadístico        | `stats([1,2,3,4,5], 1)`                          |
+| Normal acumulada / inversa | `normalcdf(1.96, 0, 1)` / `invnorm(0.975, 0, 1)` |
+| Tabla de valores           | `tabla(x^2, -3, 3, 1)`                           |
+| Variable                   | `radio = 7`, después `pi*radio^2`                |
+| Temperatura                | `convert(25, "degC", "degF")`                    |
+| Base numérica              | `base("255", 10, 16)`                            |
+| Grados sexagesimales       | `12°30'45"`                                      |
 
-En **Gráficos**, ingresá hasta cuatro funciones de `x`, una por línea. Configurá los rangos y pulsá **Graficar funciones**. En **Explorar gráfico**, las flechas izquierda y derecha avanzan por el paso elegido; Inicio y Fin van a los extremos. Hay coordenadas habladas, tabla de valores, eventos aproximados y un recorrido sonoro. Escape detiene el audio.
+## Alcance y límites
 
-**Explorar expresión** recorre la fórmula por partes, como la navegación de MathCAT: izquierda y derecha van a las partes vecinas, abajo entra (numerador, exponente, término, argumento), arriba sale, R resume y P dice dónde estás; Enter deja elegida esa parte en el campo. **Explorar resultado** y **Explorar** en el historial hacen lo mismo con los resultados.
+- Los sistemas simbólicos admiten de 2 a 5 ecuaciones lineales con solución única; las desigualdades, una variable y grado máximo 4; derivadas y Taylor, órdenes hasta 10. Taylor es una aproximación local sin estimación del error.
+- Las integrales definidas necesitan extremos finitos y un dominio que se pueda confirmar; si la primitiva no vale en el intervalo, se da el valor numérico con aviso. El álgebra no garantiza resolver toda ecuación o límite.
+- Los gráficos usan 401 puntos: pueden omitir eventos entre muestras. Las unidades de las constantes físicas no se propagan en cuentas compuestas.
+- Las pruebas automáticas no certifican WCAG: siguen pendientes pruebas con NVDA, JAWS, VoiceOver y personas ciegas.
 
-**Dictar expresión** abre una revisión editable: el cálculo solo se ejecuta con **Confirmar y calcular**. El reconocimiento disponible depende del navegador y puede procesar audio en servidores de su proveedor. La interpretación de frases es limitada; revisá siempre lo entendido.
+## Privacidad
 
-## Alcance matemático
-
-Los sistemas simbólicos admiten entre 2 y 5 ecuaciones lineales con solución única. Las desigualdades admiten una variable y grado máximo 4 (se pueden escribir sueltas, como x^2-4>0; sin letras, se verifican); las derivadas órdenes 1–10 y Taylor órdenes 0–10. Taylor produce una aproximación local sin estimar su error ni radio de convergencia.
-
-Las integrales definidas requieren extremos finitos, un dominio real continuo que el análisis conservador pueda confirmar y una primitiva cerrada. Se rechazan integrales impropias y también puede rechazarse una integral válida cuyo dominio no pueda verificarse. El CAS no garantiza resolver toda ecuación o límite ni enumerar todas las raíces de ecuaciones trascendentes.
-
-Los gráficos usan 401 puntos y detección aproximada: pueden omitir eventos o discontinuidades entre muestras. Las constantes físicas muestran unidades y fuente NIST/CODATA 2022, pero sus unidades no se propagan en cálculos compuestos. Las variables almacenadas son números reales finitos.
+No hay cuenta ni servidor de cálculo: todo se calcula en el navegador. El historial, las preferencias, la memoria, las variables y la hoja de cálculo se guardan en el dispositivo; borrar los datos del sitio los elimina. Solo el dictado puede enviar audio al proveedor de reconocimiento del navegador.
 
 ## Desarrollo y pruebas
 
-Requiere Node.js 22.12 o posterior; CI usa Node.js 24.
+React 19, TypeScript y Vite; mathjs y Nerdamer para el cálculo (en un Web Worker); Playwright y axe para las pruebas de punta a punta y de accesibilidad; Vitest para las unitarias. Requiere Node.js 22.12 o posterior (CI usa Node.js 24).
 
 ```sh
-npm ci
-npm run dev
-npm run lint
-npm test
-npm run build
-npm run check:bundle
+npm ci                        # instalar dependencias
+npm run dev                   # servidor de desarrollo en http://127.0.0.1:5173
+npm run lint                  # ESLint
+npm test                      # pruebas unitarias
+npm run build                 # versión de producción en dist/
+npm run check:bundle          # controla el tamaño del paquete
 npx playwright install chromium
-npm run test:e2e
-npm run test:pwa
+npm run test:e2e              # pruebas de punta a punta con axe
+npm run test:pwa              # prueba sin conexión de la versión de producción
 ```
 
-`test:pwa` compila y prueba la versión de producción: activa el service worker, desconecta la red, recarga y usa cálculo, matrices, CAS y gráficos. `npm run preview` sirve el build local. El modo sin conexión se habilita en producción después de la primera carga completa; requiere HTTPS o localhost. La instalación depende del soporte del navegador. Las voces y el dictado pueden necesitar conexión aunque los cálculos estén disponibles.
+Estructura principal:
 
-La aplicación no requiere cuenta ni backend. Historial, preferencias, memoria y variables se guardan en el navegador; borrar sus datos elimina ese contenido. No se envían expresiones a un servicio de cálculo.
+- `src/features/calculator/` — la calculadora y la coordinación de todo.
+- `src/calculator/` — teclas, modos del MENU, hoja de cálculo y formas del resultado.
+- `src/components/` — cada herramienta y diálogo.
+- `src/services/` — motor numérico y simbólico, gráficos, historial, preferencias, voz.
+- `src/accessibility/` — lectura matemática en voz, MathML, LaTeX y explorador de expresiones.
+- `src/keyboard/` — atajos, paleta de comandos y teclado matemático.
+- `tests/` — pruebas de punta a punta.
 
-Ver [arquitectura](docs/ARCHITECTURE.md), [validación](docs/VALIDATION.md) y [protocolo de accesibilidad](docs/ACCESSIBILITY.md). Las pruebas automáticas no certifican WCAG: siguen pendientes pruebas con NVDA, JAWS, VoiceOver y personas ciegas.
+## Más documentación
+
+- [Qué cambió en la 0.5, cosa por cosa](docs/CAMBIOS-0.5.md)
+- [Historial de versiones](CHANGELOG.md)
+- [Arquitectura](docs/ARCHITECTURE.md)
+- [Protocolo de accesibilidad](docs/ACCESSIBILITY.md)
+- [Validación](docs/VALIDATION.md)
+- [Hoja de ruta](docs/ROADMAP.md)

@@ -22,6 +22,8 @@ import { ValueTable } from '../../components/ValueTable';
 import { LcdPanel, type LcdItem, type LcdPanelHandle } from '../../components/LcdPanel';
 import { KeyPrompt, type PromptRequest } from '../../components/KeyPrompt';
 import { ExpressionExplorer, type ExplorerRequest } from '../../components/ExpressionExplorer';
+import { Tutorial } from '../../components/Tutorial';
+import { tutorialSteps } from '../tutorial/steps';
 import { explorerTree } from '../../accessibility/expressionExplorer';
 import type { CalculatorKey, KeyFace, Layer } from '../../calculator/keys';
 import {
@@ -136,6 +138,9 @@ export function Calculator() {
   );
   const [keyPrompt, setKeyPrompt] = useState<PromptRequest | null>(null);
   const [explorer, setExplorer] = useState<ExplorerRequest | null>(null);
+  // Primeros pasos: el paso en curso, o null si el recorrido no está activo.
+  const [tutorial, setTutorial] = useState<number | null>(null);
+  const [withTutorial, setWithTutorial] = useState(false);
   const explorerOrigin = useRef<HTMLElement | null>(null);
   const explorerSelected = useRef(false);
   const panelRef = useRef<LcdPanelHandle>(null);
@@ -468,10 +473,40 @@ export function Calculator() {
     openTool('basic', 'expression');
     // iOS solo habilita la voz si la primera locución ocurre dentro de este clic.
     if (guided) speech.unlock();
+    if (withTutorial) {
+      spokenStep.current = 0;
+      setTutorial(0);
+    }
     requestAnimationFrame(() => {
       automatic.cancel();
-      if (guided) speech.hablarLista([`${welcome} ${pointerHint()}${warning}`], () => {});
+      const intro = withTutorial ? tutorialIntro(0) : '';
+      if (guided)
+        speech.hablarLista(
+          [`${welcome} ${pointerHint()}${warning}`, intro].filter(Boolean),
+          () => {},
+        );
+      else if (intro) announce(intro);
     });
+  }
+  // ---------- Primeros pasos ----------
+  function tutorialIntro(step: number) {
+    const current = tutorialSteps[step];
+    return `Primeros pasos, paso ${step + 1} de ${tutorialSteps.length}: ${current.title}. ${current.text}`;
+  }
+  function startTutorial() {
+    setHelp(false);
+    openTool('basic', 'expression');
+    setTutorial(0);
+  }
+  function skipTutorialStep() {
+    if (tutorial === null) return;
+    const next = Math.min(tutorial + 1, tutorialSteps.length - 1);
+    setTutorial(next);
+  }
+  function finishTutorial() {
+    setTutorial(null);
+    announce('Recorrido terminado. F1 abre la ayuda, y desde ahí podés volver a hacerlo.');
+    focusEntry();
   }
   function insert(value: string, focus = true) {
     justCalculated.current = false;
@@ -660,6 +695,33 @@ export function Calculator() {
       ),
     [numberOptions, preferences.angle, variables],
   );
+  // Un paso cumplido pasa al siguiente en el mismo render; el efecto solo lo dice.
+  const tutorialState = {
+    expression,
+    result: calculations.basic?.result?.value ?? null,
+    tool: activeTool,
+    explored: explorer !== null,
+  };
+  if (
+    tutorial !== null &&
+    tutorial < tutorialSteps.length - 1 &&
+    tutorialSteps[tutorial].done(tutorialState)
+  )
+    setTutorial(tutorial + 1);
+  const spokenStep = useRef<number | null>(null);
+  useEffect(() => {
+    const previous = spokenStep.current;
+    spokenStep.current = tutorial;
+    if (tutorial === null || tutorial === previous) return;
+    // Si se llegó cumpliendo el paso anterior, primero se dice lo que se logró.
+    const success =
+      previous !== null && tutorial === previous + 1 && tutorialSteps[previous].done(tutorialState)
+        ? `${tutorialSteps[previous].success} `
+        : '';
+    announce(`${success}${tutorialIntro(tutorial)}`);
+    // Se dice una vez por paso.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorial]);
   // ---------- Calculadora de mano ----------
   const argumentSeparator = preferences.decimalSeparator === 'coma' ? ';' : ',';
   /**
@@ -2112,6 +2174,14 @@ export function Calculator() {
             </button>
             <button onClick={() => start(false)}>Usar mi lector de pantalla</button>
           </div>
+          <label className="welcome-tutorial">
+            <input
+              type="checkbox"
+              checked={withTutorial}
+              onChange={(event) => setWithTutorial(event.target.checked)}
+            />
+            Hacer el recorrido de primeros pasos: seis pasos cortos para aprender a usarla
+          </label>
         </dialog>
         <main id="main-content" aria-labelledby="view-title">
           {!help && view === 'work' && activeTool !== 'basic' && (
@@ -2234,6 +2304,7 @@ export function Calculator() {
                     : 'Activar modo teclado matemático'}
                 </button>
                 <button onClick={openKeyboard}>Teclado y atajos</button>
+                <button onClick={startTutorial}>Primeros pasos</button>
               </div>
               <button onClick={closeHelp}>Cerrar ayuda</button>
             </div>
@@ -2274,6 +2345,14 @@ export function Calculator() {
                   Tab sale de esta área. Dentro de los campos podés escribir normalmente.
                 </p>
               </div>
+            )}
+            {tutorial !== null && (
+              <Tutorial
+                step={tutorial}
+                repeat={() => explicitRead(tutorialIntro(tutorial))}
+                skip={skipTutorialStep}
+                finish={finishTutorial}
+              />
             )}
             <section className="calculator" aria-label="Calculadora">
               <div className="device-layout" data-mode={inCalculator ? 'calc' : 'tool'}>

@@ -86,6 +86,8 @@ Las desigualdades se escriben sueltas, como una ecuación: `x^2-4>0` da «desde 
 
 - **Explorar una expresión por partes.** Como la navegación de MathCAT: **Explorar expresión** (o «; X») abre la fórmula que se escribe, **Explorar resultado** (o «; Z») el resultado, y **Explorar** (o X) un cálculo del historial. Izquierda y derecha van a la parte anterior o la siguiente, abajo entra (al numerador, al exponente, a un término, a un argumento) y arriba sale; cada movimiento dice el papel de la parte: «Denominador, resta: 2 equis menos 3». R resume la parte («Resta de 2 partes: el término 1 es un producto y el término 2, un número»), P dice dónde estás («el término 1, dentro del denominador») y, en la expresión que se escribe, Enter deja elegida esa parte en el campo para corregirla. Con el dedo o el ratón, los botones hacen lo mismo.
 
+- **Primeros pasos.** Un recorrido opcional de seis pasos, ofrecido en la bienvenida y en Ayuda: cada paso se cumple haciendo la acción de verdad (calcular, usar el teclado, abrir MENU, explorar una fórmula) y avanza solo, con su explicación en voz. Se puede saltar un paso o terminar en cualquier momento.
+
 ## 5. Teclado y atajos
 
 - Gestor central de comandos con modo escritura y modo matemático, perfiles, secuencias y personalización; paleta de comandos (buscador de funciones) y práctica de teclas.
@@ -127,6 +129,5 @@ Si en un navegador la calculadora se ve en blanco y negro, es porque ese navegad
 
 ## Qué falta para la 0.5.0
 
-- El tutorial «Primeros pasos».
 - La revisión final: versión 0.5.0, documentación de accesibilidad y hoja de ruta actualizadas.
 - Validar con personas ciegas y con lectores de pantalla reales: las pruebas automáticas no reemplazan esa evaluación.

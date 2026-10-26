@@ -184,3 +184,18 @@ dialog.explorer::backdrop {
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+/* Primeros pasos: el recorrido opcional, arriba de la calculadora. */
+.tutorial {
+  border-left: 6px solid var(--accent);
+}
+.tutorial h2 {
+  font-size: 1.15rem;
+}
+.welcome-tutorial {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 1.2rem 0 0;
+  font-weight: 600;
+}
