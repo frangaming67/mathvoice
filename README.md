@@ -9,7 +9,7 @@ Repositorio: [frangaming67/mathvoice](https://github.com/frangaming67/mathvoice)
 ## Índice
 
 1. [Qué hace](#qué-hace)
-2. [Instalación](#instalación)
+2. [Instalación paso a paso](#instalación-paso-a-paso)
 3. [Primeros pasos](#primeros-pasos)
 4. [Cómo se usa](#cómo-se-usa)
 5. [Todas las funciones](#todas-las-funciones)
@@ -33,41 +33,135 @@ Repositorio: [frangaming67/mathvoice](https://github.com/frangaming67/mathvoice)
 - **Historial** que se recorre con flechas y se exporta (TXT, CSV, JSON y un informe HTML para entregar).
 - **Sin conexión y sin cuenta.** Todo se calcula en tu dispositivo.
 
-## Instalación
+## Instalación paso a paso
 
-### Para usarla
+Esta guía es para alguien que nunca instaló un programa de este tipo. Seguí los pasos en orden; cada uno dice qué hacer y cómo saber que salió bien. Se hace una sola vez y lleva unos 15 minutos.
 
-MathVoice es una aplicación web: no hace falta instalar nada. Abrí la dirección donde esté publicada en Chrome, Edge, Firefox o Safari.
+> **Importante:** el repositorio es privado. Para descargarlo, la persona dueña tiene que invitarte desde GitHub (_Settings › Collaborators_) y vos tenés que aceptar la invitación que llega por correo. Necesitás una cuenta gratuita de [GitHub](https://github.com/signup).
 
-Para tenerla como aplicación y usarla sin conexión:
+### Paso 1. Instalar Node.js (el programa que hace funcionar MathVoice)
 
-- **Computadora (Chrome o Edge):** en la barra de direcciones, el ícono **Instalar** (o el menú › _Instalar MathVoice_).
-- **Android (Chrome):** menú › _Agregar a la pantalla principal_.
-- **iPhone o iPad (Safari):** botón _Compartir_ › _Agregar a pantalla de inicio_.
+1. Entrá a <https://nodejs.org>.
+2. Descargá la versión que dice **LTS** (es la recomendada).
+3. Abrí el archivo descargado y apretá **Siguiente** en todas las pantallas hasta **Finalizar**. No hace falta cambiar ninguna opción.
 
-Después de la primera carga completa, los cálculos, las matrices, el álgebra y los gráficos funcionan sin internet. Las voces del sistema y el dictado pueden necesitar conexión según el navegador. Cuando hay una versión nueva aparece **Aplicar actualización y recargar**.
+### Paso 2. Instalar Git (el programa que descarga el código)
 
-### Para correrla en tu computadora
+1. Entrá a <https://git-scm.com/downloads> y elegí tu sistema (Windows, macOS o Linux).
+2. Abrí el archivo descargado y apretá **Next** (Siguiente) en todas las pantallas hasta **Finish**. Las opciones que vienen marcadas están bien.
 
-Necesitás [Node.js](https://nodejs.org) 22.12 o posterior y [Git](https://git-scm.com).
+En Mac, si al abrir la Terminal te ofrece instalar las «herramientas de línea de comandos», aceptá: eso también instala Git.
+
+### Paso 3. Abrir la terminal
+
+La terminal es una ventana donde se escriben órdenes.
+
+- **Windows:** apretá la tecla Windows, escribí `PowerShell` y apretá Enter.
+- **Mac:** apretá Comando + Espacio, escribí `Terminal` y apretá Enter.
+- **Linux:** Control + Alt + T.
+
+Para comprobar que los pasos 1 y 2 salieron bien, escribí estas dos órdenes (después de cada una, Enter):
 
 ```sh
-git clone https://github.com/frangaming67/mathvoice.git
+node --version
+git --version
+```
+
+Cada una tiene que mostrar un número de versión (por ejemplo `v24.1.0` y `git version 2.47.0`). Si dice «no se reconoce» o «command not found», cerrá la terminal, abrila de nuevo y volvé a probar; si sigue igual, repetí la instalación de ese programa.
+
+### Paso 4. Descargar MathVoice
+
+En la terminal, escribí esta orden y apretá Enter (copiala tal cual):
+
+```sh
+git clone -b mejoras-0-5 https://github.com/frangaming67/mathvoice.git
+```
+
+- Si pide usuario y contraseña de GitHub, se abre una ventana para iniciar sesión: ingresá con tu cuenta.
+- `-b mejoras-0-5` descarga la versión más nueva, con la calculadora completa.
+- Sale bien si al final no aparece la palabra `fatal`. Se crea una carpeta llamada `mathvoice` en la carpeta donde estabas (en Windows suele ser `C:\Users\tu-nombre`).
+
+**Sin Git:** también podés entrar a <https://github.com/frangaming67/mathvoice/tree/mejoras-0-5>, apretar el botón verde **Code › Download ZIP**, descomprimir el archivo y usar esa carpeta en el paso 5 (en ese caso no hace falta el paso 2).
+
+### Paso 5. Entrar a la carpeta e instalar lo que necesita
+
+Escribí, una por una:
+
+```sh
 cd mathvoice
+npm ci
+```
+
+- `cd mathvoice` entra a la carpeta descargada. (Si usaste el ZIP, la carpeta se llama `mathvoice-mejoras-0-5`: escribí `cd ` y arrastrá la carpeta a la terminal.)
+- `npm ci` descarga las piezas que usa MathVoice. Tarda uno o dos minutos y muestra mucho texto; es normal. Termina cuando vuelve a aparecer el lugar para escribir. Las líneas que dicen `warn` no son un problema.
+
+### Paso 6. Abrir MathVoice
+
+Escribí:
+
+```sh
+npm run dev
+```
+
+Cuando aparezca una línea como `Local: http://127.0.0.1:5173/`, abrí el navegador (Chrome, Edge, Firefox o Safari) y entrá a:
+
+**<http://127.0.0.1:5173>**
+
+Listo: ya estás usando MathVoice. **No cierres la terminal mientras la uses**: es la que la mantiene funcionando.
+
+### Usarla otra vez otro día
+
+Solo hace falta repetir los pasos 3 y 6, entrando primero a la carpeta:
+
+```sh
+cd mathvoice
+npm run dev
+```
+
+y abrir <http://127.0.0.1:5173>. Para cerrarla, en la terminal apretá **Control + C** (o cerrá la ventana).
+
+### Actualizar a la versión más nueva
+
+En la terminal:
+
+```sh
+cd mathvoice
+git pull
 npm ci
 npm run dev
 ```
 
-Abrí <http://127.0.0.1:5173> en el navegador.
+### Si algo sale mal
 
-Para generar la versión de producción (la que se publica y funciona sin conexión):
+| Qué pasa                                         | Qué hacer                                                                                                         |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `node` o `git` «no se reconoce como comando»     | Cerrá y abrí la terminal. Si sigue, reinstalá ese programa (pasos 1 o 2) y reiniciá la computadora.               |
+| `fatal: repository not found` al descargar       | No tenés acceso al repositorio privado: pedí la invitación y aceptala (ver «Importante» arriba).                  |
+| `npm ci` termina con `ERR!`                      | Revisá que estés dentro de la carpeta (`cd mathvoice`) y que tengas internet; volvé a ejecutarlo.                 |
+| `Port 5173 is already in use`                    | Ya está abierta en otra terminal: usá esa, o cerrala y probá de nuevo.                                            |
+| El navegador dice «no se puede acceder al sitio» | La terminal con `npm run dev` está cerrada: volvé al paso 6.                                                      |
+| No se escucha la voz                             | Revisá el volumen y, en MathVoice, **Configuración › Voz**. La voz depende de las voces instaladas en el sistema. |
+| La calculadora se ve en blanco y negro           | Está elegido un tema de alto contraste: **Configuración › Presentación › Tema › Claro**.                          |
+
+### Para publicarla en internet (opcional)
+
+Si querés que otras personas la usen sin instalar nada, generá la versión final:
 
 ```sh
 npm run build
-npm run preview
 ```
 
-La carpeta `dist/` es un sitio estático: se puede publicar en cualquier servidor con HTTPS (GitHub Pages, Netlify, Vercel, un servidor propio). El modo sin conexión necesita HTTPS o `localhost`.
+Esto crea la carpeta `dist/`, que se sube a cualquier servicio de páginas web con HTTPS (por ejemplo Netlify o GitHub Pages). Con `npm run preview` podés probar esa versión antes en <http://127.0.0.1:4173>.
+
+### Instalarla como aplicación
+
+Una vez publicada (o probándola con `npm run preview`), el navegador permite instalarla como aplicación y usarla sin internet:
+
+- **Computadora (Chrome o Edge):** en la barra de direcciones, el ícono **Instalar** (o menú › _Instalar MathVoice_).
+- **Android (Chrome):** menú › _Agregar a la pantalla principal_.
+- **iPhone o iPad (Safari):** botón _Compartir_ › _Agregar a pantalla de inicio_.
+
+El modo sin conexión funciona en la versión publicada (`npm run build`) con HTTPS. Las voces del sistema y el dictado pueden necesitar internet según el navegador.
 
 ## Primeros pasos
 
