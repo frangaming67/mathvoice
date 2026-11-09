@@ -4,7 +4,7 @@
 
 ![MathVoice: la calculadora con su pantalla LCD a la izquierda y el teclado a la derecha](docs/capturas/calculadora.png)
 
-Repositorio: [frangaming67/mathvoice](https://github.com/frangaming67/mathvoice) (privado).
+Usala ya: **<https://frangaming67.github.io/mathvoice/>** · Repositorio: [frangaming67/mathvoice](https://github.com/frangaming67/mathvoice).
 
 ## Índice
 
@@ -32,6 +32,10 @@ Repositorio: [frangaming67/mathvoice](https://github.com/frangaming67/mathvoice)
 - **Dictado por voz** con revisión obligatoria antes de calcular.
 - **Historial** que se recorre con flechas y se exporta (TXT, CSV, JSON y un informe HTML para entregar).
 - **Sin conexión y sin cuenta.** Todo se calcula en tu dispositivo.
+
+## Usarla sin instalar nada
+
+MathVoice está publicada en **<https://frangaming67.github.io/mathvoice/>**: abrí ese enlace en Chrome, Edge, Firefox o Safari y ya podés usarla. Desde ahí también se puede instalar como aplicación (ver «Instalarla como aplicación» más abajo). La guía que sigue es solo para quien quiera tenerla en su propia computadora o modificarla.
 
 ## Instalación paso a paso
 

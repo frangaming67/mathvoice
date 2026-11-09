@@ -2,6 +2,8 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
+  // En GitHub Pages la app vive en /mathvoice/; en desarrollo y en las pruebas, en la raíz.
+  base: process.env.BASE_PATH ?? '/',
   plugins: [
     react(),
     VitePWA({
