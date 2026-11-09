@@ -74,7 +74,8 @@ export interface Preferences {
   readFocus: boolean;
   readHover: boolean;
   readTyping: boolean;
-  readKeys: boolean;
+  /** Decir cada tecla que se escribe en un campo. Reemplaza a readKeys, que venía apagado. */
+  echoKeys: boolean;
   theme: string;
   fontSize: number;
   scale: number;
@@ -103,7 +104,7 @@ export const defaultPreferences: Preferences = {
   readFocus: true,
   readHover: true,
   readTyping: false,
-  readKeys: false,
+  echoKeys: true,
   theme: 'light',
   fontSize: 18,
   scale: 1,

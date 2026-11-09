@@ -254,7 +254,9 @@ it('la primera tecla en un campo editable cancela la lectura pendiente del foco'
   } as unknown as ReactKeyboardEvent<HTMLDivElement>);
   field.value = 's';
   vi.advanceTimersByTime(300);
-  expect(speech.hablarAutomatico).not.toHaveBeenCalled();
+  // Se dice solo la tecla escrita, no la lectura del campo que quedó pendiente.
+  expect(speech.hablarAutomatico).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(speech.hablarAutomatico).mock.calls[0][0]).not.toMatch(/Expresión/);
 });
 it('escribir o pegar en un campo editable cancela la lectura pendiente del puntero', () => {
   const automatic = useAutomaticSpeech({ ...defaultPreferences, guided: true });

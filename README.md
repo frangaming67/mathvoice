@@ -185,6 +185,10 @@ Todas las pantallas tienen la misma estructura: **Saltar al contenido**, el men�
 
 ### Escribir y calcular
 
+Con la **guía por voz**, cada tecla que escribís se dice al instante ("3", "más", "abre paréntesis") en cualquier campo, y Retroceso o Suprimir dicen qué se borró. Se puede apagar en **Configuración › Voz › Decir cada tecla que escribo**. Con lector de pantalla, el eco lo hace el lector.
+
+Las teclas que piden datos (∫, d/dx, Σ, CALC, RanInt) abren un diálogo donde cada campo explica cómo se escribe (`x^2` es equis al cuadrado, `sqrt(x)` la raíz…), **Control + Enter** lee lo que escribiste, **Escuchar lo escrito** lee todos los campos y, si algo falta o no se entiende, se dice qué y el foco vuelve a ese campo.
+
 Escribí la operación en el campo **Expresión matemática** (está dentro de la pantalla LCD) y presioná **Enter**. **Control + Enter** la lee antes de calcular. Se escribe como en cualquier calculadora:
 
 - `2+3*4`, `(1+2)/3`, `2^10`, `sqrt(16)`, `sin(30)`, `log(100)`, `ln(e)`, `5!`, `25%`.

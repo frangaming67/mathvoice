@@ -27,7 +27,7 @@ const checks: Record<keyof Preferences, Check> = {
   readFocus: flag,
   readHover: flag,
   readTyping: flag,
-  readKeys: flag,
+  echoKeys: flag,
   theme: oneOf('light', 'dark', 'contrast', 'mono', 'yellow'),
   fontSize: between(16, 28),
   scale: oneOf(1, 1.25, 1.5, 2),

@@ -85,3 +85,26 @@ test('formulario simbólico deriva e integra con explicación', async ({ page })
   await page.getByRole('button', { name: 'Calcular operación', exact: true }).click();
   await expect(resultValue(page, 'x = 7; y = 3')).toBeVisible();
 });
+
+test('con la guía por voz, cada tecla que se escribe se dice, en cualquier campo', async ({
+  page,
+}) => {
+  await mockSpeech(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Activar guía por voz' }).click();
+  const expression = page.getByLabel('Expresión matemática', { exact: true });
+  await expression.focus();
+  await page.keyboard.type('3+');
+  await expect.poll(() => spoken(page)).toContain('3');
+  await expect.poll(() => spoken(page)).toContain('más');
+  // También en los campos de las herramientas, con lo que se borra.
+  await openTool(page, 'Tabla de valores');
+  const f = page.getByLabel('f(x) =');
+  await f.fill('x^2');
+  await f.focus();
+  await page.keyboard.press('End');
+  await page.keyboard.type('7');
+  await expect.poll(() => spoken(page)).toContain('7');
+  await page.keyboard.press('Backspace');
+  await expect.poll(() => spoken(page)).toContain('Borrado: 7.');
+});

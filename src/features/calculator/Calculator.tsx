@@ -1060,9 +1060,9 @@ export function Calculator() {
         title: 'Integral definida',
         description: 'La integral de una función de x entre dos valores.',
         fields: [
-          { id: 'f', label: 'Función de x', value: body },
-          { id: 'a', label: 'Desde x igual a' },
-          { id: 'b', label: 'Hasta x igual a' },
+          { id: 'f', label: 'Función de x', value: body, kind: 'expression' },
+          { id: 'a', label: 'Desde x igual a', value: '0' },
+          { id: 'b', label: 'Hasta x igual a', value: '1' },
         ],
         submit: 'Calcular integral',
         done: (v) => run(`integrate(${v.f}${sep}x${sep}${v.a}${sep}${v.b})`),
@@ -1072,7 +1072,7 @@ export function Calculator() {
         title: 'Derivada',
         description: 'La derivada de una función de x; con un punto, su valor en ese punto.',
         fields: [
-          { id: 'f', label: 'Función de x', value: body },
+          { id: 'f', label: 'Función de x', value: body, kind: 'expression' },
           { id: 'a', label: 'En x igual a (opcional)', required: false },
         ],
         submit: 'Calcular derivada',
@@ -1088,9 +1088,9 @@ export function Calculator() {
         title: 'Sumatoria',
         description: 'Suma el término para x entero, desde un valor hasta otro.',
         fields: [
-          { id: 'f', label: 'Término en x', value: body },
-          { id: 'a', label: 'Desde x igual a' },
-          { id: 'b', label: 'Hasta x igual a' },
+          { id: 'f', label: 'Término en x', value: body, kind: 'expression' },
+          { id: 'a', label: 'Desde x igual a', value: '1' },
+          { id: 'b', label: 'Hasta x igual a', value: '10' },
         ],
         submit: 'Calcular sumatoria',
         done: (v) => run(`sum(${v.f}${sep}x${sep}${v.a}${sep}${v.b})`),
@@ -1099,8 +1099,8 @@ export function Calculator() {
       title: 'Entero al azar',
       description: 'Un número entero al azar entre dos valores, incluidos.',
       fields: [
-        { id: 'a', label: 'Desde' },
-        { id: 'b', label: 'Hasta' },
+        { id: 'a', label: 'Desde', value: '1' },
+        { id: 'b', label: 'Hasta', value: '6' },
       ],
       submit: 'Escribir número',
       done: (v) => {
@@ -2470,7 +2470,7 @@ export function Calculator() {
                             }
                             if (
                               preferences.guided &&
-                              preferences.readKeys &&
+                              preferences.echoKeys &&
                               e.key.length === 1 &&
                               !e.ctrlKey &&
                               !e.altKey
@@ -2713,7 +2713,14 @@ export function Calculator() {
               announce={announce}
             />
           )}
-          {keyPrompt && <KeyPrompt request={keyPrompt} close={closeKeyPrompt} />}
+          {keyPrompt && (
+            <KeyPrompt
+              request={keyPrompt}
+              close={closeKeyPrompt}
+              announce={announce}
+              decimalSeparator={preferences.decimalSeparator}
+            />
+          )}
           {explorer && (
             <ExpressionExplorer request={explorer} announce={announce} close={closeExplorer} />
           )}

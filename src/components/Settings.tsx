@@ -145,7 +145,7 @@ export function Settings({
               ['readFocus', 'Leer controles al enfocarlos'],
               ['readHover', 'Leer automáticamente al pasar el puntero'],
               ['readTyping', 'Leer expresión después de escribir'],
-              ['readKeys', 'Leer teclas escritas'],
+              ['echoKeys', 'Decir cada tecla que escribo'],
             ] as const
           ).map(([key, label]) => (
             <label key={key}>

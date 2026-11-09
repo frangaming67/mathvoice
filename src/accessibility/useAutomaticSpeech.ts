@@ -3,6 +3,7 @@ import type { FormEvent, FocusEvent, KeyboardEvent, PointerEvent } from 'react';
 import type { Preferences } from '../types';
 import { speech } from '../services/SpeechService';
 import { mathSpeech } from './MathSpeechFormatter';
+import { keySpeech } from './symbolSpeech';
 
 const selector =
   'button, a, input, select, textarea, summary, h1, h2, h3, p, legend, label, li, dt, dd, td, th, tr, caption, output, [data-speech]';
@@ -171,6 +172,9 @@ export function useAutomaticSpeech(preferences: Preferences, suspended = false) 
     // Al empezar a escribir, la lectura pendiente del campo ya no sirve y taparía el eco.
     onKeyDownCapture(event: KeyboardEvent<HTMLDivElement>) {
       if (!modifiers.includes(event.key) && editable(event.target)) cancel();
+      const echo = typedEcho(event);
+      if (echo && !suspended && preferences.guided && preferences.echoKeys)
+        speech.hablarAutomatico(echo);
     },
     onChangeCapture(event: FormEvent<HTMLDivElement>) {
       const element = event.target;
@@ -187,4 +191,37 @@ export function useAutomaticSpeech(preferences: Preferences, suspended = false) 
         schedule(element, 140);
     },
   };
+}
+
+/**
+ * Lo que se dice al escribir en un campo: la tecla («3», «más», «abre paréntesis») o lo que se
+ * borra. El campo de la expresión principal lo dice por su cuenta, con más detalle.
+ */
+export function typedEcho(
+  event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'altKey' | 'metaKey' | 'target'>,
+): string {
+  const field = event.target;
+  if (!editable(field) || event.ctrlKey || event.altKey || event.metaKey) return '';
+  const input = field as HTMLInputElement | HTMLTextAreaElement;
+  if (input.id === 'expression') return '';
+  if (event.key.length === 1) return keySpeech(event.key);
+  if (event.key !== 'Backspace' && event.key !== 'Delete') return '';
+  const value = input.value ?? '';
+  let start: number | null = null;
+  let end: number | null = null;
+  try {
+    start = input.selectionStart;
+    end = input.selectionEnd;
+  } catch {
+    // Los campos numéricos no tienen cursor: se borra desde el final.
+  }
+  if (start === null || end === null) start = end = value.length;
+  const removed =
+    start !== end
+      ? value.slice(start, end)
+      : event.key === 'Backspace'
+        ? value.slice(Math.max(0, start - 1), start)
+        : value.slice(start, start + 1);
+  if (!removed) return 'Nada para borrar.';
+  return `Borrado: ${removed.length === 1 ? keySpeech(removed) : mathSpeech(removed)}.`;
 }

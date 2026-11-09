@@ -401,3 +401,36 @@ test('el explorador pasa axe', async ({ page }) => {
   const results = await new AxeBuilder({ page }).include('dialog.explorer').analyze();
   expect(results.violations).toEqual([]);
 });
+
+test('los diálogos de datos dicen cómo escribir, leen lo escrito y avisan qué falta', async ({
+  page,
+}) => {
+  await pressKey(page, 'Integral definida');
+  const dialog = page.getByRole('dialog', { name: 'Integral definida' });
+  const f = dialog.getByLabel('Función de x');
+  await expect(f).toBeFocused();
+  // Cada campo explica cómo se escribe, y los extremos vienen con un ejemplo.
+  await expect(f).toHaveAccessibleDescription(/x\^2 es equis al cuadrado/);
+  await expect(dialog.getByLabel('Desde x igual a')).toHaveValue('0');
+  // Vacío: se dice qué falta y el foco queda en ese campo.
+  await dialog.getByRole('button', { name: 'Calcular integral' }).click();
+  const said = dialog.getByRole('status');
+  await expect(said).toHaveText('Falta completar Función de x.');
+  await expect(f).toBeFocused();
+  await expect(f).toHaveAttribute('aria-invalid', 'true');
+  // Control más Enter lee lo escrito; Escuchar lo escrito lee todo.
+  await f.fill('x^2');
+  await f.press('Control+Enter');
+  await expect(said).toHaveText('Función de x: equis al cuadrado.');
+  await dialog.getByRole('button', { name: 'Escuchar lo escrito' }).click();
+  await expect(said).toHaveText(
+    'Función de x: equis al cuadrado. Desde x igual a: 0. Hasta x igual a: 1.',
+  );
+  // Lo que no se entiende tampoco se calcula.
+  await dialog.getByLabel('Hasta x igual a').fill('tres');
+  await dialog.getByRole('button', { name: 'Calcular integral' }).click();
+  await expect(said).toHaveText('Hasta x igual a tiene que ser un número, sin letras.');
+  await dialog.getByLabel('Hasta x igual a').fill('3');
+  await dialog.getByRole('button', { name: 'Calcular integral' }).click();
+  await expect(resultValue(page, '9')).toBeVisible();
+});
