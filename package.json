@@ -1,6 +1,6 @@
 {
   "name": "mathvoice",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "license": "MIT",
   "description": "Entorno matemático en español, pensado para trabajar sin mirar la pantalla.",
   "scripts": {

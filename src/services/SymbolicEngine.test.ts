@@ -310,3 +310,9 @@ it('simplifica cocientes de grado alto sin agotar el tiempo del Worker', () => {
   expect(performance.now() - start).toBeLessThan(1500);
   expect(near(result, 1.1)).toBeCloseTo((1.1 ** 30 - 1) / 0.1, 6);
 });
+
+it('los sistemas dan fracciones exactas cuando la solución es racional', () => {
+  expect(engine.evaluate('system(x+y+z=6, x-y=0, z=3)').value).toBe('x = 3/2; y = 3/2; z = 3');
+  expect(engine.evaluate('system(x+y=10, x-y=4)').value).toBe('x = 7; y = 3');
+  expect(engine.evaluate('system(3x+y=1, x-2y=0)').value).toBe('x = 2/7; y = 1/7');
+});

@@ -1,6 +1,6 @@
 # Cambios
 
-## 0.5.0 — en preparación
+## 0.5.0 — 2026-11-09
 
 La explicación completa, cosa por cosa, está en [Qué cambió en MathVoice 0.5](docs/CAMBIOS-0.5.md).
 
@@ -9,6 +9,7 @@ La explicación completa, cosa por cosa, está en [Qué cambió en MathVoice 0.5
 - Motor numérico exacto y con errores claros, álgebra verificada numéricamente, opciones de números (coma decimal, formato, modo complejo) que llegan a cada cálculo.
 - Lectura en voz inequívoca, MathML para lectores de pantalla y braille, LaTeX para compartir, y ayudas para editar sin mirar.
 - Dictado que no inventa, páginas organizadas para no perderse, teclado y atajos confiables con lector de pantalla y en Mac.
+- Todas las herramientas dentro de una calculadora más grande; explorador de fórmulas por partes; recorrido Primeros pasos; sistemas de ecuaciones con fracciones exactas.
 - Estadística, matrices, gráficos, historial y configuración más robustos y accesibles; temas de alto contraste con todas las teclas legibles.
 
 ## 0.4.0 — 2026-09-20

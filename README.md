@@ -74,14 +74,13 @@ Cada una tiene que mostrar un número de versión (por ejemplo `v24.1.0` y `git 
 En la terminal, escribí esta orden y apretá Enter (copiala tal cual):
 
 ```sh
-git clone -b mejoras-0-5 https://github.com/frangaming67/mathvoice.git
+git clone https://github.com/frangaming67/mathvoice.git
 ```
 
 - Si pide usuario y contraseña de GitHub, se abre una ventana para iniciar sesión: ingresá con tu cuenta.
-- `-b mejoras-0-5` descarga la versión más nueva, con la calculadora completa.
 - Sale bien si al final no aparece la palabra `fatal`. Se crea una carpeta llamada `mathvoice` en la carpeta donde estabas (en Windows suele ser `C:\Users\tu-nombre`).
 
-**Sin Git:** también podés entrar a <https://github.com/frangaming67/mathvoice/tree/mejoras-0-5>, apretar el botón verde **Code › Download ZIP**, descomprimir el archivo y usar esa carpeta en el paso 5 (en ese caso no hace falta el paso 2).
+**Sin Git:** también podés entrar a <https://github.com/frangaming67/mathvoice>, apretar el botón verde **Code › Download ZIP**, descomprimir el archivo y usar esa carpeta en el paso 5 (en ese caso no hace falta el paso 2).
 
 ### Paso 5. Entrar a la carpeta e instalar lo que necesita
 
@@ -92,7 +91,7 @@ cd mathvoice
 npm ci
 ```
 
-- `cd mathvoice` entra a la carpeta descargada. (Si usaste el ZIP, la carpeta se llama `mathvoice-mejoras-0-5`: escribí `cd ` y arrastrá la carpeta a la terminal.)
+- `cd mathvoice` entra a la carpeta descargada. (Si usaste el ZIP, la carpeta se llama `mathvoice-master`: escribí `cd ` y arrastrá la carpeta a la terminal.)
 - `npm ci` descarga las piezas que usa MathVoice. Tarda uno o dos minutos y muestra mucho texto; es normal. Termina cuando vuelve a aparecer el lugar para escribir. Las líneas que dicen `warn` no son un problema.
 
 ### Paso 6. Abrir MathVoice

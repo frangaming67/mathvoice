@@ -1,6 +1,6 @@
 # Qué cambió en MathVoice 0.5
 
-Este documento explica, cosa por cosa, todo lo que se hizo en la rama `mejoras-0-5`: más de treinta cambios, todos subidos a GitHub. Para cada parte dice qué cambió, cómo se usa y por qué importa para alguien que usa la calculadora sin mirar la pantalla. La versión 0.5.0 todavía está en preparación: al final están las pruebas que la respaldan y lo que falta.
+Este documento explica, cosa por cosa, todo lo que se hizo en la rama `mejoras-0-5`: más de treinta cambios, todos subidos a GitHub. Para cada parte dice qué cambió, cómo se usa y por qué importa para alguien que usa la calculadora sin mirar la pantalla. Todo esto forma la versión 0.5.0; al final están las pruebas que la respaldan y lo que falta.
 
 Para verla funcionando: `npm install` y después `npm run dev`; se abre en <http://127.0.0.1:5173>.
 

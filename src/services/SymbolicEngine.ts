@@ -471,6 +471,13 @@ function exactCandidates(residual: string, v: string): { text: string; value: Va
     return [];
   }
 }
+/** Una solución numérica como fracción si es racional con denominador chico; si no, decimal. */
+function exactSolution(value: number): string {
+  const fraction = rational(value, 1000, 1e-10);
+  if (!fraction) return math.format(value, { precision: 10 });
+  const [n, d] = fraction;
+  return d === 1 ? String(n) : `${n}/${d}`;
+}
 function polynomialValue(coefficients: number[], z: Value) {
   let value: Value = 0;
   let size = 0;
@@ -1889,7 +1896,8 @@ export class SymbolicEngine {
     }
     return {
       expression: original,
-      value: solutions.map(([v, value]) => `${v} = ${value}`).join('; '),
+      // Como en una calculadora de mano: 3/2 en lugar de 1.5 cuando la solución es racional.
+      value: solutions.map(([v, value]) => `${v} = ${exactSolution(Number(value))}`).join('; '),
       kind: 'Álgebra',
       angleMode: 'rad',
       explanation:
